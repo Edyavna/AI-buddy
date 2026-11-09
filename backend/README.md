@@ -147,4 +147,9 @@ heartbeat 15 секунд реализуется вместе с чат-пото
 unit/PostgreSQL tests с race, statement coverage, сборка, валидатор контрактов,
 Compose build/start, повтор migrate и перезапуск API. В Go-job тесты не требуют
 личного .env или LLM-ключа. Контейнерный job проверяет инфраструктурный каркас.
-Фактический запуск workflow нужно проверить после публикации ветки.
+[Прогон CI](https://github.com/Edyavna/AI-buddy/actions/runs/42664225153) подтвердил
+настоящие SQL-тесты, контейнерный запуск, повтор миграций и сохранность данных после
+пересоздания контейнеров без удаления тома. Тест
+`TestModulesCanBeReplacedWithoutChangingHandler` проверяет подстановку разных
+fake Agent/AccessProvider через один handler с реальной регистрацией httpapi.New.
+Результат покрытия этого прогона — 85.3% statements, не line coverage.
