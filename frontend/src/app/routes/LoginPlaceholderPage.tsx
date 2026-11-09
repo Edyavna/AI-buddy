@@ -21,7 +21,7 @@ export const LoginPlaceholderPage: React.FC = () => {
 
         <h1 className={styles.title}>Тестовый вход в демо-режиме</h1>
         <p className={styles.subtitle}>
-          Выберите синтетический аккаунт для проверки сценариев адаптации стажёра и согласования доступов.
+          Выберите тестовую учетную запись для проверки сценариев адаптации и согласования доступов.
         </p>
 
         <div className={styles.accountsList}>
@@ -34,8 +34,8 @@ export const LoginPlaceholderPage: React.FC = () => {
           >
             <div className={styles.accountAvatar}>ИС</div>
             <div className={styles.accountDetails}>
-              <span className={styles.accountName}>Иван Стажёров</span>
-              <span className={styles.accountRole}>Стажёр Backend • team_demo_backend</span>
+              <span className={styles.accountName}>Иван Стажеров</span>
+              <span className={styles.accountRole}>Стажер Backend, team_demo_backend</span>
             </div>
             <StatusBadge status="in_progress" label="Активен" size="sm" />
           </div>
@@ -55,7 +55,7 @@ export const LoginPlaceholderPage: React.FC = () => {
             </div>
             <div className={styles.accountDetails}>
               <span className={styles.accountName}>Алексей Менторов</span>
-              <span className={styles.accountRole}>Наставник / Team Lead</span>
+              <span className={styles.accountRole}>Наставник команды</span>
             </div>
             <StatusBadge status="completed" label="Ментор" size="sm" />
           </div>
@@ -64,7 +64,7 @@ export const LoginPlaceholderPage: React.FC = () => {
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <Link to="/onboarding" style={{ width: '100%' }}>
             <Button variant="primary" fullWidth>
-              Войти как {selectedUser === 'intern' ? 'Иван (Стажёр)' : 'Алексей (Ментор)'}
+              Войти как {selectedUser === 'intern' ? 'Иван' : 'Алексей'}
             </Button>
           </Link>
 
@@ -76,8 +76,7 @@ export const LoginPlaceholderPage: React.FC = () => {
         </div>
 
         <p className={styles.noticeNote}>
-          Сессия сохраняется в защищенной <code>HttpOnly</code> cookie (задача #4). В рабочей среде
-          будет использоваться корпоративная SSO-авторизация.
+          Сессия сохраняется в <code>HttpOnly</code> cookie. В рабочей среде используется корпоративная авторизация.
         </p>
       </div>
     </div>

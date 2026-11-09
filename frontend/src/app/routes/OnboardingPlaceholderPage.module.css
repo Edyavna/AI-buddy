@@ -6,45 +6,29 @@
   margin: 0 auto;
 }
 
-/* Hero Banner */
+/* Header Banner */
 .heroBanner {
-  background: linear-gradient(135deg, #ffffff 0%, var(--avito-blue-bg) 100%);
+  background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  padding: var(--space-6) var(--space-8);
-  box-shadow: var(--shadow-sm);
+  padding: var(--space-6);
+  box-shadow: var(--shadow-xs);
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: var(--space-6);
-  position: relative;
-  overflow: hidden;
-}
-
-.heroBanner::after {
-  content: '';
-  position: absolute;
-  top: -24px;
-  right: -24px;
-  width: 120px;
-  height: 120px;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(0, 156, 240, 0.1) 0%, transparent 70%);
-  pointer-events: none;
 }
 
 .heroInfo {
-  max-width: 620px;
+  max-width: 600px;
 }
 
 .heroTag {
   display: inline-flex;
   align-items: center;
-  gap: var(--space-1);
   padding: 2px var(--space-2);
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-pill);
+  background-color: var(--avito-blue-bg);
+  border-radius: var(--radius-sm);
   font-size: var(--font-size-xs);
   font-weight: 600;
   color: var(--avito-blue-text);
@@ -53,9 +37,8 @@
 
 .heroTitle {
   font-size: var(--font-size-2xl);
-  font-weight: 800;
+  font-weight: 700;
   color: var(--color-text-primary);
-  letter-spacing: -0.5px;
   margin-bottom: var(--space-2);
 }
 
@@ -66,12 +49,11 @@
 }
 
 .heroProgressCard {
-  background-color: var(--color-surface);
+  background-color: var(--color-bg-page);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: var(--space-4) var(--space-5);
   min-width: 260px;
-  box-shadow: var(--shadow-xs);
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
@@ -148,20 +130,14 @@
   border-radius: var(--radius-lg);
   padding: var(--space-5);
   box-shadow: var(--shadow-xs);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-}
-
-.stepCard:hover {
-  border-color: var(--avito-blue);
-  box-shadow: var(--shadow-md);
+  transition: border-color var(--transition-fast);
 }
 
 .stepCardActive {
   border-left: 4px solid var(--avito-blue);
-  background-color: #ffffff;
 }
 
 .stepCardHeader {
@@ -211,7 +187,7 @@
   align-items: center;
   padding-left: 32px;
   padding-top: var(--space-2);
-  border-top: 1px dashed var(--color-border-subtle);
+  border-top: 1px solid var(--color-border-subtle);
 }
 
 .stepMetaGroup {
@@ -224,7 +200,7 @@
   font-size: var(--font-size-xs);
   font-family: monospace;
   background-color: var(--color-surface-hover);
-  color: var(--color-text-secondary);
+  color: var(--color-text-primary);
   padding: 2px 8px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--color-border);
@@ -233,7 +209,6 @@
 .blockedNotice {
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
-  font-style: italic;
 }
 
 /* Sidebar Widgets */
@@ -258,9 +233,6 @@
   font-size: var(--font-size-base);
   font-weight: 700;
   color: var(--color-text-primary);
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
 }
 
 .mentorRow {
@@ -270,16 +242,17 @@
 }
 
 .mentorAvatar {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--avito-violet) 0%, var(--avito-blue) 100%);
-  color: #ffffff;
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border);
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: 700;
-  font-size: var(--font-size-base);
+  font-size: var(--font-size-sm);
 }
 
 .mentorDetails {
@@ -315,7 +288,7 @@
   font-weight: 500;
   color: var(--color-text-primary);
   text-decoration: none;
-  transition: all var(--transition-fast);
+  transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .quickLink:hover {

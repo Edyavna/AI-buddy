@@ -12,7 +12,7 @@ export const ChatPlaceholderPage: React.FC = () => {
 
   return (
     <div className={styles.container}>
-      {/* Top Header Row */}
+      {/* Header */}
       <div className={styles.header}>
         <div className={styles.titleRow}>
           <h1 className={styles.title}>Чат с наставником</h1>
@@ -61,7 +61,7 @@ export const ChatPlaceholderPage: React.FC = () => {
               className={`${styles.conversationItem} ${conversationId === 'conv-123' ? styles.conversationItemActive : ''}`}
             >
               <span className={styles.convItemTitle}>Вопрос по Git и веткам</span>
-              <span className={styles.convItemMeta}>Вчера • 3 сообщения</span>
+              <span className={styles.convItemMeta}>Вчера, 3 сообщения</span>
             </Link>
           </div>
         </aside>
@@ -73,10 +73,10 @@ export const ChatPlaceholderPage: React.FC = () => {
             <div className={styles.botStatusGroup}>
               <div className={styles.botAvatar}>AI</div>
               <div>
-                <div className={styles.botTitle}>AI-buddy (Наставник стажёров)</div>
+                <div className={styles.botTitle}>Ассистент стажера</div>
                 <div className={styles.botStatus}>
                   <span className={styles.onlineDot} />
-                  <span>В сети • DeepSeek AI Agent</span>
+                  <span>В сети</span>
                 </div>
               </div>
             </div>
@@ -90,7 +90,7 @@ export const ChatPlaceholderPage: React.FC = () => {
             <div className={`${styles.messageRow} ${styles.userMessageRow}`}>
               <div className={`${styles.messageBubble} ${styles.userBubble}`}>
                 <p>
-                  Привет! Пытаюсь склонировать репозиторий проекта, но получаю <code>403 Forbidden</code>. Как получить доступ?
+                  Не удается склонировать репозиторий проекта, возвращается ошибка <code>403 Forbidden</code>. Как получить доступ?
                 </p>
                 <span className={styles.messageTime}>12:30</span>
               </div>
@@ -100,15 +100,14 @@ export const ChatPlaceholderPage: React.FC = () => {
             <div className={`${styles.messageRow} ${styles.botMessageRow}`}>
               <div className={`${styles.messageBubble} ${styles.botBubble}`}>
                 <p>
-                  Привет! Для работы с сервисом стажёру необходим доступ на чтение к репозиторию{' '}
-                  <strong>repo_demo_backend</strong>. Я подготовил для тебя черновик заявки:
+                  Для работы требуется доступ на чтение к репозиторию <strong>repo_demo_backend</strong>. Подготовлен черновик заявки:
                 </p>
 
                 {/* Embedded Access Request Card */}
                 <div className={styles.requestPreviewCard}>
                   <div className={styles.requestCardHeader}>
                     <span className={styles.requestCardTitle}>
-                      📋 Заявка на доступ к ресурсу
+                      Заявка на доступ к ресурсу
                     </span>
                     <StatusBadge
                       status={isConfirmed ? 'pending' : 'draft'}
@@ -131,8 +130,8 @@ export const ChatPlaceholderPage: React.FC = () => {
                       Подтвердить отправку
                     </Button>
                   ) : (
-                    <div style={{ color: 'var(--avito-green-text)', fontSize: '12px', fontWeight: 600 }}>
-                      ✓ Заявка отправлена и ожидает решения в тестовом сервисе доступа
+                    <div style={{ color: 'var(--avito-green-text)', fontSize: '13px', fontWeight: 600 }}>
+                      Заявка отправлена. Ожидает решения в сервисе доступа.
                     </div>
                   )}
                 </div>
@@ -143,7 +142,7 @@ export const ChatPlaceholderPage: React.FC = () => {
                     className={styles.sourceChip}
                     onClick={() => alert('Открытие регламента local_setup.md')}
                   >
-                    📄 local_setup.md (стр. 4)
+                    local_setup.md, стр. 4
                   </span>
                 </div>
 
@@ -166,7 +165,7 @@ export const ChatPlaceholderPage: React.FC = () => {
             <input
               type="text"
               className={styles.composerInput}
-              placeholder="Задайте вопрос наставнику или уточните детали задачи..."
+              placeholder="Задайте вопрос по текущей задаче..."
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
             />
@@ -193,8 +192,8 @@ export const ChatPlaceholderPage: React.FC = () => {
 
           {/* Integration notification for FE1 */}
           <div className={styles.integrationNotice}>
-            <span><span aria-hidden="true">⚡ </span>Слот диалога готов к интеграции</span>
-            <span>FE1 (Никита) подключает сюда SSE-поток и историю диалогов</span>
+            <span>Слот диалога готов к интеграции</span>
+            <span>FE1 подключает SSE-поток и историю диалогов</span>
           </div>
         </div>
       </div>

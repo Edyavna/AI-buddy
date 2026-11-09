@@ -6,16 +6,16 @@ import styles from './OnboardingPlaceholderPage.module.css';
 export const OnboardingPlaceholderPage: React.FC = () => {
   return (
     <div className={styles.container}>
-      {/* Hero Welcome Banner */}
+      {/* Banner */}
       <section className={styles.heroBanner}>
         <div className={styles.heroInfo}>
           <div className={styles.heroTag}>
-            <span>🚀 Программа адаптации Авито Start</span>
+            <span>Программа адаптации</span>
           </div>
           <h1 className={styles.heroTitle}>Мой план адаптации</h1>
           <p className={styles.heroSubtitle}>
-            Привет! Здесь собраны первые шаги для погружения в проекты команды. Задавай вопросы
-            ИИ-наставнику, запрашивай доступы и отслеживай прогресс.
+            План начальной адаптации стажера в команде Backend Core. Выполняйте шаги последовательно
+            и запрашивайте доступ к сервисам через ассистента.
           </p>
         </div>
 
@@ -24,10 +24,16 @@ export const OnboardingPlaceholderPage: React.FC = () => {
             <span className={styles.progressLabel}>Текущий прогресс</span>
             <StatusBadge status="in_progress" label="Прогресс: 0%" size="sm" />
           </div>
-          <div className={styles.progressBarTrack} role="progressbar" aria-valuenow={0} aria-valuemin={0} aria-valuemax={100}>
+          <div
+            className={styles.progressBarTrack}
+            role="progressbar"
+            aria-valuenow={0}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
             <div className={styles.progressBarFill} style={{ width: '4%' }} />
           </div>
-          <span className={styles.progressMeta}>0 из 4 шагов завершено • Следующий шаг активен</span>
+          <span className={styles.progressMeta}>Завершено 0 из 4 шагов. Следующий шаг доступен.</span>
         </div>
       </section>
 
@@ -37,7 +43,7 @@ export const OnboardingPlaceholderPage: React.FC = () => {
         <div className={styles.stepsSection}>
           <div className={styles.sectionHeader}>
             <h2 className={styles.sectionTitle}>Шаги онбординга</h2>
-            <span className={styles.progressMeta}>Команда: Backend Core</span>
+            <span className={styles.progressMeta}>Команда Backend Core</span>
           </div>
 
           <div className={styles.stepsList}>
@@ -54,14 +60,14 @@ export const OnboardingPlaceholderPage: React.FC = () => {
               </div>
 
               <p className={styles.stepDescription}>
-                Склонировать основной сервис, поднять зависимости в Docker Compose и убедиться, что
-                тесты проходят локально. Для доступа к исходному коду требуется подтвердить заявку на чтение.
+                Склонировать репозиторий, запустить зависимости через Docker Compose и проверить
+                прохождение локальных тестов. Для доступа к репозиторию требуется подтвердить заявку на чтение.
               </p>
 
               <div className={styles.stepFooter}>
                 <div className={styles.stepMetaGroup}>
                   <span className={styles.resourceTag}>repo_demo_backend</span>
-                  <span className={styles.progressMeta}>Шаг: step_local_setup</span>
+                  <span className={styles.progressMeta}>Шаг step_local_setup</span>
                 </div>
                 <Link to="/chat?stepId=step_local_setup">
                   <Button variant="primary" size="sm">
@@ -82,11 +88,11 @@ export const OnboardingPlaceholderPage: React.FC = () => {
               </div>
 
               <p className={styles.stepDescription}>
-                Изучить OpenAPI спецификацию, протокол потоковых событий SSE и структуру микросервисов.
+                Изучить спецификацию OpenAPI, формат событий SSE и архитектуру сервисов.
               </p>
 
               <div className={styles.stepFooter}>
-                <span className={styles.blockedNotice}>🔒 Заблокирован: сначала завершите шаг 1</span>
+                <span className={styles.blockedNotice}>Ожидает завершения шага 1</span>
                 <Link to="/chat?stepId=step_architecture">
                   <Button variant="ghost" size="sm">
                     Спросить наставника
@@ -106,11 +112,11 @@ export const OnboardingPlaceholderPage: React.FC = () => {
               </div>
 
               <p className={styles.stepDescription}>
-                Внести тестовое исправление в сервис задач, пройти линтер и отправить PR на ревью.
+                Внести исправление в сервис задач, запустить линтер и отправить PR на ревью.
               </p>
 
               <div className={styles.stepFooter}>
-                <span className={styles.blockedNotice}>🔒 Заблокирован: ожидается выполнение шага 2</span>
+                <span className={styles.blockedNotice}>Ожидает завершения шага 2</span>
               </div>
             </article>
 
@@ -119,13 +125,13 @@ export const OnboardingPlaceholderPage: React.FC = () => {
               <div className={styles.stepCardHeader}>
                 <div className={styles.stepTitleGroup}>
                   <span className={styles.stepNumber}>4</span>
-                  <h3 className={styles.stepTitle}>Встреча 1-on-1 и подведение итогов первой недели</h3>
+                  <h3 className={styles.stepTitle}>Встреча 1-on-1 и итоги первой недели</h3>
                 </div>
                 <StatusBadge status="blocked" />
               </div>
 
               <p className={styles.stepDescription}>
-                Обсудить с наставником результаты первой недели, возникшие сложности и план на испытательный срок.
+                Обсудить с наставником результаты первой недели и план на испытательный срок.
               </p>
             </article>
           </div>
@@ -135,7 +141,7 @@ export const OnboardingPlaceholderPage: React.FC = () => {
         <aside className={styles.sidebar}>
           {/* Mentor card */}
           <div className={styles.widgetCard}>
-            <h3 className={styles.widgetTitle}>Твой наставник</h3>
+            <h3 className={styles.widgetTitle}>Наставник</h3>
             <div className={styles.mentorRow}>
               <div className={styles.mentorAvatar}>АМ</div>
               <div className={styles.mentorDetails}>
@@ -145,24 +151,24 @@ export const OnboardingPlaceholderPage: React.FC = () => {
             </div>
             <Link to="/chat">
               <Button variant="secondary" size="sm" fullWidth>
-                Написать в чат
+                Открыть чат
               </Button>
             </Link>
           </div>
 
           {/* Useful links */}
           <div className={styles.widgetCard}>
-            <h3 className={styles.widgetTitle}>База знаний и ссылки</h3>
+            <h3 className={styles.widgetTitle}>База знаний и регламенты</h3>
             <nav className={styles.linksList}>
               <a
                 href="#docs"
                 className={styles.quickLink}
                 onClick={(e) => {
                   e.preventDefault();
-                  alert('База знаний стажёров Авито (интегрирована с AI-buddy)');
+                  alert('База знаний стажеров');
                 }}
               >
-                <span>📘 Вики команды Backend</span>
+                <span>Вики команды Backend</span>
                 <span>→</span>
               </a>
               <a
@@ -173,7 +179,7 @@ export const OnboardingPlaceholderPage: React.FC = () => {
                   alert('Репозитории проектов команды');
                 }}
               >
-                <span>💻 Git и CI/CD регламент</span>
+                <span>Регламент Git и CI/CD</span>
                 <span>→</span>
               </a>
               <a
@@ -181,10 +187,10 @@ export const OnboardingPlaceholderPage: React.FC = () => {
                 className={styles.quickLink}
                 onClick={(e) => {
                   e.preventDefault();
-                  alert('Регламент получения доступов');
+                  alert('Сервис заявок на доступ');
                 }}
               >
-                <span>🔑 Сервис доступов</span>
+                <span>Сервис доступов</span>
                 <span>→</span>
               </a>
             </nav>
