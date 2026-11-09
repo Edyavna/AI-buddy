@@ -12,6 +12,9 @@ export default defineConfig({
   },
   server: {
     port: 3000,
+    watch: {
+      ignored: ['**/.taste-skill/**', '**/coverage/**'],
+    },
     proxy: {
       '/api': {
         target: 'http://localhost:8080',
