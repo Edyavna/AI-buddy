@@ -38,7 +38,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             <NavLink
               to="/onboarding"
               className={({ isActive }) =>
-                clsx(styles.navLink, { [styles.activeLink]: isActive })
+                clsx(styles.navLink, isActive && styles.activeLink)
               }
             >
               Мой план
@@ -46,7 +46,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             <NavLink
               to="/chat"
               className={({ isActive }) =>
-                clsx(styles.navLink, { [styles.activeLink]: isActive })
+                clsx(styles.navLink, isActive && styles.activeLink)
               }
             >
               Чат

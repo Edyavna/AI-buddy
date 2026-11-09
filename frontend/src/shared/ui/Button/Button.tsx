@@ -41,10 +41,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
           styles.button,
           styles[variant],
           styles[size],
-          {
-            [styles.loading]: isLoading,
-            [styles.fullWidth]: fullWidth,
-          },
+          [isLoading && styles.loading, fullWidth && styles.fullWidth],
           className
         )}
         {...rest}
@@ -57,7 +54,7 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             />
           </span>
         )}
-        <span className={clsx(styles.content, { [styles.hiddenContent]: isLoading })}>
+        <span className={clsx(styles.content, isLoading && styles.hiddenContent)}>
           {leftIcon && <span className={styles.icon}>{leftIcon}</span>}
           <span>{children}</span>
           {rightIcon && <span className={styles.icon}>{rightIcon}</span>}

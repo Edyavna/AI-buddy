@@ -35,10 +35,7 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
       <div
         className={clsx(
           styles.container,
-          {
-            [styles.fullWidth]: fullWidth,
-            [styles.disabled]: disabled,
-          },
+          [fullWidth && styles.fullWidth, disabled && styles.disabled],
           className
         )}
       >
@@ -57,7 +54,7 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
             aria-describedby={
               hasError ? errorId : helperText ? helperId : undefined
             }
-            className={clsx(styles.input, { [styles.hasError]: hasError })}
+            className={clsx(styles.input, hasError && styles.hasError)}
             {...rest}
           />
         </div>

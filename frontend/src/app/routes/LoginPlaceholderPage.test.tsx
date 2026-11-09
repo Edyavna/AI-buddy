@@ -18,7 +18,8 @@ describe('LoginPlaceholderPage', () => {
     const radios = screen.getAllByRole('radio');
     expect(radios).toHaveLength(2);
 
-    const [internRadio, mentorRadio] = radios;
+    const internRadio = screen.getByRole('radio', { name: /Иван Стажёров/i });
+    const mentorRadio = screen.getByRole('radio', { name: /Алексей Морозов/i });
     expect(internRadio).toHaveAttribute('aria-checked', 'true');
     expect(mentorRadio).toHaveAttribute('aria-checked', 'false');
     expect(screen.getByRole('button', { name: /войти как иван стажёров/i })).toBeInTheDocument();
@@ -31,7 +32,8 @@ describe('LoginPlaceholderPage', () => {
       </MemoryRouter>
     );
 
-    const [internRadio, mentorRadio] = screen.getAllByRole('radio');
+    const internRadio = screen.getByRole('radio', { name: /Иван Стажёров/i });
+    const mentorRadio = screen.getByRole('radio', { name: /Алексей Морозов/i });
 
     // Click mentor
     fireEvent.click(mentorRadio);
@@ -53,7 +55,8 @@ describe('LoginPlaceholderPage', () => {
       </MemoryRouter>
     );
 
-    const [internRadio, mentorRadio] = screen.getAllByRole('radio');
+    const internRadio = screen.getByRole('radio', { name: /Иван Стажёров/i });
+    const mentorRadio = screen.getByRole('radio', { name: /Алексей Морозов/i });
 
     // Press Enter on mentor
     fireEvent.keyDown(mentorRadio, { key: 'Enter' });

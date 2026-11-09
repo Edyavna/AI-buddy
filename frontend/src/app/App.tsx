@@ -1,19 +1,12 @@
 import React from 'react';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider } from 'react-router-dom';
 import { router } from './router';
+import { createQueryClient } from '@/shared/api';
 import '@/shared/styles/tokens.css';
 import '@/shared/styles/reset.css';
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 1000 * 60 * 5, // 5 minutes
-      retry: 1,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+const queryClient = createQueryClient();
 
 export interface AppProps {
   routerOverride?: ReturnType<typeof import('react-router-dom').createMemoryRouter>;
