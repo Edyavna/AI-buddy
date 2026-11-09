@@ -6,3 +6,4 @@ export * from './EmptyState/EmptyState';
 export * from './TextField/TextField';
 export * from './Drawer/Drawer';
 export * from './Dialog/Dialog';
+export * from './AvitoLogo/AvitoLogo';

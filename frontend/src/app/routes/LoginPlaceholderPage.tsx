@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, StatusBadge } from '@/shared/ui';
+import { Button, StatusBadge, AvitoLogo } from '@/shared/ui';
 import styles from './LoginPlaceholderPage.module.css';
 
 export const LoginPlaceholderPage: React.FC = () => {
@@ -10,13 +10,7 @@ export const LoginPlaceholderPage: React.FC = () => {
     <div className={styles.loginContainer}>
       <div className={styles.loginCard}>
         <div className={styles.logoRow}>
-          <div className={styles.logoDots} aria-hidden="true">
-            <span className={`${styles.dot} ${styles.dotGreen}`} />
-            <span className={`${styles.dot} ${styles.dotBlue}`} />
-            <span className={`${styles.dot} ${styles.dotRed}`} />
-            <span className={`${styles.dot} ${styles.dotViolet}`} />
-          </div>
-          <span className={styles.brandTitle}>Авито</span>
+          <AvitoLogo size="lg" />
         </div>
 
         <h1 className={styles.title}>Тестовый вход в демо-режиме</h1>

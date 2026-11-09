@@ -1,6 +1,7 @@
 import React from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import clsx from 'clsx';
+import { AvitoLogo } from '@/shared/ui';
 import styles from './AppShell.module.css';
 
 export interface AppShellProps {
@@ -27,16 +28,8 @@ export const AppShell: React.FC<AppShellProps> = ({
           {/* Brand Logo */}
           <div className={styles.brandSection}>
             <Link to="/onboarding" className={styles.logoLink} aria-label="AI-buddy — Главная">
-              <div className={styles.logoDots} aria-hidden="true">
-                <span className={clsx(styles.dot, styles.dotGreen)} />
-                <span className={clsx(styles.dot, styles.dotBlue)} />
-                <span className={clsx(styles.dot, styles.dotRed)} />
-                <span className={clsx(styles.dot, styles.dotViolet)} />
-              </div>
-              <div className={styles.brandText}>
-                <span className={styles.brandName}>Авито</span>
-                <span className={styles.buddyTag}>AI-buddy</span>
-              </div>
+              <AvitoLogo size="md" />
+              <span className={styles.buddyTag}>AI-buddy</span>
             </Link>
           </div>
 
