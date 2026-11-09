@@ -4,6 +4,7 @@ package testkit
 import (
 	"context"
 	"sync"
+	"time"
 
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/identity"
 	"github.com/Edyavna/AI-buddy/backend/internal/ports"
@@ -88,7 +89,45 @@ func (Knowledge) Read(ctx context.Context, id string) (ports.Document, error) {
 	if id != DocumentID {
 		return ports.Document{}, ports.ErrNotFound
 	}
-	return ports.Document{ID: DocumentID, Title: "Тестовая инструкция запуска", Content: "Синтетические данные. Для запуска нужен доступ к репозиторию."}, nil
+	return ports.Document{ID: DocumentID, Title: "Тестовая инструкция запуска", Content: "Синтетические данные. Для запуска нужен доступ к репозиторию.", UpdatedAt: time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)}, nil
+}
+
+// Requests is read-only test data; configure it before concurrent use.
+type Requests struct{ Items []ports.RequestState }
+
+func (r Requests) Get(ctx context.Context, id string) (ports.RequestState, error) {
+	if err := authorize(ctx); err != nil {
+		return ports.RequestState{}, err
+	}
+	for _, item := range r.Items {
+		if item.RequestID == id {
+			return item, nil
+		}
+	}
+	return ports.RequestState{}, ports.ErrNotFound
+}
+func (r Requests) FindActive(ctx context.Context, check ports.AccessCheck) (ports.RequestState, error) {
+	if err := authorize(ctx); err != nil {
+		return ports.RequestState{}, err
+	}
+	var found *ports.RequestState
+	for _, item := range r.Items {
+		if item.Resource.ID != check.ResourceID || item.Resource.Permission != check.Permission {
+			continue
+		}
+		if item.Status != "draft" && item.Status != "submitting" && item.Status != "pending" {
+			continue
+		}
+		if found != nil {
+			return ports.RequestState{}, ports.ErrConflict
+		}
+		copy := item
+		found = &copy
+	}
+	if found == nil {
+		return ports.RequestState{}, ports.ErrNotFound
+	}
+	return *found, nil
 }
 
 type Tasks struct{}
@@ -164,4 +203,5 @@ var (
 	_ ports.TaskProvider   = Tasks{}
 	_ ports.AccessProvider = (*Access)(nil)
 	_ ports.DraftService   = Drafts(nil)
+	_ ports.RequestReader  = Requests{}
 )

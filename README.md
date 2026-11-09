@@ -85,6 +85,11 @@ race detector включен. Настоящий LLM-ключ для этих п
 - [Стыки фронтенда](docs/frontend/integration.md)
 - [Приемка и тестирование](docs/frontend/acceptance.md)
 - [Внутренние Go-интерфейсы и передача участникам](docs/backend/interfaces.md)
+- [Архитектура и порядок соединения модулей](docs/backend/architecture.md)
+- [Задание Роме: агент и знания](docs/backend/roma.md)
+- [Задание Егору: корпоративная имитация](docs/backend/egor.md)
+- [SDD основного сценария](docs/sdd/access-onboarding.md)
+- [Словарь проекта](CONTEXT.md)
 - [Статус и приемка первого дня](docs/backend/day-1.md)
 
 Исходное ТЗ находится в PDF в корне. Задания реализации ведутся в GitHub Issues.
