@@ -35,6 +35,11 @@ Fixture — синтетический пример данных для разр
 Даты фиксированы для воспроизводимости. Для client_message_id используются валидные UUID.
 Ассистентские сообщения содержат client_message_id=null, sources и request_ids даже если пусты.
 
+Исходный согласованный набор: [scenario.json](../../contracts/examples/scenario.json).
+Его проверяет `scripts/check_contracts.py`. Моки строятся на этих примерах, включая
+client_conversation_id, in_reply_to_message_id, revision и allowed_statuses.
+Обязательно проверить повтор создания диалога с тем же UUID и прием ответов не по порядку revision.
+
 ## MSW-сценарии
 
 - Обычный путь: draft → submitting → pending → granted.

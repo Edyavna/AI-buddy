@@ -12,6 +12,8 @@ PostgreSQL и внешний LLM API. Текущая версия содержи
 - [Контракт React ↔ Go](contracts/README.md)
 - [OpenAPI](contracts/openapi.yaml)
 - [Поток чата](contracts/chat-events.md)
+- [Поведение API и правила повторов](contracts/behavior.md)
+- [Общие примеры JSON](contracts/examples/scenario.json)
 - [Начало работы фронтендеров](docs/frontend/README.md)
 - [Задание FE1](docs/frontend/frontend-1.md)
 - [Задание FE2](docs/frontend/frontend-2.md)

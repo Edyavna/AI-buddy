@@ -1,25 +1,31 @@
 openapi: 3.0.3
 info:
   title: AI-buddy — Frontend API
-  version: 0.1.0
-  description: |
-    Предлагаемый контракт MVP. Все адреса относительно /api/v1.
+  version: 0.2.0
+  description: 'Предлагаемый контракт MVP. Все адреса относительно /api/v1.
+
     Пользователь и команда определяются сервером по сессии, а не из тела запроса.
+
     Доступ к чужим объектам возвращает 404. Все даты — RFC 3339, UTC.
+
     Поток чата описан дополнительно в chat-events.md.
+
+
+    Нормативные переходы и повторы: behavior.md. Примеры: examples/scenario.json.'
 servers:
-  - url: /api/v1
+- url: /api/v1
 security:
-  - sessionCookie: []
+- sessionCookie: []
 tags:
-  - name: Session
-  - name: Onboarding
-  - name: Chat
-  - name: Requests
+- name: Session
+- name: Onboarding
+- name: Chat
+- name: Requests
 paths:
   /demo/accounts:
     get:
-      tags: [Session]
+      tags:
+      - Session
       operationId: listDemoAccounts
       security: []
       description: Только DEMO_MODE. Возвращает синтетические учетные записи. Вне demo — 404.
@@ -30,55 +36,132 @@ paths:
             application/json:
               schema:
                 type: array
-                items: {$ref: '#/components/schemas/User'}
+                items:
+                  $ref: '#/components/schemas/User'
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
   /demo/session:
     post:
-      tags: [Session]
+      tags:
+      - Session
       operationId: createDemoSession
       security: []
-      description: |
-        Только DEMO_MODE. Создает сессию синтетического пользователя.
+      description: 'Только DEMO_MODE. Создает сессию синтетического пользователя.
+
         Cookie buddy_session: HttpOnly, SameSite=Lax, Path=/; Secure при HTTPS.
+
         В рабочей среде этот маршрут отсутствует: сессию обеспечивает корпоративная авторизация.
+
+        '
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
-              required: [account_id]
+              required:
+              - account_id
               properties:
-                account_id: {type: string}
+                account_id:
+                  type: string
+              additionalProperties: false
       responses:
         '200':
           description: Сессия установлена через Set-Cookie
           headers:
-            Set-Cookie: {schema: {type: string}}
+            Set-Cookie:
+              schema:
+                type: string
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/User'}
-        default: {$ref: '#/components/responses/Error'}
+              schema:
+                $ref: '#/components/schemas/User'
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
   /me:
     get:
-      tags: [Session]
+      tags:
+      - Session
       operationId: getMe
       responses:
         '200':
           description: Пользователь текущей сессии
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/User'}
-        default: {$ref: '#/components/responses/Error'}
+              schema:
+                $ref: '#/components/schemas/User'
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
   /session:
     delete:
-      tags: [Session]
+      tags:
+      - Session
       operationId: deleteSession
       responses:
-        '204': {description: 'Сессия удалена, cookie погашен'}
-        default: {$ref: '#/components/responses/Error'}
+        '204':
+          description: Сессия удалена, cookie погашен
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
   /onboarding/plan:
     get:
-      tags: [Onboarding]
+      tags:
+      - Onboarding
       operationId: getMyPlan
       description: План текущего пользователя; порядок шагов задается порядком массива.
       responses:
@@ -86,37 +169,81 @@ paths:
           description: План и следующий шаг; план создается при подготовке demo-данных
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/Plan'}
-        default: {$ref: '#/components/responses/Error'}
+              schema:
+                $ref: '#/components/schemas/Plan'
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
   /onboarding/steps/{step_id}:
     parameters:
-      - {name: step_id, in: path, required: true, schema: {type: string}}
+    - name: step_id
+      in: path
+      required: true
+      schema:
+        type: string
     patch:
-      tags: [Onboarding]
+      tags:
+      - Onboarding
       operationId: updateStep
-      description: |
-        Пользователь отмечает свой шаг. blocked выставляет сервер по состоянию заявки.
+      description: 'Пользователь отмечает свой шаг. blocked выставляет сервер по состоянию заявки.
+
         Пока доступ не подтвержден сервисом, зависимый шаг нельзя завершить (409).
+
         Сервер возвращает весь обновленный план, включая прогресс и следующий шаг.
+
+
+        Разрешенные цели указаны в Step.allowed_statuses; повтор текущего пользовательского статуса возвращает 200.
+        См. behavior.md.'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [status]
-              properties:
-                status: {type: string, enum: [not_started, in_progress, completed]}
+              $ref: '#/components/schemas/UpdateStep'
       responses:
         '200':
           description: Обновленный план
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/Plan'}
-        default: {$ref: '#/components/responses/Error'}
+              schema:
+                $ref: '#/components/schemas/Plan'
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
   /conversations:
     get:
-      tags: [Chat]
+      tags:
+      - Chat
       operationId: listConversations
       description: Свои диалоги, updated_at по убыванию. В ограниченном demo без пагинации.
       responses:
@@ -126,37 +253,89 @@ paths:
             application/json:
               schema:
                 type: array
-                items: {$ref: '#/components/schemas/Conversation'}
-        default: {$ref: '#/components/responses/Error'}
+                items:
+                  $ref: '#/components/schemas/Conversation'
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
     post:
-      tags: [Chat]
+      tags:
+      - Chat
       operationId: createConversation
-      description: Создать диалог, при необходимости связанный с шагом адаптации.
+      description: Создать диалог. client_conversation_id генерируется фронтом один раз; уникален для пользователя.
+        Повтор с теми же параметрами возвращает тот же диалог (200), первый вызов — 201. Другой step_id при том
+        же ID — 409 IDEMPOTENCY_CONFLICT. Пропущенный step_id эквивалентен null. Ключ хранится весь срок жизни диалога.
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                step_id: {type: string, nullable: true}
+              $ref: '#/components/schemas/CreateConversation'
       responses:
         '201':
           description: Диалог создан
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/Conversation'}
-        default: {$ref: '#/components/responses/Error'}
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        default:
+          $ref: '#/components/responses/Error'
+        '200':
+          description: 'Повтор создания: ранее созданный диалог'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
   /conversations/{conversation_id}/messages:
     parameters:
-      - {name: conversation_id, in: path, required: true, schema: {type: string}}
+    - name: conversation_id
+      in: path
+      required: true
+      schema:
+        type: string
     get:
-      tags: [Chat]
+      tags:
+      - Chat
       operationId: listMessages
-      description: |
-        Сохраненная история по возрастанию времени. В MVP без пагинации.
+      description: 'Сохраненная история по возрастанию времени. В MVP без пагинации.
+
         Частичный текст, источники и ссылки на заявки также сохраняются.
+
         После обрыва потока фронт читает этот маршрут для восстановления состояния.
+
+
+        Порядок — серверная последовательность записи; user перед своим assistant, даже при одинаковом created_at.'
       responses:
         '200':
           description: Сообщения
@@ -164,42 +343,91 @@ paths:
             application/json:
               schema:
                 type: array
-                items: {$ref: '#/components/schemas/Message'}
-        default: {$ref: '#/components/responses/Error'}
+                items:
+                  $ref: '#/components/schemas/Message'
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
     post:
-      tags: [Chat]
+      tags:
+      - Chat
       operationId: sendMessage
-      description: |
-        Отправка через fetch POST; ответ — text/event-stream. Native EventSource не используется.
+      description: 'Отправка через fetch POST; ответ — text/event-stream. Native EventSource не используется.
+
         client_message_id — UUID, созданный фронтом для одной отправки.
+
         Повтор того же ID с тем же содержимым возвращает 409 MESSAGE_ALREADY_EXISTS;
+
         фронт загружает историю, повторно генерацию не запускает.
+
         Тот же ID с другим содержимым — 409 IDEMPOTENCY_CONFLICT.
+
         Одновременно разрешена одна генерация на диалог, иначе 409 GENERATION_IN_PROGRESS.
+
         Бэкенд сохраняет сообщения до ответа и при потере соединения отменяет генерацию,
+
         сохраняет частичный результат со статусом interrupted, если она еще не завершилась.
+
+
+        client_message_id уникален в диалоге; повтор проверяется ДО занятой генерации. User и assistant создаются
+        атомарно. Корреляция восстановления — in_reply_to_message_id. Подробнее behavior.md.'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [client_message_id, text]
-              properties:
-                client_message_id: {type: string, format: uuid}
-                text: {type: string, minLength: 1, maxLength: 8000}
+              $ref: '#/components/schemas/SendMessage'
       responses:
         '200':
           description: Поток событий согласно chat-events.md; после открытия ошибки тоже передаются событиями
           content:
             text/event-stream:
-              schema: {type: string}
-        default: {$ref: '#/components/responses/Error'}
+              schema:
+                type: string
+                description: SSE framing; после разбора валидировать логический объект {event,data} по ChatEvent.
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
   /documents/{document_id}:
     parameters:
-      - {name: document_id, in: path, required: true, schema: {type: string}}
+    - name: document_id
+      in: path
+      required: true
+      schema:
+        type: string
     get:
-      tags: [Chat]
+      tags:
+      - Chat
       operationId: getDocument
       description: Документ открывается по источнику ответа; сервер проверяет права.
       responses:
@@ -209,16 +437,41 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [id, title, content, updated_at]
+                required:
+                - id
+                - title
+                - content
+                - updated_at
                 properties:
-                  id: {type: string}
-                  title: {type: string}
-                  content: {type: string}
-                  updated_at: {type: string, format: date-time}
-        default: {$ref: '#/components/responses/Error'}
+                  id:
+                    type: string
+                  title:
+                    type: string
+                  content:
+                    type: string
+                  updated_at:
+                    type: string
+                    format: date-time
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
   /access-requests:
     get:
-      tags: [Requests]
+      tags:
+      - Requests
       operationId: listAccessRequests
       description: Свои заявки, включая черновики, created_at по убыванию; без пагинации в demo.
       responses:
@@ -228,60 +481,166 @@ paths:
             application/json:
               schema:
                 type: array
-                items: {$ref: '#/components/schemas/AccessRequest'}
-        default: {$ref: '#/components/responses/Error'}
+                items:
+                  $ref: '#/components/schemas/AccessRequest'
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
   /access-requests/{request_id}:
     parameters:
-      - {name: request_id, in: path, required: true, schema: {type: string}}
+    - name: request_id
+      in: path
+      required: true
+      schema:
+        type: string
     get:
-      tags: [Requests]
+      tags:
+      - Requests
       operationId: getAccessRequest
-      description: |
-        Актуальное сохраненное состояние заявки. Синхронизацию с сервисом обеспечивает бэкенд.
+      description: 'Актуальное сохраненное состояние заявки. Синхронизацию с сервисом обеспечивает бэкенд.
+
         Для pending фронт может опрашивать маршрут раз в 5 секунд, пока карточка видима.
+
         После изменения статуса фронт обновляет план. status_checked_at показывает свежесть проверки.
+
+        '
       responses:
         '200':
           description: Заявка
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/AccessRequest'}
-        default: {$ref: '#/components/responses/Error'}
+              schema:
+                $ref: '#/components/schemas/AccessRequest'
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
   /access-requests/{request_id}/confirm:
     parameters:
-      - {name: request_id, in: path, required: true, schema: {type: string}}
+    - name: request_id
+      in: path
+      required: true
+      schema:
+        type: string
     post:
-      tags: [Requests]
+      tags:
+      - Requests
       operationId: confirmAccessRequest
-      description: |
-        Единственный публичный способ отправить подготовленную агентом заявку.
+      description: 'Единственный публичный способ отправить подготовленную агентом заявку.
+
         Подтверждение относится к точной версии черновика; измененная версия — 409 DRAFT_CHANGED.
+
         Сервер проверяет владельца, права и допустимость ресурса заново.
+
         Операция идемпотентна по request_id: повтор не создает новую внешнюю заявку.
+
         Уже отправленная заявка возвращается без повторного действия.
+
         При неопределенном результате внешнего вызова остается submitting; сервер сверяет результат,
+
         а не создает заявку повторно. Подтверждение обрабатывается независимо от соединения браузера.
+
+
+        Для submitting повтор возвращает 202, для pending/granted/rejected — 200, без проверки устаревшей draft_version
+        и без новой отправки. Для draft/failed версия проверяется до перехода в submitting; детали в behavior.md.'
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              type: object
-              required: [draft_version]
-              properties:
-                draft_version: {type: integer, minimum: 1}
+              $ref: '#/components/schemas/ConfirmRequest'
       responses:
         '200':
           description: Результат отправки или ранее отправленная заявка
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/AccessRequest'}
+              schema:
+                $ref: '#/components/schemas/AccessRequest'
         '202':
           description: Отправка или сверка результата продолжается; опрашивать GET заявки
           content:
             application/json:
-              schema: {$ref: '#/components/schemas/AccessRequest'}
-        default: {$ref: '#/components/responses/Error'}
+              schema:
+                $ref: '#/components/schemas/AccessRequest'
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+  /conversations/{conversation_id}:
+    parameters:
+    - name: conversation_id
+      in: path
+      required: true
+      schema: &id002
+        type: string
+    get:
+      tags:
+      - Chat
+      operationId: getConversation
+      responses:
+        '200':
+          description: Свой диалог и его контекст
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        default:
+          $ref: '#/components/responses/Error'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '429':
+          $ref: '#/components/responses/Error'
+        '500':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     sessionCookie:
@@ -290,123 +649,522 @@ components:
       name: buddy_session
   responses:
     Error:
-      description: |
-        JSON-ошибка до открытия потока: 400 — неверный формат; 401 — нет сессии;
+      description: 'JSON-ошибка до открытия потока: 400 — неверный формат; 401 — нет сессии;
+
         403 — операция запрещена; 404 — объект отсутствует или недоступен;
+
         409 — конфликт состояния; 422 — неверные поля; 429 — ограничение частоты;
+
         502/503 — недоступность внешнего сервиса; 500 — внутренняя ошибка.
+
+        '
       content:
         application/json:
-          schema: {$ref: '#/components/schemas/ApiError'}
+          schema:
+            $ref: '#/components/schemas/ApiError'
   schemas:
     ApiError:
       type: object
-      required: [error]
+      required:
+      - error
       properties:
         error:
           type: object
-          required: [code, message, trace_id]
+          required:
+          - code
+          - message
+          - trace_id
           properties:
-            code: {type: string, example: GENERATION_IN_PROGRESS}
-            message: {type: string, example: Дождитесь завершения текущего ответа}
-            trace_id: {type: string, description: Идентификатор для поиска в серверных логах}
+            code:
+              type: string
+              example: GENERATION_IN_PROGRESS
+              description: Стабильные коды и HTTP-статусы перечислены в behavior.md. Неизвестный код отображается
+                как общая ошибка.
+            message:
+              type: string
+              example: Дождитесь завершения текущего ответа
+            trace_id:
+              type: string
+              description: Идентификатор для поиска в серверных логах
             field_errors:
               type: object
-              additionalProperties: {type: string}
+              additionalProperties:
+                type: string
     User:
       type: object
-      required: [id, name, role, team]
+      required:
+      - id
+      - name
+      - role
+      - team
       properties:
-        id: {type: string}
-        name: {type: string}
-        role: {type: string, enum: [intern, mentor]}
+        id:
+          type: string
+        name:
+          type: string
+        role:
+          type: string
+          enum:
+          - intern
+          - mentor
         team:
           type: object
-          required: [id, name]
+          required:
+          - id
+          - name
           properties:
-            id: {type: string}
-            name: {type: string}
+            id:
+              type: string
+            name:
+              type: string
     Plan:
       type: object
-      required: [id, title, progress_percent, next_step_id, steps]
+      required:
+      - id
+      - title
+      - progress_percent
+      - next_step_id
+      - steps
       properties:
-        id: {type: string}
-        title: {type: string}
-        progress_percent: {type: integer, minimum: 0, maximum: 100, description: Рассчитывает сервер}
-        next_step_id: {type: string, nullable: true}
+        id:
+          type: string
+        title:
+          type: string
+        progress_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          description: Рассчитывает сервер
+        next_step_id:
+          type: string
+          nullable: true
         steps:
           type: array
-          items: {$ref: '#/components/schemas/Step'}
+          items:
+            $ref: '#/components/schemas/Step'
+      description: progress_percent=floor(100*completed/total); пустой план дает 0. next_step_id — первый незавершенный
+        неблокированный шаг, иначе null. Статусы и порядок определяет сервер.
     Step:
       type: object
-      required: [id, title, description, status, request_ids]
+      required:
+      - id
+      - title
+      - description
+      - status
+      - request_ids
+      - allowed_statuses
+      - blocked_reason
       properties:
-        id: {type: string}
-        title: {type: string}
-        description: {type: string, description: Markdown}
-        status: {type: string, enum: [not_started, in_progress, blocked, completed]}
-        request_ids:
-          type: array
-          items: {type: string}
-    Conversation:
-      type: object
-      required: [id, title, step_id, created_at, updated_at]
-      properties:
-        id: {type: string}
-        title: {type: string}
-        step_id: {type: string, nullable: true}
-        created_at: {type: string, format: date-time}
-        updated_at: {type: string, format: date-time}
-    Source:
-      type: object
-      required: [id, document_id, title, excerpt]
-      properties:
-        id: {type: string, description: Идентификатор ссылки в пределах сообщения}
-        document_id: {type: string}
-        title: {type: string}
-        excerpt: {type: string}
-    Message:
-      type: object
-      required: [id, client_message_id, role, text, status, sources, request_ids, created_at]
-      properties:
-        id: {type: string}
-        client_message_id: {type: string, format: uuid, nullable: true, description: UUID отправки для user; null для assistant}
-        role: {type: string, enum: [user, assistant]}
-        text: {type: string, description: Markdown; сырой HTML не исполняется}
-        status: {type: string, enum: [generating, completed, failed, interrupted]}
-        sources:
-          type: array
-          items: {$ref: '#/components/schemas/Source'}
-        request_ids:
-          type: array
-          items: {type: string}
-        error: {$ref: '#/components/schemas/ApiError'}
-        created_at: {type: string, format: date-time}
-    AccessRequest:
-      type: object
-      required: [id, draft_version, conversation_id, step_id, resource, reason, status, external_id, status_checked_at, created_at, updated_at]
-      properties:
-        id: {type: string}
-        draft_version: {type: integer, minimum: 1}
-        conversation_id: {type: string}
-        step_id: {type: string, nullable: true}
-        resource:
-          type: object
-          required: [id, name, permission]
-          properties:
-            id: {type: string}
-            name: {type: string}
-            permission: {type: string, enum: [read, write]}
-        reason: {type: string}
+        id:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+          description: Markdown
         status:
           type: string
-          enum: [draft, submitting, pending, granted, rejected, failed]
-          description: |
-            draft — ожидает подтверждения; submitting — отправляется или сверяется;
+          enum:
+          - not_started
+          - in_progress
+          - blocked
+          - completed
+        request_ids:
+          type: array
+          items:
+            type: string
+        allowed_statuses:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - not_started
+            - in_progress
+            - completed
+          description: Разрешенные сейчас цели PATCH; пустой массив — нет доступных изменений.
+        blocked_reason:
+          type: string
+          nullable: true
+          description: Понятная причина блокировки; null если блокировки нет.
+    Conversation:
+      type: object
+      required:
+      - id
+      - title
+      - step_id
+      - created_at
+      - updated_at
+      - client_conversation_id
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        step_id:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        client_conversation_id: &id001
+          type: string
+          format: uuid
+    Source:
+      type: object
+      required:
+      - id
+      - document_id
+      - title
+      - excerpt
+      properties:
+        id:
+          type: string
+          description: Идентификатор ссылки в пределах сообщения
+        document_id:
+          type: string
+        title:
+          type: string
+        excerpt:
+          type: string
+    Message:
+      type: object
+      required:
+      - id
+      - client_message_id
+      - role
+      - text
+      - status
+      - sources
+      - request_ids
+      - created_at
+      - in_reply_to_message_id
+      properties:
+        id:
+          type: string
+        client_message_id:
+          type: string
+          format: uuid
+          nullable: true
+          description: UUID отправки для user; null для assistant
+        role:
+          type: string
+          enum:
+          - user
+          - assistant
+        text:
+          type: string
+          description: Markdown; сырой HTML не исполняется
+        status:
+          type: string
+          enum:
+          - generating
+          - completed
+          - failed
+          - interrupted
+        sources:
+          type: array
+          items:
+            $ref: '#/components/schemas/Source'
+        request_ids:
+          type: array
+          items:
+            type: string
+        error:
+          $ref: '#/components/schemas/ApiError'
+        created_at:
+          type: string
+          format: date-time
+        in_reply_to_message_id:
+          type: string
+          nullable: true
+          description: Для assistant — ID исходного user-сообщения; для user — null.
+      description: User всегда completed, имеет client_message_id и null in_reply_to_message_id. Assistant имеет
+        null client_message_id и ссылку на user. failed/interrupted обязаны содержать error; остальные error не
+        содержат. Порядок GET детерминирован серверной последовательностью, а не только временем.
+    AccessRequest:
+      type: object
+      required:
+      - id
+      - draft_version
+      - conversation_id
+      - step_id
+      - resource
+      - reason
+      - status
+      - external_id
+      - status_checked_at
+      - created_at
+      - updated_at
+      - revision
+      properties:
+        id:
+          type: string
+        draft_version:
+          type: integer
+          minimum: 1
+        conversation_id:
+          type: string
+        step_id:
+          type: string
+          nullable: true
+        resource:
+          type: object
+          required:
+          - id
+          - name
+          - permission
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+            permission:
+              type: string
+              enum:
+              - read
+              - write
+        reason:
+          type: string
+        status:
+          type: string
+          enum:
+          - draft
+          - submitting
+          - pending
+          - granted
+          - rejected
+          - failed
+          description: 'draft — ожидает подтверждения; submitting — отправляется или сверяется;
+
             pending — создана и ожидает решения; granted — сервис подтвердил выдачу доступа;
+
             rejected — отклонена; failed — достоверная ошибка отправки без создания заявки.
-        external_id: {type: string, nullable: true, description: Номер во внешнем сервисе; обязателен после успешного создания}
-        status_checked_at: {type: string, format: date-time, nullable: true}
-        failure_reason: {type: string, description: Безопасное для пользователя описание отказа или сбоя}
-        created_at: {type: string, format: date-time}
-        updated_at: {type: string, format: date-time}
+
+            '
+        external_id:
+          type: string
+          nullable: true
+          description: Номер во внешнем сервисе; обязателен после успешного создания
+        status_checked_at:
+          type: string
+          format: date-time
+          nullable: true
+        failure_reason:
+          type: string
+          description: Безопасное для пользователя описание отказа или сбоя
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        revision:
+          type: integer
+          minimum: 1
+          description: Монотонная версия всей записи; растет при каждом изменении, включая status_checked_at. Для
+            сравнения снимков кеша; не заменяет draft_version подтверждения.
+      description: draft_version меняется только при редактировании параметров draft. revision меняется при каждом
+        обновлении записи. external_id не null для pending/granted/rejected, null для draft/failed; submitting может
+        содержать номер при сверке. Причина обязательна для rejected/failed.
+    CreateConversation:
+      type: object
+      required:
+      - client_conversation_id
+      properties:
+        client_conversation_id: *id001
+        step_id:
+          type: string
+          nullable: true
+      additionalProperties: false
+    SendMessage:
+      type: object
+      required:
+      - client_message_id
+      - text
+      properties:
+        client_message_id: *id001
+        text:
+          type: string
+          minLength: 1
+          maxLength: 8000
+          pattern: \S
+      additionalProperties: false
+    ConfirmRequest:
+      type: object
+      required:
+      - draft_version
+      properties:
+        draft_version:
+          type: integer
+          minimum: 1
+      additionalProperties: false
+    UpdateStep:
+      type: object
+      required:
+      - status
+      properties:
+        status:
+          type: string
+          enum:
+          - not_started
+          - in_progress
+          - completed
+      additionalProperties: false
+    MessageStartedEvent:
+      type: object
+      required:
+      - event
+      - data
+      properties:
+        event:
+          type: string
+          enum:
+          - message.started
+        data:
+          type: object
+          required:
+          - user_message_id
+          - message_id
+          properties:
+            user_message_id: *id002
+            message_id: *id002
+    ToolStartedEvent:
+      type: object
+      required:
+      - event
+      - data
+      properties:
+        event:
+          type: string
+          enum:
+          - tool.started
+        data:
+          type: object
+          required:
+          - message_id
+          - tool_call_id
+          - label
+          properties:
+            message_id: *id002
+            tool_call_id: *id002
+            label: *id002
+    ToolFinishedEvent:
+      type: object
+      required:
+      - event
+      - data
+      properties:
+        event:
+          type: string
+          enum:
+          - tool.finished
+        data:
+          type: object
+          required:
+          - message_id
+          - tool_call_id
+          - status
+          properties:
+            message_id: *id002
+            tool_call_id: *id002
+            status:
+              type: string
+              enum:
+              - succeeded
+              - failed
+    AnswerDeltaEvent:
+      type: object
+      required:
+      - event
+      - data
+      properties:
+        event:
+          type: string
+          enum:
+          - answer.delta
+        data:
+          type: object
+          required:
+          - message_id
+          - text
+          properties:
+            message_id: *id002
+            text: *id002
+    ActionProposedEvent:
+      type: object
+      required:
+      - event
+      - data
+      properties:
+        event:
+          type: string
+          enum:
+          - action.proposed
+        data:
+          type: object
+          required:
+          - message_id
+          - request
+          properties:
+            message_id: *id002
+            request:
+              $ref: '#/components/schemas/AccessRequest'
+    MessageCompletedEvent:
+      type: object
+      required:
+      - event
+      - data
+      properties:
+        event:
+          type: string
+          enum:
+          - message.completed
+        data:
+          type: object
+          required:
+          - message
+          properties:
+            message:
+              $ref: '#/components/schemas/Message'
+    MessageFailedEvent:
+      type: object
+      required:
+      - event
+      - data
+      properties:
+        event:
+          type: string
+          enum:
+          - message.failed
+        data:
+          type: object
+          required:
+          - message
+          properties:
+            message:
+              $ref: '#/components/schemas/Message'
+    ChatEvent:
+      description: 'Логическое представление SSE: поле event из строки event:, data — JSON из строк data:. По сети
+        это НЕ JSON-envelope.'
+      oneOf:
+      - $ref: '#/components/schemas/MessageStartedEvent'
+      - $ref: '#/components/schemas/ToolStartedEvent'
+      - $ref: '#/components/schemas/ToolFinishedEvent'
+      - $ref: '#/components/schemas/AnswerDeltaEvent'
+      - $ref: '#/components/schemas/ActionProposedEvent'
+      - $ref: '#/components/schemas/MessageCompletedEvent'
+      - $ref: '#/components/schemas/MessageFailedEvent'
+      discriminator:
+        propertyName: event
+        mapping:
+          message.started: '#/components/schemas/MessageStartedEvent'
+          tool.started: '#/components/schemas/ToolStartedEvent'
+          tool.finished: '#/components/schemas/ToolFinishedEvent'
+          answer.delta: '#/components/schemas/AnswerDeltaEvent'
+          action.proposed: '#/components/schemas/ActionProposedEvent'
+          message.completed: '#/components/schemas/MessageCompletedEvent'
+          message.failed: '#/components/schemas/MessageFailedEvent'

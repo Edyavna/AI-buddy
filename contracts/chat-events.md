@@ -1,4 +1,4 @@
-# Поток чата — контракт v0.1
+# Поток чата — контракт v0.2
 
 POST `/api/v1/conversations/{conversation_id}/messages` отправляется через `fetch`
 с JSON, cookie сессии и `Accept: text/event-stream`. Ответ читается через ReadableStream.
@@ -8,6 +8,10 @@ POST `/api/v1/conversations/{conversation_id}/messages` отправляется
 Сервер: `Content-Type: text/event-stream`, `Cache-Control: no-cache`.
 Прокси не буферизует поток. Комментарий `: heartbeat` допустим и игнорируется клиентом.
 События содержат JSON в `data`. Внутренние рассуждения модели не передаются.
+
+Машинные схемы событий находятся в OpenAPI: `components.schemas.ChatEvent`.
+После разбора SSE клиент проверяет `{event, data}` по этой схеме.
+Правила состояний и ошибок: [behavior.md](./behavior.md).
 
 ## События
 
@@ -53,6 +57,10 @@ EOF без терминального события означает потер
 Фронт загружает GET messages. Если ответ еще generating, повторяет GET с интервалом 2 с,
 не запускает новую генерацию; сервер должен завершить отмену либо обработку и сохранить статус.
 Сервер ограничивает одну генерацию 120 секундами (включая вызовы инструментов).
+При превышении — failed с GENERATION_TIMEOUT; при disconnect — interrupted с GENERATION_INTERRUPTED.
+GET-history связывает assistant с user через in_reply_to_message_id. Если восстановление
+не завершилось за 130 секунд, фронт прекращает polling, сообщает о сбое и предлагает
+ручное обновление истории; новую генерацию автоматически не запускает.
 При перезапуске сервера незавершенные генерации переводятся в interrupted.
 
 При неопределенном исходе отправки повторяется исходный client_message_id.
