@@ -182,28 +182,12 @@
 
 .stepFooter {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
   margin-left: 32px;
   padding-top: var(--space-3);
   border-top: 1px solid var(--color-border-subtle);
   gap: var(--space-3);
-}
-
-.stepMetaGroup {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-
-.resourceTag {
-  font-size: var(--font-size-xs);
-  font-family: var(--font-family-mono);
-  background-color: var(--color-surface-hover);
-  color: var(--color-text-primary);
-  padding: 2px 8px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--color-border);
 }
 
 .blockedNotice {

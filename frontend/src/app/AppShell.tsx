@@ -74,7 +74,7 @@ export const AppShell: React.FC<AppShellProps> = ({
                   clipRule="evenodd"
                 />
               </svg>
-              <span>Чат с наставником</span>
+              <span>Чат</span>
             </NavLink>
           </nav>
 

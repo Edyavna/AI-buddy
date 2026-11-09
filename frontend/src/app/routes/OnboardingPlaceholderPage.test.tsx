@@ -14,7 +14,7 @@ describe('OnboardingPlaceholderPage', () => {
     expect(screen.getByRole('heading', { level: 1, name: 'Мой план адаптации' })).toBeInTheDocument();
     expect(screen.getByText('Прогресс: 0%')).toBeInTheDocument();
     expect(
-      screen.getByRole('button', { name: /перейти в чат по первому шагу/i })
+      screen.getByRole('button', { name: /перейти в чат/i })
     ).toBeInTheDocument();
   });
 });

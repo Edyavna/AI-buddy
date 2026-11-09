@@ -17,7 +17,7 @@ describe('AppShell layout', () => {
 
     // Navigation links
     expect(screen.getByRole('link', { name: /мой план/i })).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: /чат с наставником/i })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: /чат/i })).toBeInTheDocument();
 
     // User section
     expect(screen.getByText('Алексей Смирнов')).toBeInTheDocument();

@@ -127,7 +127,7 @@ export const ChatPlaceholderPage: React.FC = () => {
             >
               ☰ Диалоги
             </button>
-            <h1 className={styles.title}>Чат с наставником</h1>
+            <h1 className={styles.title}>Чат</h1>
           </div>
 
           {conversationId ? (

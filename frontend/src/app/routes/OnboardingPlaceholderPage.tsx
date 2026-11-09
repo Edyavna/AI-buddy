@@ -143,13 +143,9 @@ export const OnboardingPlaceholderPage: React.FC = () => {
               </p>
 
               <div className={styles.stepFooter}>
-                <div className={styles.stepMetaGroup}>
-                  <span className={styles.resourceTag}>repo_demo_backend</span>
-                  <span className={styles.progressMeta}>Шаг step_local_setup</span>
-                </div>
                 <Link to="/chat?stepId=step_local_setup">
                   <Button variant="primary" size="sm">
-                    Перейти в чат по первому шагу
+                    Перейти в чат
                   </Button>
                 </Link>
               </div>
@@ -243,7 +239,6 @@ export const OnboardingPlaceholderPage: React.FC = () => {
                 onClick={() => setActiveDocKey('wiki')}
               >
                 <span>Вики команды Backend</span>
-                <span>→</span>
               </button>
               <button
                 type="button"
@@ -251,7 +246,6 @@ export const OnboardingPlaceholderPage: React.FC = () => {
                 onClick={() => setActiveDocKey('git')}
               >
                 <span>Регламент Git и CI/CD</span>
-                <span>→</span>
               </button>
               <button
                 type="button"
@@ -259,7 +253,6 @@ export const OnboardingPlaceholderPage: React.FC = () => {
                 onClick={() => setActiveDocKey('access')}
               >
                 <span>Сервис доступов</span>
-                <span>→</span>
               </button>
             </nav>
           </div>

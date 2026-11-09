@@ -13,7 +13,7 @@ describe('ChatPlaceholderPage', () => {
       </MemoryRouter>
     );
 
-    expect(screen.getByRole('heading', { level: 1, name: 'Чат с наставником' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1, name: 'Чат' })).toBeInTheDocument();
     expect(screen.getByText('Новый диалог')).toBeInTheDocument();
     expect(screen.getByText('Слот диалога готов к интеграции')).toBeInTheDocument();
   });
