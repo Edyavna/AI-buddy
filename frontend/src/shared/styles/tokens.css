@@ -2,6 +2,8 @@
  * Avito Design System Tokens
  * Conforming to Avito Visual Guidelines & ui-ux-pro-max Design Intelligence
  */
+@import url('https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&display=swap');
+
 :root {
   /* Brand Palette (The 4 iconic Avito dots) */
   --avito-green: #00AA55;
@@ -97,7 +99,7 @@
   --shadow-drawer: -4px 0 24px rgba(0, 0, 0, 0.15);
 
   /* Typography Font Sizes & Line Heights */
-  --font-family-base: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-family-base: 'Manrope', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-size-xs: 12px;
   --font-size-sm: 13px;
   --font-size-base: 15px;
