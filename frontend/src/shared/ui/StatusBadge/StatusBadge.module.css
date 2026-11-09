@@ -1,0 +1,81 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  font-family: var(--font-family-base);
+  font-weight: var(--font-weight-semibold);
+  white-space: nowrap;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.sm {
+  padding: 4px 10px;
+  font-size: var(--font-size-xs);
+  line-height: 16px;
+}
+
+.md {
+  padding: 6px var(--space-3);
+  font-size: var(--font-size-sm);
+  line-height: 18px;
+}
+
+.neutral {
+  background-color: var(--color-status-neutral-bg);
+  color: var(--color-status-neutral-text);
+}
+
+.neutral .dot {
+  background-color: var(--color-text-tertiary);
+}
+
+.info {
+  background-color: var(--color-status-info-bg);
+  color: var(--color-status-info-text);
+}
+
+.info .dot {
+  background-color: var(--avito-blue);
+}
+
+.warning {
+  background-color: var(--color-status-warning-bg);
+  color: var(--color-status-warning-text);
+}
+
+.warning .dot {
+  background-color: var(--color-status-warning-text);
+}
+
+.success {
+  background-color: var(--color-status-success-bg);
+  color: var(--color-status-success-text);
+}
+
+.success .dot {
+  background-color: var(--avito-green-active);
+}
+
+.danger {
+  background-color: var(--color-status-danger-bg);
+  color: var(--color-status-danger-text);
+}
+
+.danger .dot {
+  background-color: var(--avito-red);
+}

@@ -1,0 +1,116 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  justify-content: flex-end;
+  background-color: rgba(10, 10, 10, 0.48);
+  animation: fadeIn var(--transition-fast);
+}
+
+.drawer {
+  position: relative;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+  background-color: var(--color-surface);
+  box-shadow: var(--shadow-drawer);
+  font-family: var(--font-family-base);
+  animation: slideIn var(--transition-normal);
+}
+
+.drawer:focus {
+  outline: none;
+}
+
+.sm {
+  width: 100%;
+  max-width: 360px;
+}
+
+.md {
+  width: 100%;
+  max-width: 520px;
+}
+
+.lg {
+  width: 100%;
+  max-width: 680px;
+}
+
+.header {
+  min-height: 88px;
+  padding: var(--space-5) var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+.title {
+  color: var(--color-text-primary);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.03em;
+  line-height: 1.3;
+}
+
+.closeButton {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--color-surface-sunken);
+  color: var(--color-text-primary);
+  transition: background-color var(--transition-fast), transform var(--transition-fast);
+}
+
+.closeButton:hover {
+  background-color: var(--color-surface-hover);
+  transform: translateY(-1px);
+}
+
+.closeIcon {
+  width: 20px;
+  height: 20px;
+}
+
+.body {
+  flex: 1;
+  padding: 0 var(--space-6) var(--space-6);
+  overflow-y: auto;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@media (max-width: 767px) {
+  .sm,
+  .md,
+  .lg {
+    max-width: 100%;
+  }
+
+  .drawer {
+    border-radius: 0;
+  }
+
+  .header,
+  .body {
+    padding-right: var(--space-5);
+    padding-left: var(--space-5);
+  }
+}
