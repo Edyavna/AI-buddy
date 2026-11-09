@@ -72,6 +72,8 @@ export const ChatPlaceholderPage: React.FC = () => {
   ]);
 
   useEffect(() => {
+    if (messages.length <= 2) return;
+
     if (typeof messagesEndRef.current?.scrollIntoView === 'function') {
       messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
     }
@@ -118,12 +120,13 @@ export const ChatPlaceholderPage: React.FC = () => {
       {/* Header */}
       <div className={styles.header}>
         <div className={styles.titleRow}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
+          <div className={styles.titleGroup}>
             <button
               type="button"
               className={styles.mobileSidebarToggle}
               onClick={() => setIsMobileSidebarOpen(!isMobileSidebarOpen)}
-              aria-label="Открыть список диалогов"
+              aria-label={isMobileSidebarOpen ? 'Закрыть список диалогов' : 'Открыть список диалогов'}
+              aria-expanded={isMobileSidebarOpen}
             >
               ☰ Диалоги
             </button>
@@ -251,7 +254,7 @@ export const ChatPlaceholderPage: React.FC = () => {
                             Подтвердить отправку
                           </Button>
                         ) : (
-                          <div style={{ color: 'var(--avito-green-text)', fontSize: '13px', fontWeight: 600 }}>
+                          <div className={styles.requestSuccess}>
                             Заявка ACCESS-1001 отправлена на согласование Алексею Морозову (ожидание до 2 часов).
                           </div>
                         )}
@@ -293,7 +296,8 @@ export const ChatPlaceholderPage: React.FC = () => {
           >
             <textarea
               className={styles.composerInput}
-              placeholder="Задайте вопрос по текущей задаче... (Enter — отправить, Shift+Enter — новая строка)"
+              aria-label="Сообщение ассистенту"
+              placeholder="Ваш вопрос…"
               rows={1}
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
@@ -359,7 +363,7 @@ export const ChatPlaceholderPage: React.FC = () => {
         }
       >
         <div>
-          <p style={{ margin: 0, fontSize: 'var(--font-size-sm)', color: 'var(--color-text-secondary)' }}>
+          <p className={styles.dialogIntro}>
             Проверьте параметры доступа перед формированием тикета в Access Manager:
           </p>
 

@@ -13,7 +13,6 @@ export const AppShell: React.FC<AppShellProps> = ({
   userName = 'Иван Стажёров',
   userRole = 'Стажёр Backend',
 }) => {
-  // Extract initials
   const initials = userName
     .split(' ')
     .map((part) => part[0])
@@ -23,9 +22,11 @@ export const AppShell: React.FC<AppShellProps> = ({
 
   return (
     <div className={styles.layout}>
+      <a className={styles.skipLink} href="#main-content">
+        К содержимому
+      </a>
       <header className={styles.header}>
         <div className={styles.headerInner}>
-          {/* Brand Logo */}
           <div className={styles.brandSection}>
             <Link to="/onboarding" className={styles.logoLink} aria-label="AI-buddy — На главную (план адаптации)">
               <AvitoLogo size="md" />
@@ -33,7 +34,6 @@ export const AppShell: React.FC<AppShellProps> = ({
             </Link>
           </div>
 
-          {/* Navigation Links */}
           <nav className={styles.navigation} aria-label="Основная навигация">
             <NavLink
               to="/onboarding"
@@ -41,54 +41,26 @@ export const AppShell: React.FC<AppShellProps> = ({
                 clsx(styles.navLink, { [styles.activeLink]: isActive })
               }
             >
-              <svg
-                className={styles.navIcon}
-                width="20"
-                height="20"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path d="M10 2a1 1 0 011 1v1.323l3.954 1.582 1.599-.8a1 1 0 01.894 1.79l-1.233.616 1.738 5.42a1 1 0 01-.285 1.05A3.989 3.989 0 0115 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.715-5.349L11 6.477V16h2a1 1 0 110 2H7a1 1 0 110-2h2V6.477L6.237 7.582l1.715 5.349a1 1 0 01-.285 1.05A3.989 3.989 0 015 15a3.989 3.989 0 01-2.667-1.019 1 1 0 01-.285-1.05l1.738-5.42-1.233-.617a1 1 0 01.894-1.788l1.599.799L9 4.323V3a1 1 0 011-1z" />
-              </svg>
-              <span>Мой план</span>
+              Мой план
             </NavLink>
-
             <NavLink
               to="/chat"
               className={({ isActive }) =>
                 clsx(styles.navLink, { [styles.activeLink]: isActive })
               }
             >
-              <svg
-                className={styles.navIcon}
-                width="20"
-                height="20"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 2c-4.418 0-8 3.134-8 7 0 1.76.73 3.376 1.95 4.634a.75.75 0 01.21.618l-.513 2.565a.75.75 0 001.026.837l2.846-1.423a.75.75 0 01.554-.055A8.45 8.45 0 0010 16c4.418 0 8-3.134 8-7s-3.582-7-8-7zm-4 7a1 1 0 112 0 1 1 0 01-2 0zm4 1a1 1 0 100-2 1 1 0 000 2zm5-1a1 1 0 11-2 0 1 1 0 012 0z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span>Чат</span>
+              Чат
             </NavLink>
           </nav>
 
-          {/* User Profile & Demo Account Switcher */}
           <div className={styles.userSection}>
             <div className={styles.userAvatarChip} title={userName}>
               {initials}
             </div>
-
             <div className={styles.userInfo}>
               <span className={styles.userName}>{userName}</span>
               <span className={styles.userRole}>{userRole}</span>
             </div>
-
             <Link
               to="/login"
               className={styles.switchAccountButton}
@@ -101,7 +73,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         </div>
       </header>
 
-      <main className={styles.mainContent}>
+      <main className={styles.mainContent} id="main-content">
         <Outlet />
       </main>
     </div>

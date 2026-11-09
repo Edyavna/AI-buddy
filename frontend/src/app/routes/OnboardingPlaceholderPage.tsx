@@ -88,7 +88,7 @@ export const OnboardingPlaceholderPage: React.FC = () => {
   return (
     <div className={styles.container}>
       {/* Banner */}
-      <section className={styles.heroBanner}>
+      <section className={styles.heroBanner} data-enter>
         <div className={styles.heroInfo}>
           <h1 className={styles.heroTitle}>Мой план адаптации</h1>
           <p className={styles.heroSubtitle}>
@@ -98,6 +98,10 @@ export const OnboardingPlaceholderPage: React.FC = () => {
         </div>
 
         <div className={styles.heroProgressGroup}>
+          <div className={styles.progressDial} aria-hidden="true">
+            <span className={styles.progressDialValue}>01</span>
+            <span className={styles.progressDialMeta}>из 4 шагов</span>
+          </div>
           <div className={styles.progressLabelRow}>
             <span className={styles.progressLabel}>Текущий прогресс</span>
             <StatusBadge status="in_progress" label="Прогресс: 0%" size="sm" />

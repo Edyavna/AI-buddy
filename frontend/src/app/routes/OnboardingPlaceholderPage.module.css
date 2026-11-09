@@ -1,222 +1,279 @@
 .container {
   display: flex;
   flex-direction: column;
-  gap: var(--space-6);
-  max-width: 1080px;
-  margin: 0 auto;
+  gap: var(--space-12);
 }
 
-/* Header Banner (Clean Avito surface, no nested cards, no banned eyebrow) */
 .heroBanner {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-6);
-  box-shadow: var(--shadow-xs);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-6);
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(340px, 0.8fr);
+  align-items: start;
+  gap: var(--space-16);
+  padding: var(--space-6) 0 var(--space-8);
 }
 
 .heroInfo {
-  max-width: 600px;
+  max-width: 700px;
+  animation: heroCopyIn 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 
 .heroTitle {
-  font-size: var(--font-size-2xl);
-  font-weight: 700;
+  max-width: 12ch;
+  margin-bottom: var(--space-5);
   color: var(--color-text-primary);
-  margin-bottom: var(--space-2);
+  font-size: var(--font-size-display);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.05em;
+  line-height: 1.04;
 }
 
 .heroSubtitle {
-  font-size: var(--font-size-base);
+  max-width: 58ch;
   color: var(--color-text-secondary);
-  line-height: var(--line-height-normal);
+  font-size: var(--font-size-md);
+  line-height: var(--line-height-relaxed);
 }
 
 .heroProgressGroup {
-  min-width: 260px;
+  position: relative;
+  min-width: 0;
+  padding: var(--space-8);
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
-  padding-left: var(--space-6);
-  border-left: 1px solid var(--color-border-subtle);
+  justify-content: center;
+  gap: var(--space-5);
+  overflow: hidden;
+  border-radius: var(--radius-2xl);
+  background-color: var(--avito-blue-bg);
+  animation: heroVisualIn 900ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.heroProgressGroup::after {
+  content: '';
+  position: absolute;
+  top: 24px;
+  right: 26px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background-color: var(--avito-green);
+}
+
+.progressDial {
+  position: relative;
+  width: 176px;
+  height: 176px;
+  margin: 0 auto var(--space-2);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: conic-gradient(var(--avito-blue) 0 4%, rgba(0, 170, 255, 0.16) 4% 100%);
+}
+
+.progressDial::before {
+  content: '';
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  background-color: var(--color-surface);
+}
+
+.progressDialValue,
+.progressDialMeta {
+  position: relative;
+  z-index: 1;
+}
+
+.progressDialValue {
+  color: var(--color-text-primary);
+  font-size: 56px;
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.06em;
+  line-height: 1;
+}
+
+.progressDialMeta {
+  margin-top: var(--space-2);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
 }
 
 .progressLabelRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: var(--space-3);
 }
 
 .progressLabel {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
   color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
 .progressBarTrack {
   width: 100%;
   height: 8px;
-  background-color: var(--color-surface-hover);
-  border-radius: var(--radius-pill);
   overflow: hidden;
+  border-radius: var(--radius-pill);
+  background-color: rgba(0, 102, 178, 0.12);
 }
 
 .progressBarFill {
   height: 100%;
-  background-color: var(--avito-green);
+  min-width: 8px;
   border-radius: var(--radius-pill);
+  background-color: var(--avito-blue);
   transition: width var(--transition-normal);
 }
 
 .progressMeta {
-  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
+  line-height: var(--line-height-normal);
 }
 
-/* Two-column layout */
 .layoutGrid {
   display: grid;
-  grid-template-columns: 1fr 320px;
-  gap: var(--space-6);
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: var(--space-8);
   align-items: start;
 }
 
-/* Steps Section */
-.stepsSection {
+.stepsSection,
+.stepsList,
+.sidebar {
   display: flex;
   flex-direction: column;
-  gap: var(--space-4);
+}
+
+.stepsSection {
+  gap: var(--space-6);
 }
 
 .sectionHeader {
+  min-height: 32px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-4);
 }
 
 .sectionTitle {
-  font-size: var(--font-size-lg);
-  font-weight: 700;
   color: var(--color-text-primary);
+  font-size: var(--font-size-xl);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.03em;
 }
 
 .stepsList {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .stepCard {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
-  box-shadow: var(--shadow-xs);
+  padding: var(--space-6);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
-  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+  gap: var(--space-4);
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface-sunken);
 }
 
-/* Active Step: Highlighted with clean full border and soft shadow (NO side-tab border!) */
 .stepCardActive {
-  border-color: var(--avito-blue);
-  box-shadow: 0 0 0 1px var(--avito-blue), var(--shadow-xs);
+  background-color: var(--avito-blue-bg);
 }
 
-/* Blocked Steps: Visually de-emphasized to guide user focus */
 .stepCardBlocked {
-  opacity: 0.72;
-  background-color: var(--color-bg-page);
+  background-color: var(--color-surface-sunken);
 }
 
 .stepCardHeader {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: var(--space-3);
+  gap: var(--space-4);
 }
 
 .stepTitleGroup {
   display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
+  align-items: flex-start;
+  gap: var(--space-3);
 }
 
 .stepNumber {
-  font-size: var(--font-size-sm);
-  font-weight: 700;
-  color: var(--avito-blue);
-  background-color: var(--avito-blue-bg);
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
+  width: 36px;
+  height: 36px;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--color-action);
+  color: var(--color-text-on-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
 }
 
 .stepNumberBlocked {
+  background-color: #e4e6e9;
   color: var(--color-text-secondary);
-  background-color: var(--color-surface-hover);
 }
 
 .stepTitle {
-  font-size: var(--font-size-md);
-  font-weight: 600;
+  padding-top: 5px;
   color: var(--color-text-primary);
-  line-height: var(--line-height-tight);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-semibold);
+  line-height: 1.45;
 }
 
 .stepDescription {
-  font-size: var(--font-size-sm);
+  margin-left: 48px;
   color: var(--color-text-secondary);
+  font-size: var(--font-size-base);
   line-height: var(--line-height-normal);
-  margin-left: 32px;
 }
 
 .stepFooter {
+  min-height: 44px;
+  margin-left: 48px;
+  padding-top: var(--space-4);
   display: flex;
   justify-content: flex-start;
   align-items: center;
-  margin-left: 32px;
-  padding-top: var(--space-3);
-  border-top: 1px solid var(--color-border-subtle);
   gap: var(--space-3);
+  border-top: 1px solid rgba(10, 10, 10, 0.08);
 }
 
 .blockedNotice {
-  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
 }
 
-/* Sidebar Widgets */
 .sidebar {
-  display: flex;
-  flex-direction: column;
   gap: var(--space-4);
 }
 
 .widgetCard {
-  background-color: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-lg);
-  padding: var(--space-5);
-  box-shadow: var(--shadow-xs);
+  padding: var(--space-6);
   display: flex;
   flex-direction: column;
-  gap: var(--space-3);
+  gap: var(--space-4);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-surface-sunken);
 }
 
 .widgetTitle {
-  font-size: var(--font-size-base);
-  font-weight: 700;
   color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: -0.02em;
 }
 
 .mentorRow {
@@ -226,117 +283,230 @@
 }
 
 .mentorAvatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: var(--color-surface-sunken);
-  color: var(--color-text-primary);
-  border: 1px solid var(--color-border);
+  width: 52px;
+  height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background-color: var(--avito-green-bg);
+  color: var(--avito-green-text);
   font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-bold);
 }
 
 .mentorDetails {
   display: flex;
   flex-direction: column;
+  gap: var(--space-1);
 }
 
 .mentorName {
-  font-size: var(--font-size-sm);
-  font-weight: 600;
   color: var(--color-text-primary);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
 }
 
 .mentorRole {
-  font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
+  font-size: var(--font-size-xs);
 }
 
 .linksList {
   display: flex;
   flex-direction: column;
-  gap: var(--space-2);
 }
 
 .quickLink {
+  position: relative;
+  width: 100%;
+  min-height: 48px;
+  padding: var(--space-3) 28px var(--space-3) 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  padding: 10px var(--space-4);
-  min-height: 44px;
-  background-color: var(--color-surface-hover);
-  border-radius: var(--radius-md);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
+  border-bottom: 1px solid var(--color-border);
+  background-color: transparent;
   color: var(--color-text-primary);
-  text-decoration: none;
-  cursor: pointer;
-  border: none;
-  width: 100%;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
   text-align: left;
-  transition: background-color var(--transition-fast), color var(--transition-fast);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.quickLink:last-child {
+  border-bottom: 0;
+}
+
+.quickLink::after {
+  content: '→';
+  position: absolute;
+  right: 0;
+  color: var(--color-text-primary);
+  font-size: var(--font-size-lg);
+  transition: transform var(--transition-fast);
 }
 
 .quickLink:hover {
-  background-color: var(--avito-blue-bg);
-  color: var(--avito-blue);
+  color: var(--avito-blue-text);
 }
 
-.quickLink:focus-visible {
-  outline: 2px solid var(--avito-blue);
-  outline-offset: -2px;
+.quickLink:hover::after {
+  transform: translateX(3px);
 }
 
-/* Documentation Content inside Drawer */
 .docContainer {
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
-  font-size: var(--font-size-base);
   color: var(--color-text-primary);
-  line-height: var(--line-height-normal);
+  font-size: var(--font-size-base);
+  line-height: var(--line-height-relaxed);
 }
 
 .docSectionTitle {
-  font-size: var(--font-size-md);
-  font-weight: 700;
-  color: var(--color-text-primary);
   margin-top: var(--space-2);
+  color: var(--color-text-primary);
+  font-size: var(--font-size-md);
+  font-weight: var(--font-weight-bold);
 }
 
 .docCodeBlock {
+  padding: var(--space-4);
+  overflow-x: auto;
+  border-radius: var(--radius-md);
+  background-color: var(--color-surface-sunken);
   font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
-  background-color: var(--color-surface-hover);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-3);
-  overflow-x: auto;
-  line-height: 1.4;
+  line-height: 1.6;
 }
 
-@media (max-width: 900px) {
-  .layoutGrid {
-    grid-template-columns: 1fr;
-    gap: var(--space-5);
+@keyframes heroCopyIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
   }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
 
+@keyframes heroVisualIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (max-width: 1023px) {
   .heroBanner {
-    flex-direction: column;
-    align-items: stretch;
-    gap: var(--space-4);
-    padding: var(--space-5);
+    grid-template-columns: minmax(0, 1fr) 300px;
+    gap: var(--space-8);
   }
 
   .heroProgressGroup {
-    padding-left: 0;
-    border-left: none;
-    border-top: 1px solid var(--color-border-subtle);
+    padding: var(--space-6);
+  }
+
+  .layoutGrid {
+    grid-template-columns: minmax(0, 1fr) 280px;
+    gap: var(--space-6);
+  }
+}
+
+@media (max-width: 820px) {
+  .heroBanner {
+    grid-template-columns: 1fr;
+    gap: var(--space-8);
     padding-top: var(--space-4);
-    min-width: 0;
+  }
+
+  .heroInfo {
+    max-width: 680px;
+  }
+
+  .heroTitle {
+    max-width: 14ch;
+  }
+
+  .heroProgressGroup {
+    display: grid;
+    grid-template-columns: 176px minmax(0, 1fr);
+    align-items: center;
+    column-gap: var(--space-8);
+  }
+
+  .progressDial {
+    grid-row: 1 / 5;
+    margin: 0;
+  }
+
+  .layoutGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 639px) {
+  .container {
+    gap: var(--space-8);
+  }
+
+  .heroBanner {
+    gap: var(--space-6);
+    padding: var(--space-3) 0 0;
+  }
+
+  .heroTitle {
+    margin-bottom: var(--space-4);
+    font-size: clamp(38px, 11vw, 48px);
+  }
+
+  .heroSubtitle {
+    font-size: var(--font-size-base);
+  }
+
+  .heroProgressGroup {
+    padding: var(--space-6);
+    display: flex;
+    gap: var(--space-4);
+    border-radius: var(--radius-xl);
+  }
+
+  .progressDial {
+    width: 144px;
+    height: 144px;
+    margin: 0 auto var(--space-2);
+  }
+
+  .progressDialValue {
+    font-size: 44px;
+  }
+
+  .sectionHeader {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: var(--space-2);
+  }
+
+  .stepCard,
+  .widgetCard {
+    padding: var(--space-5);
+  }
+
+  .stepCardHeader {
+    flex-direction: column;
+    gap: var(--space-3);
   }
 
   .stepDescription,
@@ -344,9 +514,12 @@
     margin-left: 0;
   }
 
-  .stepFooter {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: var(--space-3);
+  .stepFooter > a,
+  .stepFooter > a > button {
+    width: 100%;
+  }
+
+  .sidebar {
+    display: flex;
   }
 }
