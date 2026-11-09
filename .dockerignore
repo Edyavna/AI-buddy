@@ -1,0 +1,11 @@
+.git
+.env
+.env.*
+!.env.example
+**/node_modules
+**/bin
+**/tmp
+**/coverage
+**/*.log
+*.pdf
+AGENTS.MD

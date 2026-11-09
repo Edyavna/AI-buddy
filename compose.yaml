@@ -1,0 +1,74 @@
+x-backend: &backend
+  image: ai-buddy-backend:dev
+  build:
+    context: .
+    target: runtime
+  environment: &backend-env
+    HTTP_ADDR: :8080
+    DATABASE_ENABLED: "true"
+    DEMO_MODE: ${DEMO_MODE:-true}
+    DATABASE_URL: postgres://${POSTGRES_USER:-buddy}:${POSTGRES_PASSWORD:-buddy_dev_only}@db:5432/${POSTGRES_DB:-buddy}?sslmode=disable
+    ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8080}
+    STARTUP_TIMEOUT: ${STARTUP_TIMEOUT:-15s}
+    SHUTDOWN_TIMEOUT: ${SHUTDOWN_TIMEOUT:-10s}
+
+services:
+  db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-buddy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-buddy_dev_only}
+      POSTGRES_DB: ${POSTGRES_DB:-buddy}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  migrate:
+    <<: *backend
+    command: ["/app/migrate"]
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: "no"
+
+  api:
+    <<: *backend
+    depends_on:
+      db:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8080/readyz"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    stop_grace_period: 15s
+
+  db-test:
+    image: postgres:17-alpine
+    profiles: ["test"]
+    environment:
+      POSTGRES_USER: buddy
+      POSTGRES_PASSWORD: buddy_test_only
+      POSTGRES_DB: buddy_test
+    ports:
+      - "127.0.0.1:5433:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U buddy -d buddy_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  postgres-data:
