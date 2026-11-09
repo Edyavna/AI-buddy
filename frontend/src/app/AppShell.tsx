@@ -12,13 +12,21 @@ export const AppShell: React.FC<AppShellProps> = ({
   userName = 'Иван Стажёров',
   userRole = 'Стажёр Backend',
 }) => {
+  // Extract initials
+  const initials = userName
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <div className={styles.layout}>
       <header className={styles.header}>
         <div className={styles.headerInner}>
+          {/* Brand Logo */}
           <div className={styles.brandSection}>
             <Link to="/onboarding" className={styles.logoLink} aria-label="AI-buddy — Главная">
-              {/* Iconic Avito 4 colored dots logo */}
               <div className={styles.logoDots} aria-hidden="true">
                 <span className={clsx(styles.dot, styles.dotGreen)} />
                 <span className={clsx(styles.dot, styles.dotBlue)} />
@@ -32,6 +40,7 @@ export const AppShell: React.FC<AppShellProps> = ({
             </Link>
           </div>
 
+          {/* Navigation Links */}
           <nav className={styles.navigation} aria-label="Основная навигация">
             <NavLink
               to="/onboarding"
@@ -72,12 +81,22 @@ export const AppShell: React.FC<AppShellProps> = ({
             </NavLink>
           </nav>
 
+          {/* User Profile & Demo Account Switcher */}
           <div className={styles.userSection}>
+            <div className={styles.userAvatarChip} title={userName}>
+              {initials}
+            </div>
+
             <div className={styles.userInfo}>
               <span className={styles.userName}>{userName}</span>
               <span className={styles.userRole}>{userRole}</span>
             </div>
-            <Link to="/login" className={styles.switchAccountButton} title="Сменить аккаунт демо">
+
+            <Link
+              to="/login"
+              className={styles.switchAccountButton}
+              title="Сменить тестовый аккаунт"
+            >
               Сменить
             </Link>
           </div>

@@ -1,0 +1,341 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+/* Hero Banner */
+.heroBanner {
+  background: linear-gradient(135deg, #ffffff 0%, var(--avito-blue-bg) 100%);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6) var(--space-8);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-6);
+  position: relative;
+  overflow: hidden;
+}
+
+.heroBanner::after {
+  content: '';
+  position: absolute;
+  top: -24px;
+  right: -24px;
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0, 156, 240, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.heroInfo {
+  max-width: 620px;
+}
+
+.heroTag {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--avito-blue-text);
+  margin-bottom: var(--space-2);
+}
+
+.heroTitle {
+  font-size: var(--font-size-2xl);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  letter-spacing: -0.5px;
+  margin-bottom: var(--space-2);
+}
+
+.heroSubtitle {
+  font-size: var(--font-size-base);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+}
+
+.heroProgressCard {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  min-width: 260px;
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.progressLabelRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.progressLabel {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.progressBarTrack {
+  width: 100%;
+  height: 8px;
+  background-color: var(--color-surface-hover);
+  border-radius: var(--radius-pill);
+  overflow: hidden;
+}
+
+.progressBarFill {
+  height: 100%;
+  background-color: var(--avito-green);
+  border-radius: var(--radius-pill);
+  transition: width var(--transition-normal);
+}
+
+.progressMeta {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+/* Two-column layout */
+.layoutGrid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: var(--space-6);
+  align-items: start;
+}
+
+/* Steps Section */
+.stepsSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.sectionHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectionTitle {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.stepsList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.stepCard {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-xs);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.stepCard:hover {
+  border-color: var(--avito-blue);
+  box-shadow: var(--shadow-md);
+}
+
+.stepCardActive {
+  border-left: 4px solid var(--avito-blue);
+  background-color: #ffffff;
+}
+
+.stepCardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-3);
+}
+
+.stepTitleGroup {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+}
+
+.stepNumber {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--avito-blue);
+  background-color: var(--avito-blue-bg);
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stepTitle {
+  font-size: var(--font-size-md);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: var(--line-height-tight);
+}
+
+.stepDescription {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+  padding-left: 32px;
+}
+
+.stepFooter {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-left: 32px;
+  padding-top: var(--space-2);
+  border-top: 1px dashed var(--color-border-subtle);
+}
+
+.stepMetaGroup {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.resourceTag {
+  font-size: var(--font-size-xs);
+  font-family: monospace;
+  background-color: var(--color-surface-hover);
+  color: var(--color-text-secondary);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+}
+
+.blockedNotice {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  font-style: italic;
+}
+
+/* Sidebar Widgets */
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.widgetCard {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-5);
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.widgetTitle {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.mentorRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.mentorAvatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--avito-violet) 0%, var(--avito-blue) 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--font-size-base);
+}
+
+.mentorDetails {
+  display: flex;
+  flex-direction: column;
+}
+
+.mentorName {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.mentorRole {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.linksList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.quickLink {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-2) var(--space-3);
+  background-color: var(--color-surface-hover);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-primary);
+  text-decoration: none;
+  transition: all var(--transition-fast);
+}
+
+.quickLink:hover {
+  background-color: var(--avito-blue-bg);
+  color: var(--avito-blue);
+}
+
+@media (max-width: 900px) {
+  .layoutGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .heroBanner {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .stepFooter {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--space-3);
+  }
+}

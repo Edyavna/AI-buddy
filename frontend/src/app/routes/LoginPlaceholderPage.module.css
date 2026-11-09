@@ -1,0 +1,137 @@
+.loginContainer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100vh - var(--header-height) - 64px);
+  padding: var(--space-4);
+}
+
+.loginCard {
+  width: 100%;
+  max-width: 480px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-8) var(--space-6);
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.logoRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+}
+
+.logoDots {
+  display: grid;
+  grid-template-columns: repeat(2, 12px);
+  grid-template-rows: repeat(2, 12px);
+  gap: 4px;
+}
+
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+
+.dotGreen { background-color: var(--avito-green); }
+.dotBlue { background-color: var(--avito-blue); }
+.dotRed { background-color: var(--avito-red); }
+.dotViolet { background-color: var(--avito-violet); }
+
+.brandTitle {
+  font-size: var(--font-size-2xl);
+  font-weight: 800;
+  color: var(--color-text-primary);
+  letter-spacing: -0.5px;
+}
+
+.title {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-2);
+}
+
+.subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--line-height-normal);
+  margin-bottom: var(--space-6);
+}
+
+.accountsList {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  margin-bottom: var(--space-6);
+}
+
+.accountCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  text-align: left;
+  transition: all var(--transition-fast);
+  background-color: var(--color-surface);
+}
+
+.accountCard:hover {
+  border-color: var(--avito-blue);
+  background-color: var(--avito-blue-bg);
+}
+
+.accountCardActive {
+  border-color: var(--avito-blue);
+  background-color: var(--avito-blue-bg);
+}
+
+.accountAvatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background-color: var(--avito-blue);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: var(--font-size-sm);
+  flex-shrink: 0;
+}
+
+.accountDetails {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.accountName {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+}
+
+.accountRole {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+}
+
+.noticeNote {
+  font-size: var(--font-size-xs);
+  color: var(--color-text-secondary);
+  margin-top: var(--space-4);
+  line-height: var(--line-height-normal);
+}

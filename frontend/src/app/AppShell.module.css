@@ -93,14 +93,14 @@
 .navigation {
   display: flex;
   align-items: center;
-  gap: var(--space-1);
+  gap: var(--space-2);
 }
 
 .navLink {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
+  padding: var(--space-2) var(--space-4);
   font-size: var(--font-size-base);
   font-weight: 600;
   color: var(--color-text-secondary);
@@ -129,17 +129,35 @@
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  background-color: var(--color-surface-hover);
+  padding: 4px 6px 4px 12px;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+}
+
+.userAvatarChip {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--avito-blue) 0%, var(--avito-green) 100%);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  flex-shrink: 0;
 }
 
 .userInfo {
   display: flex;
   flex-direction: column;
-  text-align: right;
+  text-align: left;
 }
 
 .userName {
   font-size: var(--font-size-sm);
-  font-weight: 600;
+  font-weight: 700;
   color: var(--color-text-primary);
   line-height: 1.2;
 }
@@ -154,17 +172,18 @@
   font-size: var(--font-size-xs);
   font-weight: 600;
   color: var(--avito-blue);
-  background-color: var(--color-surface-hover);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
+  background-color: #ffffff;
+  padding: var(--space-1) var(--space-3);
+  border-radius: var(--radius-pill);
   border: 1px solid var(--color-border);
   text-decoration: none;
   transition: all var(--transition-fast);
+  box-shadow: var(--shadow-xs);
 }
 
 .switchAccountButton:hover {
-  background-color: var(--color-surface-sunken);
-  color: var(--avito-blue-hover);
+  background-color: var(--avito-blue-bg);
+  border-color: var(--avito-blue);
 }
 
 .mainContent {

@@ -1,15 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { StatusBadge } from '@/shared/ui';
+import { Button, StatusBadge } from '@/shared/ui';
 import styles from './ChatPlaceholderPage.module.css';
 
 export const ChatPlaceholderPage: React.FC = () => {
   const { conversationId } = useParams<{ conversationId?: string }>();
   const [searchParams] = useSearchParams();
   const stepId = searchParams.get('stepId');
+  const [inputValue, setInputValue] = useState('');
+  const [isConfirmed, setIsConfirmed] = useState(false);
 
   return (
     <div className={styles.container}>
+      {/* Top Header Row */}
       <div className={styles.header}>
         <div className={styles.titleRow}>
           <h1 className={styles.title}>Чат с наставником</h1>
@@ -31,41 +34,167 @@ export const ChatPlaceholderPage: React.FC = () => {
         )}
       </div>
 
-      <div className={styles.contentCard}>
-        <div className={styles.slotIllustration}>
-          <div className={styles.avatarBubble}>
-            <svg
-              className={styles.avatarIcon}
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              xmlns="http://www.w3.org/2000/svg"
+      {/* Main Chat Interface */}
+      <div className={styles.chatWindow}>
+        {/* Sidebar: Dialogs */}
+        <aside className={styles.conversationsSidebar}>
+          <div className={styles.sidebarHeader}>
+            <span className={styles.sidebarTitle}>Диалоги</span>
+            <Link to="/chat">
+              <Button size="sm" variant="ghost">
+                + Новый
+              </Button>
+            </Link>
+          </div>
+
+          <div className={styles.conversationsList}>
+            <Link
+              to="/chat?stepId=step_local_setup"
+              className={`${styles.conversationItem} ${!conversationId ? styles.conversationItemActive : ''}`}
             >
-              <path d="M12 2a8 8 0 00-8 8c0 3.5 2.5 6.5 6 7.5V20l3-2 3 2v-2.5c3.5-1 6-4 6-7.5a8 8 0 00-8-8z" />
-            </svg>
-          </div>
-        </div>
+              <span className={styles.convItemTitle}>Настройка окружения</span>
+              <span className={styles.convItemMeta}>Первый шаг адаптации</span>
+            </Link>
 
-        <h2 className={styles.cardHeading}>Слот диалога готов к интеграции</h2>
-        <p className={styles.cardText}>
-          Каркас маршрутов <code>/chat</code> и <code>/chat/:conversationId</code> развернут.
-          Никита (FE1) подключает сюда API-клиент, историю сообщений, SSE-стриминг DeepSeek и
-          карточку заявки доступа.
-        </p>
+            <Link
+              to="/chat/conv-123"
+              className={`${styles.conversationItem} ${conversationId === 'conv-123' ? styles.conversationItemActive : ''}`}
+            >
+              <span className={styles.convItemTitle}>Вопрос по Git и веткам</span>
+              <span className={styles.convItemMeta}>Вчера • 3 сообщения</span>
+            </Link>
+          </div>
+        </aside>
 
-        <div className={styles.featuresList}>
-          <div className={styles.featureItem}>
-            <span className={styles.featureDot} />
-            <span>Генерация типов из <code>contracts/openapi.yaml</code> готова (<code>npm run generate:api</code>)</span>
+        {/* Chat Feed & Composer */}
+        <div className={styles.chatMainArea}>
+          {/* Top Info inside active chat */}
+          <div className={styles.chatTopInfo}>
+            <div className={styles.botStatusGroup}>
+              <div className={styles.botAvatar}>AI</div>
+              <div>
+                <div className={styles.botTitle}>AI-buddy (Наставник стажёров)</div>
+                <div className={styles.botStatus}>
+                  <span className={styles.onlineDot} />
+                  <span>В сети • DeepSeek AI Agent</span>
+                </div>
+              </div>
+            </div>
+
+            <StatusBadge status="in_progress" label="Активный диалог" size="sm" />
           </div>
-          <div className={styles.featureItem}>
-            <span className={styles.featureDot} />
-            <span>UI-компоненты доступны в <code>@/shared/ui</code> (Button, Drawer, StatusBadge, Spinner)</span>
+
+          {/* Messages Feed */}
+          <div className={styles.messagesFeed}>
+            {/* User Message */}
+            <div className={`${styles.messageRow} ${styles.userMessageRow}`}>
+              <div className={`${styles.messageBubble} ${styles.userBubble}`}>
+                <p>
+                  Привет! Пытаюсь склонировать репозиторий проекта, но получаю <code>403 Forbidden</code>. Как получить доступ?
+                </p>
+                <span className={styles.messageTime}>12:30</span>
+              </div>
+            </div>
+
+            {/* AI-Buddy Message */}
+            <div className={`${styles.messageRow} ${styles.botMessageRow}`}>
+              <div className={`${styles.messageBubble} ${styles.botBubble}`}>
+                <p>
+                  Привет! Для работы с сервисом стажёру необходим доступ на чтение к репозиторию{' '}
+                  <strong>repo_demo_backend</strong>. Я подготовил для тебя черновик заявки:
+                </p>
+
+                {/* Embedded Access Request Card */}
+                <div className={styles.requestPreviewCard}>
+                  <div className={styles.requestCardHeader}>
+                    <span className={styles.requestCardTitle}>
+                      📋 Заявка на доступ к ресурсу
+                    </span>
+                    <StatusBadge
+                      status={isConfirmed ? 'pending' : 'draft'}
+                      label={isConfirmed ? 'На согласовании (ACCESS-1001)' : 'Черновик'}
+                      size="sm"
+                    />
+                  </div>
+
+                  <div className={styles.requestDetailRow}>
+                    <span>Ресурс: <strong>repo_demo_backend</strong></span>
+                    <span>Права: <strong>Чтение (read)</strong></span>
+                  </div>
+
+                  {!isConfirmed ? (
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => setIsConfirmed(true)}
+                    >
+                      Подтвердить отправку
+                    </Button>
+                  ) : (
+                    <div style={{ color: 'var(--avito-green-text)', fontSize: '12px', fontWeight: 600 }}>
+                      ✓ Заявка отправлена и ожидает решения в тестовом сервисе доступа
+                    </div>
+                  )}
+                </div>
+
+                <div className={styles.sourcesGroup}>
+                  <span>Источники:</span>
+                  <span
+                    className={styles.sourceChip}
+                    onClick={() => alert('Открытие регламента local_setup.md')}
+                  >
+                    📄 local_setup.md (стр. 4)
+                  </span>
+                </div>
+
+                <span className={styles.messageTime}>12:31</span>
+              </div>
+            </div>
           </div>
-          <div className={styles.featureItem}>
-            <span className={styles.featureDot} />
-            <span>Проксирование API на <code>http://localhost:8080/api</code> активно в dev-режиме</span>
+
+          {/* Composer */}
+          <form
+            className={styles.composerBar}
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (inputValue.trim()) {
+                alert(`Сообщение отправлено: ${inputValue}`);
+                setInputValue('');
+              }
+            }}
+          >
+            <input
+              type="text"
+              className={styles.composerInput}
+              placeholder="Задайте вопрос наставнику или уточните детали задачи..."
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+            />
+            <button
+              type="submit"
+              className={styles.composerSendButton}
+              title="Отправить сообщение"
+              aria-label="Отправить сообщение"
+            >
+              <svg
+                className={styles.composerIcon}
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <line x1="22" y1="2" x2="11" y2="13" />
+                <polygon points="22 2 15 22 11 13 2 9 22 2" />
+              </svg>
+            </button>
+          </form>
+
+          {/* Integration notification for FE1 */}
+          <div className={styles.integrationNotice}>
+            <span><span aria-hidden="true">⚡ </span>Слот диалога готов к интеграции</span>
+            <span>FE1 (Никита) подключает сюда SSE-поток и историю диалогов</span>
           </div>
         </div>
       </div>
