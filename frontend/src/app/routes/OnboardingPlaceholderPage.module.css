@@ -6,7 +6,7 @@
   margin: 0 auto;
 }
 
-/* Header Banner */
+/* Header Banner (Clean Avito surface, no nested cards, no banned eyebrow) */
 .heroBanner {
   background-color: var(--color-surface);
   border: 1px solid var(--color-border);
@@ -23,18 +23,6 @@
   max-width: 600px;
 }
 
-.heroTag {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px var(--space-2);
-  background-color: var(--avito-blue-bg);
-  border-radius: var(--radius-sm);
-  font-size: var(--font-size-xs);
-  font-weight: 600;
-  color: var(--avito-blue-text);
-  margin-bottom: var(--space-2);
-}
-
 .heroTitle {
   font-size: var(--font-size-2xl);
   font-weight: 700;
@@ -48,15 +36,13 @@
   line-height: var(--line-height-normal);
 }
 
-.heroProgressCard {
-  background-color: var(--color-bg-page);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  padding: var(--space-4) var(--space-5);
+.heroProgressGroup {
   min-width: 260px;
   display: flex;
   flex-direction: column;
   gap: var(--space-2);
+  padding-left: var(--space-6);
+  border-left: 1px solid var(--color-border-subtle);
 }
 
 .progressLabelRow {
@@ -133,11 +119,19 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-3);
-  transition: border-color var(--transition-fast);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
 }
 
+/* Active Step: Highlighted with clean full border and soft shadow (NO side-tab border!) */
 .stepCardActive {
-  border-left: 4px solid var(--avito-blue);
+  border-color: var(--avito-blue);
+  box-shadow: 0 0 0 1px var(--avito-blue), var(--shadow-xs);
+}
+
+/* Blocked Steps: Visually de-emphasized to guide user focus */
+.stepCardBlocked {
+  opacity: 0.72;
+  background-color: #fafbfc;
 }
 
 .stepCardHeader {
@@ -165,6 +159,11 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+}
+
+.stepNumberBlocked {
+  color: var(--color-text-secondary);
+  background-color: var(--color-surface-hover);
 }
 
 .stepTitle {
@@ -288,12 +287,44 @@
   font-weight: 500;
   color: var(--color-text-primary);
   text-decoration: none;
+  cursor: pointer;
+  border: none;
+  width: 100%;
+  text-align: left;
   transition: background-color var(--transition-fast), color var(--transition-fast);
 }
 
 .quickLink:hover {
   background-color: var(--avito-blue-bg);
   color: var(--avito-blue);
+}
+
+/* Documentation Content inside Drawer */
+.docContainer {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  font-size: var(--font-size-base);
+  color: var(--color-text-primary);
+  line-height: var(--line-height-normal);
+}
+
+.docSectionTitle {
+  font-size: var(--font-size-md);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-top: var(--space-2);
+}
+
+.docCodeBlock {
+  font-family: monospace;
+  font-size: var(--font-size-xs);
+  background-color: var(--color-surface-hover);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  overflow-x: auto;
+  line-height: 1.4;
 }
 
 @media (max-width: 900px) {
@@ -304,6 +335,13 @@
   .heroBanner {
     flex-direction: column;
     align-items: stretch;
+  }
+
+  .heroProgressGroup {
+    padding-left: 0;
+    border-left: none;
+    border-top: 1px solid var(--color-border-subtle);
+    padding-top: var(--space-4);
   }
 
   .stepFooter {

@@ -39,48 +39,6 @@
   color: inherit;
 }
 
-.logoDots {
-  display: grid;
-  grid-template-columns: repeat(2, 10px);
-  grid-template-rows: repeat(2, 10px);
-  gap: 3px;
-}
-
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-}
-
-.dotGreen {
-  background-color: var(--avito-green);
-}
-
-.dotBlue {
-  background-color: var(--avito-blue);
-}
-
-.dotRed {
-  background-color: var(--avito-red);
-}
-
-.dotViolet {
-  background-color: var(--avito-violet);
-}
-
-.brandText {
-  display: flex;
-  align-items: baseline;
-  gap: var(--space-2);
-}
-
-.brandName {
-  font-size: var(--font-size-xl);
-  font-weight: 800;
-  letter-spacing: -0.5px;
-  color: var(--color-text-primary);
-}
-
 .buddyTag {
   font-size: var(--font-size-xs);
   font-weight: 700;
@@ -201,10 +159,6 @@
   }
 
   .userInfo {
-    display: none;
-  }
-
-  .brandName {
     display: none;
   }
 

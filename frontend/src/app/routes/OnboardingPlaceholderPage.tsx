@@ -1,17 +1,95 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Button, StatusBadge } from '@/shared/ui';
+import { Button, StatusBadge, Drawer } from '@/shared/ui';
 import styles from './OnboardingPlaceholderPage.module.css';
 
+interface DocArticle {
+  title: string;
+  content: React.ReactNode;
+}
+
+const DOCUMENTATION: Record<string, DocArticle> = {
+  wiki: {
+    title: 'Вики команды Backend Core',
+    content: (
+      <div className={styles.docContainer}>
+        <p>
+          Добро пожаловать в команду Backend Core! Мы разрабатываем ключевые сервисы взаимодействия
+          пользователей и транзакций на платформе Авито.
+        </p>
+        <h4 className={styles.docSectionTitle}>Архитектура и стек</h4>
+        <p>
+          Сервисы пишутся на Go (версия 1.22+). Основное хранилище — PostgreSQL 16, очереди сообщений —
+          Apache Kafka, кеширование — Redis Cluster.
+        </p>
+        <div className={styles.docCodeBlock}>
+          {`# Запуск локального контура зависимостей
+docker compose -f docker-compose.local.yml up -d`}
+        </div>
+        <h4 className={styles.docSectionTitle}>Первая неделя</h4>
+        <p>
+          Ваша главная цель на первую неделю — успешно развернуть локальное окружение, получить все необходимые
+          доступы и собрать первый pull request в тестовом репозитории.
+        </p>
+      </div>
+    ),
+  },
+  git: {
+    title: 'Регламент Git и CI/CD',
+    content: (
+      <div className={styles.docContainer}>
+        <p>
+          Команда придерживается стандарта Git Flow с адаптацией под частые непрерывные релизы.
+        </p>
+        <h4 className={styles.docSectionTitle}>Ветвление и именование</h4>
+        <p>
+          Все новые задачи ответвляются от ветки <code>develop</code>. Ветка именуется по маске:
+        </p>
+        <div className={styles.docCodeBlock}>
+          {`feature/TASK-123-short-description
+bugfix/TASK-456-fix-null-pointer`}
+        </div>
+        <h4 className={styles.docSectionTitle}>Требования к Pull Request</h4>
+        <p>
+          1. Все тесты должны проходить локально и в пайплайне CI.<br />
+          2. Покрытие нового кода тестами должно составлять не менее 80%.<br />
+          3. Обязателен минимум один approval от наставника или старшего инженера.
+        </p>
+      </div>
+    ),
+  },
+  access: {
+    title: 'Сервис управления доступами',
+    content: (
+      <div className={styles.docContainer}>
+        <p>
+          Доступы к внутренним репозиториям, тестовым базам данных и мониторингу запрашиваются через корпоративный сервис доступа.
+        </p>
+        <h4 className={styles.docSectionTitle}>Автоматизация через AI-buddy</h4>
+        <p>
+          Вам не нужно заполнять сложные формы вручную: AI-buddy автоматически подготовит черновик заявки
+          в чате. Вам останется только подтвердить отправку.
+        </p>
+        <h4 className={styles.docSectionTitle}>Регламентные сроки (SLA)</h4>
+        <p>
+          Заявки на тестовые репозитории согласуются наставником (Алексей Морозов). Среднее время согласования
+          составляет до 2 часов в рабочее время команды.
+        </p>
+      </div>
+    ),
+  },
+};
+
 export const OnboardingPlaceholderPage: React.FC = () => {
+  const [activeDocKey, setActiveDocKey] = useState<string | null>(null);
+
+  const activeDoc = activeDocKey ? DOCUMENTATION[activeDocKey] : null;
+
   return (
     <div className={styles.container}>
       {/* Banner */}
       <section className={styles.heroBanner}>
         <div className={styles.heroInfo}>
-          <div className={styles.heroTag}>
-            <span>Программа адаптации</span>
-          </div>
           <h1 className={styles.heroTitle}>Мой план адаптации</h1>
           <p className={styles.heroSubtitle}>
             План начальной адаптации стажера в команде Backend Core. Выполняйте шаги последовательно
@@ -19,7 +97,7 @@ export const OnboardingPlaceholderPage: React.FC = () => {
           </p>
         </div>
 
-        <div className={styles.heroProgressCard}>
+        <div className={styles.heroProgressGroup}>
           <div className={styles.progressLabelRow}>
             <span className={styles.progressLabel}>Текущий прогресс</span>
             <StatusBadge status="in_progress" label="Прогресс: 0%" size="sm" />
@@ -78,10 +156,10 @@ export const OnboardingPlaceholderPage: React.FC = () => {
             </article>
 
             {/* Step 2: Blocked */}
-            <article className={styles.stepCard}>
+            <article className={`${styles.stepCard} ${styles.stepCardBlocked}`}>
               <div className={styles.stepCardHeader}>
                 <div className={styles.stepTitleGroup}>
-                  <span className={styles.stepNumber}>2</span>
+                  <span className={`${styles.stepNumber} ${styles.stepNumberBlocked}`}>2</span>
                   <h3 className={styles.stepTitle}>Знакомство с архитектурой и контрактами сервиса</h3>
                 </div>
                 <StatusBadge status="blocked" />
@@ -93,19 +171,14 @@ export const OnboardingPlaceholderPage: React.FC = () => {
 
               <div className={styles.stepFooter}>
                 <span className={styles.blockedNotice}>Ожидает завершения шага 1</span>
-                <Link to="/chat?stepId=step_architecture">
-                  <Button variant="ghost" size="sm">
-                    Спросить наставника
-                  </Button>
-                </Link>
               </div>
             </article>
 
             {/* Step 3: Blocked */}
-            <article className={styles.stepCard}>
+            <article className={`${styles.stepCard} ${styles.stepCardBlocked}`}>
               <div className={styles.stepCardHeader}>
                 <div className={styles.stepTitleGroup}>
-                  <span className={styles.stepNumber}>3</span>
+                  <span className={`${styles.stepNumber} ${styles.stepNumberBlocked}`}>3</span>
                   <h3 className={styles.stepTitle}>Первый Pull Request в тестовый контур</h3>
                 </div>
                 <StatusBadge status="blocked" />
@@ -121,10 +194,10 @@ export const OnboardingPlaceholderPage: React.FC = () => {
             </article>
 
             {/* Step 4: Blocked */}
-            <article className={styles.stepCard}>
+            <article className={`${styles.stepCard} ${styles.stepCardBlocked}`}>
               <div className={styles.stepCardHeader}>
                 <div className={styles.stepTitleGroup}>
-                  <span className={styles.stepNumber}>4</span>
+                  <span className={`${styles.stepNumber} ${styles.stepNumberBlocked}`}>4</span>
                   <h3 className={styles.stepTitle}>Встреча 1-on-1 и итоги первой недели</h3>
                 </div>
                 <StatusBadge status="blocked" />
@@ -160,43 +233,44 @@ export const OnboardingPlaceholderPage: React.FC = () => {
           <div className={styles.widgetCard}>
             <h3 className={styles.widgetTitle}>База знаний и регламенты</h3>
             <nav className={styles.linksList}>
-              <a
-                href="#docs"
+              <button
+                type="button"
                 className={styles.quickLink}
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert('База знаний стажеров');
-                }}
+                onClick={() => setActiveDocKey('wiki')}
               >
                 <span>Вики команды Backend</span>
                 <span>→</span>
-              </a>
-              <a
-                href="#git"
+              </button>
+              <button
+                type="button"
                 className={styles.quickLink}
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert('Репозитории проектов команды');
-                }}
+                onClick={() => setActiveDocKey('git')}
               >
                 <span>Регламент Git и CI/CD</span>
                 <span>→</span>
-              </a>
-              <a
-                href="#access"
+              </button>
+              <button
+                type="button"
                 className={styles.quickLink}
-                onClick={(e) => {
-                  e.preventDefault();
-                  alert('Сервис заявок на доступ');
-                }}
+                onClick={() => setActiveDocKey('access')}
               >
                 <span>Сервис доступов</span>
                 <span>→</span>
-              </a>
+              </button>
             </nav>
           </div>
         </aside>
       </div>
+
+      {/* Accessible Documentation Drawer */}
+      <Drawer
+        isOpen={Boolean(activeDoc)}
+        onClose={() => setActiveDocKey(null)}
+        title={activeDoc?.title}
+        width="md"
+      >
+        {activeDoc?.content}
+      </Drawer>
     </div>
   );
 };

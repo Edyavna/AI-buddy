@@ -18,12 +18,19 @@ export const LoginPlaceholderPage: React.FC = () => {
           Выберите тестовую учетную запись для проверки сценариев адаптации и согласования доступов.
         </p>
 
-        <div className={styles.accountsList}>
+        <div className={styles.accountsList} role="radiogroup" aria-label="Тестовые учетные записи">
           {/* Intern Account */}
           <div
             className={`${styles.accountCard} ${selectedUser === 'intern' ? styles.accountCardActive : ''}`}
             onClick={() => setSelectedUser('intern')}
-            role="button"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setSelectedUser('intern');
+              }
+            }}
+            role="radio"
+            aria-checked={selectedUser === 'intern'}
             tabIndex={0}
           >
             <div className={styles.accountAvatar}>ИС</div>
@@ -38,7 +45,14 @@ export const LoginPlaceholderPage: React.FC = () => {
           <div
             className={`${styles.accountCard} ${selectedUser === 'mentor' ? styles.accountCardActive : ''}`}
             onClick={() => setSelectedUser('mentor')}
-            role="button"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setSelectedUser('mentor');
+              }
+            }}
+            role="radio"
+            aria-checked={selectedUser === 'mentor'}
             tabIndex={0}
           >
             <div
