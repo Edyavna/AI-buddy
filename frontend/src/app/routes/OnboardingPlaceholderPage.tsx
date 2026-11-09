@@ -92,8 +92,8 @@ export const OnboardingPlaceholderPage: React.FC = () => {
         <div className={styles.heroInfo}>
           <h1 className={styles.heroTitle}>Мой план адаптации</h1>
           <p className={styles.heroSubtitle}>
-            План начальной адаптации стажера в команде Backend Core. Выполняйте шаги последовательно
-            и запрашивайте доступ к сервисам через ассистента.
+            Индивидуальный план стажёра в команде Backend Core. Выполняйте шаги последовательно,
+            изучайте регламенты и запрашивайте доступ к сервисам через ассистента.
           </p>
         </div>
 
@@ -111,7 +111,7 @@ export const OnboardingPlaceholderPage: React.FC = () => {
           >
             <div className={styles.progressBarFill} style={{ width: '4%' }} />
           </div>
-          <span className={styles.progressMeta}>Завершено 0 из 4 шагов. Следующий шаг доступен.</span>
+          <span className={styles.progressMeta}>Завершено 0 из 4 шагов. Шаг 1 открыт для выполнения.</span>
         </div>
       </section>
 
@@ -138,8 +138,8 @@ export const OnboardingPlaceholderPage: React.FC = () => {
               </div>
 
               <p className={styles.stepDescription}>
-                Склонировать репозиторий, запустить зависимости через Docker Compose и проверить
-                прохождение локальных тестов. Для доступа к репозиторию требуется подтвердить заявку на чтение.
+                Склонируйте репозиторий, запустите зависимости через Docker Compose и проверьте
+                локальную сборку. Для загрузки кода запросите права на чтение через ассистента в чате.
               </p>
 
               <div className={styles.stepFooter}>
@@ -149,7 +149,7 @@ export const OnboardingPlaceholderPage: React.FC = () => {
                 </div>
                 <Link to="/chat?stepId=step_local_setup">
                   <Button variant="primary" size="sm">
-                    Перейти в чат по первому шагу (step_local_setup)
+                    Перейти в чат по первому шагу
                   </Button>
                 </Link>
               </div>
@@ -166,11 +166,11 @@ export const OnboardingPlaceholderPage: React.FC = () => {
               </div>
 
               <p className={styles.stepDescription}>
-                Изучить спецификацию OpenAPI, формат событий SSE и архитектуру сервисов.
+                Изучите спецификацию OpenAPI, формат событий SSE и архитектуру внутренних микросервисов.
               </p>
 
               <div className={styles.stepFooter}>
-                <span className={styles.blockedNotice}>Ожидает завершения шага 1</span>
+                <span className={styles.blockedNotice}>Станет доступно после завершения шага 1</span>
               </div>
             </article>
 
@@ -185,11 +185,11 @@ export const OnboardingPlaceholderPage: React.FC = () => {
               </div>
 
               <p className={styles.stepDescription}>
-                Внести исправление в сервис задач, запустить линтер и отправить PR на ревью.
+                Внесите исправление в сервис задач, проверьте код линтером и отправьте Pull Request на ревью наставнику.
               </p>
 
               <div className={styles.stepFooter}>
-                <span className={styles.blockedNotice}>Ожидает завершения шага 2</span>
+                <span className={styles.blockedNotice}>Станет доступно после завершения шага 2</span>
               </div>
             </article>
 
@@ -204,8 +204,12 @@ export const OnboardingPlaceholderPage: React.FC = () => {
               </div>
 
               <p className={styles.stepDescription}>
-                Обсудить с наставником результаты первой недели и план на испытательный срок.
+                Обсудите с наставником результаты первой недели, ответьте на накопившиеся вопросы и согласуйте цели на первый спринт.
               </p>
+
+              <div className={styles.stepFooter}>
+                <span className={styles.blockedNotice}>Станет доступно после завершения шага 3</span>
+              </div>
             </article>
           </div>
         </div>
@@ -224,7 +228,7 @@ export const OnboardingPlaceholderPage: React.FC = () => {
             </div>
             <Link to="/chat">
               <Button variant="secondary" size="sm" fullWidth>
-                Открыть чат
+                Написать наставнику
               </Button>
             </Link>
           </div>

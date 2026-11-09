@@ -27,7 +27,7 @@ export const AppShell: React.FC<AppShellProps> = ({
         <div className={styles.headerInner}>
           {/* Brand Logo */}
           <div className={styles.brandSection}>
-            <Link to="/onboarding" className={styles.logoLink} aria-label="AI-buddy — Главная">
+            <Link to="/onboarding" className={styles.logoLink} aria-label="AI-buddy — На главную (план адаптации)">
               <AvitoLogo size="md" />
               <span className={styles.buddyTag}>AI-buddy</span>
             </Link>
@@ -88,7 +88,8 @@ export const AppShell: React.FC<AppShellProps> = ({
             <Link
               to="/login"
               className={styles.switchAccountButton}
-              title="Сменить тестовый аккаунт"
+              title="Сменить тестового пользователя"
+              aria-label="Сменить тестового пользователя"
             >
               Сменить
             </Link>

@@ -63,7 +63,7 @@ export const ChatPlaceholderPage: React.FC = () => {
     {
       id: 'msg-2',
       sender: 'bot',
-      text: 'Для работы требуется доступ на чтение к репозиторию repo_demo_backend. Подготовлен черновик заявки:',
+      text: 'Для работы требуется доступ на чтение к репозиторию repo_demo_backend. Я подготовил черновик заявки на согласование:',
       time: '12:31',
       hasRequestCard: true,
       sources: [{ id: 'local_setup', label: 'local_setup.md, стр. 4' }],
@@ -172,7 +172,7 @@ export const ChatPlaceholderPage: React.FC = () => {
               className={`${styles.conversationItem} ${!conversationId ? styles.conversationItemActive : ''}`}
             >
               <span className={styles.convItemTitle}>Настройка окружения</span>
-              <span className={styles.convItemMeta}>Первый шаг адаптации</span>
+              <span className={styles.convItemMeta}>Шаг 1 • Доступ к репозиторию</span>
             </Link>
 
             <Link
@@ -181,7 +181,7 @@ export const ChatPlaceholderPage: React.FC = () => {
               className={`${styles.conversationItem} ${conversationId === 'conv-123' ? styles.conversationItemActive : ''}`}
             >
               <span className={styles.convItemTitle}>Вопрос по Git и веткам</span>
-              <span className={styles.convItemMeta}>Вчера, 3 сообщения</span>
+              <span className={styles.convItemMeta}>Вчера • 3 сообщения</span>
             </Link>
           </div>
         </aside>
@@ -193,7 +193,7 @@ export const ChatPlaceholderPage: React.FC = () => {
             <div className={styles.botStatusGroup}>
               <div className={styles.botAvatar}>AI</div>
               <div>
-                <div className={styles.botTitle}>Ассистент стажера</div>
+                <div className={styles.botTitle}>AI-ассистент стажёра</div>
                 <div className={styles.botStatus}>
                   <span className={styles.onlineDot} />
                   <span>В сети</span>
@@ -221,7 +221,7 @@ export const ChatPlaceholderPage: React.FC = () => {
                       <div className={styles.requestPreviewCard}>
                         <div className={styles.requestCardHeader}>
                           <span className={styles.requestCardTitle}>
-                            Заявка на доступ к ресурсу
+                            Заявка на доступ к репозиторию
                           </span>
                           <StatusBadge
                             status={isConfirmed ? 'pending' : 'draft'}
@@ -245,7 +245,7 @@ export const ChatPlaceholderPage: React.FC = () => {
                           </Button>
                         ) : (
                           <div style={{ color: 'var(--avito-green-text)', fontSize: '13px', fontWeight: 600 }}>
-                            Заявка отправлена. Ожидает решения в сервисе доступа.
+                            Заявка ACCESS-1001 отправлена на согласование Алексею Морозову (ожидание до 2 часов).
                           </div>
                         )}
                       </div>
@@ -361,14 +361,14 @@ export const ChatPlaceholderPage: React.FC = () => {
             <span className={styles.dialogMetaValue}>Чтение (read)</span>
 
             <span className={styles.dialogMetaLabel}>Согласующий:</span>
-            <span className={styles.dialogMetaValue}>Алексей Морозов (Team Lead Backend)</span>
+            <span className={styles.dialogMetaValue}>Алексей Морозов (Lead Backend Engineer)</span>
 
             <span className={styles.dialogMetaLabel}>Нормативный срок:</span>
-            <span className={styles.dialogMetaValue}>2 часа (SLA команды)</span>
+            <span className={styles.dialogMetaValue}>до 2 рабочих часов (регламент команды)</span>
           </div>
 
           <div className={styles.dialogCallout}>
-            После подтверждения заявка поступит в корпоративную систему доступов. Уведомление об одобрении придет в мессенджер.
+            После отправки тикет поступит на согласование наставнику. Уведомление об одобрении придет в рабочий мессенджер, а SSH-ключи синхронизируются автоматически.
           </div>
         </div>
       </Dialog>

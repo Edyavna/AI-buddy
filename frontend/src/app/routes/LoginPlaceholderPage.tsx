@@ -35,8 +35,8 @@ export const LoginPlaceholderPage: React.FC = () => {
           >
             <div className={styles.accountAvatar}>ИС</div>
             <div className={styles.accountDetails}>
-              <span className={styles.accountName}>Иван Стажеров</span>
-              <span className={styles.accountRole}>Стажер Backend, team_demo_backend</span>
+              <span className={styles.accountName}>Иван Стажёров</span>
+              <span className={styles.accountRole}>Стажёр Backend, команда Backend Core</span>
             </div>
             <StatusBadge status="in_progress" label="Активен" size="sm" />
           </div>
@@ -62,17 +62,17 @@ export const LoginPlaceholderPage: React.FC = () => {
               АМ
             </div>
             <div className={styles.accountDetails}>
-              <span className={styles.accountName}>Алексей Менторов</span>
-              <span className={styles.accountRole}>Наставник команды</span>
+              <span className={styles.accountName}>Алексей Морозов</span>
+              <span className={styles.accountRole}>Lead Backend Engineer, наставник команды</span>
             </div>
-            <StatusBadge status="completed" label="Ментор" size="sm" />
+            <StatusBadge status="completed" label="Наставник" size="sm" />
           </div>
         </div>
 
         <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
           <Link to="/onboarding" style={{ width: '100%' }}>
             <Button variant="primary" fullWidth>
-              Войти как {selectedUser === 'intern' ? 'Иван' : 'Алексей'}
+              Войти как {selectedUser === 'intern' ? 'Иван Стажёров' : 'Алексей Морозов'}
             </Button>
           </Link>
 
@@ -84,7 +84,7 @@ export const LoginPlaceholderPage: React.FC = () => {
         </div>
 
         <p className={styles.noticeNote}>
-          Сессия сохраняется в <code>HttpOnly</code> cookie. В рабочей среде используется корпоративная авторизация.
+          В демо-режиме переключение учетной записи происходит мгновенно. В рабочем контуре Авито авторизация выполняется через корпоративный SSO.
         </p>
       </div>
     </div>
