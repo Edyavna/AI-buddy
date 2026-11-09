@@ -331,12 +331,6 @@ export const ChatPlaceholderPage: React.FC = () => {
               </svg>
             </button>
           </form>
-
-          {/* Integration notification for FE1 */}
-          <div className={styles.integrationNotice}>
-            <span>Слот диалога готов к интеграции</span>
-            <span>FE1 подключает SSE-поток и историю диалогов</span>
-          </div>
         </div>
       </div>
 

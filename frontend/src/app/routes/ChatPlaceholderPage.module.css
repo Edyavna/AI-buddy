@@ -427,19 +427,6 @@
   height: 20px;
 }
 
-.integrationNotice {
-  min-height: 36px;
-  padding: 0 var(--space-6) var(--space-3);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--space-4);
-  background-color: var(--color-surface);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-xs);
-  flex-shrink: 0;
-}
-
 .dialogMetaGrid {
   padding: var(--space-3) 0;
   display: grid;
@@ -574,12 +561,6 @@
   .messageBubble {
     padding: var(--space-4);
   }
-
-  .integrationNotice {
-    align-items: flex-start;
-    flex-direction: column;
-    gap: 0;
-  }
 }
 
 @media (max-width: 520px) {
@@ -643,10 +624,6 @@
     padding-right: var(--space-4);
     padding-left: var(--space-4);
     font-size: var(--font-size-base);
-  }
-
-  .integrationNotice {
-    display: none;
   }
 
   .dialogMetaGrid {

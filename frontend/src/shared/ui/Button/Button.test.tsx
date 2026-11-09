@@ -41,4 +41,24 @@ describe('Button component', () => {
     await user.click(button);
     expect(handleClick).not.toHaveBeenCalled();
   });
+
+  it('renders with danger variant, sm size, icons and full width', () => {
+    render(
+      <Button
+        variant="danger"
+        size="sm"
+        isLoading
+        fullWidth
+        leftIcon={<span data-testid="left-icon">←</span>}
+        rightIcon={<span data-testid="right-icon">→</span>}
+      >
+        Удалить
+      </Button>
+    );
+
+    const button = screen.getByRole('button');
+    expect(button).toBeInTheDocument();
+    expect(screen.getByTestId('left-icon')).toBeInTheDocument();
+    expect(screen.getByTestId('right-icon')).toBeInTheDocument();
+  });
 });

@@ -21,3 +21,9 @@ tmp/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# Agent & skills artifacts
+.agents/
+.claude/
+agent/
+skills-lock.json
