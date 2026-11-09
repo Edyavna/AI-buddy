@@ -198,7 +198,7 @@
 
 .resourceTag {
   font-size: var(--font-size-xs);
-  font-family: monospace;
+  font-family: var(--font-family-mono);
   background-color: var(--color-surface-hover);
   color: var(--color-text-primary);
   padding: 2px 8px;
@@ -324,7 +324,7 @@
 }
 
 .docCodeBlock {
-  font-family: monospace;
+  font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
   background-color: var(--color-surface-hover);
   border: 1px solid var(--color-border);

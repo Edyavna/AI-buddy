@@ -30,6 +30,21 @@ body {
   flex-direction: column;
 }
 
+/* Typography wraps & rendering */
+h1, h2, h3, h4, h5, h6 {
+  text-wrap: balance;
+  letter-spacing: var(--letter-spacing-tight);
+}
+
+p {
+  text-wrap: pretty;
+}
+
+code, kbd, samp, pre {
+  font-family: var(--font-family-mono);
+  font-size: 0.9em;
+}
+
 /* Button & Input baseline */
 button,
 input,

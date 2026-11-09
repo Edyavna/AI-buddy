@@ -52,7 +52,7 @@
 }
 
 .stepCode {
-  font-family: monospace;
+  font-family: var(--font-family-mono);
   background-color: var(--color-surface);
   padding: 2px 6px;
   border-radius: var(--radius-xs);
@@ -459,7 +459,7 @@
   background-color: var(--color-surface-sunken);
   padding: var(--space-3);
   border-radius: var(--radius-md);
-  font-family: monospace;
+  font-family: var(--font-family-mono);
   font-size: var(--font-size-xs);
   border: 1px solid var(--color-border);
   overflow-x: auto;
