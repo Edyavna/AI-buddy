@@ -131,7 +131,7 @@
 /* Blocked Steps: Visually de-emphasized to guide user focus */
 .stepCardBlocked {
   opacity: 0.72;
-  background-color: #fafbfc;
+  background-color: var(--color-bg-page);
 }
 
 .stepCardHeader {
@@ -177,16 +177,17 @@
   font-size: var(--font-size-sm);
   color: var(--color-text-secondary);
   line-height: var(--line-height-normal);
-  padding-left: 32px;
+  margin-left: 32px;
 }
 
 .stepFooter {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding-left: 32px;
-  padding-top: var(--space-2);
+  margin-left: 32px;
+  padding-top: var(--space-3);
   border-top: 1px solid var(--color-border-subtle);
+  gap: var(--space-3);
 }
 
 .stepMetaGroup {
@@ -280,7 +281,8 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-2) var(--space-3);
+  padding: 10px var(--space-4);
+  min-height: 44px;
   background-color: var(--color-surface-hover);
   border-radius: var(--radius-md);
   font-size: var(--font-size-sm);
@@ -297,6 +299,11 @@
 .quickLink:hover {
   background-color: var(--avito-blue-bg);
   color: var(--avito-blue);
+}
+
+.quickLink:focus-visible {
+  outline: 2px solid var(--avito-blue);
+  outline-offset: -2px;
 }
 
 /* Documentation Content inside Drawer */
@@ -330,11 +337,14 @@
 @media (max-width: 900px) {
   .layoutGrid {
     grid-template-columns: 1fr;
+    gap: var(--space-5);
   }
 
   .heroBanner {
     flex-direction: column;
     align-items: stretch;
+    gap: var(--space-4);
+    padding: var(--space-5);
   }
 
   .heroProgressGroup {
@@ -342,6 +352,12 @@
     border-left: none;
     border-top: 1px solid var(--color-border-subtle);
     padding-top: var(--space-4);
+    min-width: 0;
+  }
+
+  .stepDescription,
+  .stepFooter {
+    margin-left: 0;
   }
 
   .stepFooter {

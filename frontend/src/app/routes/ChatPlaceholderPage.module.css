@@ -4,8 +4,15 @@
   gap: var(--space-4);
   max-width: 1100px;
   height: calc(100vh - var(--header-height) - 48px);
-  min-height: 580px;
+  min-height: 540px;
   margin: 0 auto;
+}
+
+@media (max-height: 700px) {
+  .container {
+    height: auto;
+    min-height: 480px;
+  }
 }
 
 .header {
@@ -76,7 +83,7 @@
 /* Sidebar Conversations */
 .conversationsSidebar {
   border-right: 1px solid var(--color-border);
-  background-color: #fafbfc;
+  background-color: var(--color-bg-page);
   display: flex;
   flex-direction: column;
 }
@@ -143,7 +150,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: #ffffff;
+  background-color: var(--color-surface);
 }
 
 .chatTopInfo {
@@ -152,7 +159,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #ffffff;
+  background-color: var(--color-surface);
 }
 
 .botStatusGroup {
@@ -237,7 +244,7 @@
 }
 
 .botBubble {
-  background-color: #ffffff;
+  background-color: var(--color-surface);
   color: var(--color-text-primary);
   border: 1px solid var(--color-border);
   border-bottom-left-radius: 2px;
@@ -256,7 +263,7 @@
 
 /* Request Preview Card */
 .requestPreviewCard {
-  background-color: #ffffff;
+  background-color: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   padding: var(--space-3) var(--space-4);
@@ -280,7 +287,7 @@
 
 .requestDetailRow {
   display: flex;
-  gap: var(--space-4);
+  gap: var(--space-6);
   font-size: var(--font-size-xs);
   color: var(--color-text-secondary);
 }
@@ -301,12 +308,20 @@
   background-color: var(--color-surface-hover);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
-  padding: 3px 8px;
+  padding: 4px 10px;
+  min-height: 28px;
   font-size: var(--font-size-xs);
   font-weight: 600;
   color: var(--avito-blue);
   cursor: pointer;
   transition: background-color var(--transition-fast), border-color var(--transition-fast);
+}
+
+@media (pointer: coarse) {
+  .sourceChip {
+    min-height: 44px;
+    padding: 8px 14px;
+  }
 }
 
 .sourceChip:hover {
@@ -323,10 +338,10 @@
 .composerBar {
   padding: var(--space-3) var(--space-4);
   border-top: 1px solid var(--color-border);
-  background-color: #ffffff;
+  background-color: var(--color-surface);
   display: flex;
   align-items: flex-end;
-  gap: var(--space-2);
+  gap: var(--space-3);
 }
 
 .composerInput {
@@ -347,7 +362,7 @@
 
 .composerInput:focus {
   outline: none;
-  background-color: #ffffff;
+  background-color: var(--color-surface);
   border-color: var(--avito-blue);
   box-shadow: 0 0 0 3px rgba(0, 156, 240, 0.15);
 }

@@ -24,33 +24,8 @@
 .logoRow {
   display: flex;
   align-items: center;
-  gap: var(--space-2);
+  justify-content: center;
   margin-bottom: var(--space-4);
-}
-
-.logoDots {
-  display: grid;
-  grid-template-columns: repeat(2, 12px);
-  grid-template-rows: repeat(2, 12px);
-  gap: 4px;
-}
-
-.dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-}
-
-.dotGreen { background-color: var(--avito-green); }
-.dotBlue { background-color: var(--avito-blue); }
-.dotRed { background-color: var(--avito-red); }
-.dotViolet { background-color: var(--avito-violet); }
-
-.brandTitle {
-  font-size: var(--font-size-2xl);
-  font-weight: 800;
-  color: var(--color-text-primary);
-  letter-spacing: -0.5px;
 }
 
 .title {
