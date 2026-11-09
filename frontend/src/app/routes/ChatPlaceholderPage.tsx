@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { Button, StatusBadge, Drawer, Dialog } from '@/shared/ui';
 import styles from './ChatPlaceholderPage.module.css';
@@ -52,6 +52,7 @@ export const ChatPlaceholderPage: React.FC = () => {
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [activeDocKey, setActiveDocKey] = useState<string | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -69,6 +70,12 @@ export const ChatPlaceholderPage: React.FC = () => {
       sources: [{ id: 'local_setup', label: 'local_setup.md, стр. 4' }],
     },
   ]);
+
+  useEffect(() => {
+    if (typeof messagesEndRef.current?.scrollIntoView === 'function') {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   const handleSendMessage = () => {
     const trimmed = inputValue.trim();
@@ -273,6 +280,7 @@ export const ChatPlaceholderPage: React.FC = () => {
                 </div>
               );
             })}
+            <div ref={messagesEndRef} aria-hidden="true" />
           </div>
 
           {/* Composer */}
@@ -304,6 +312,8 @@ export const ChatPlaceholderPage: React.FC = () => {
             >
               <svg
                 className={styles.composerIcon}
+                width="20"
+                height="20"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"

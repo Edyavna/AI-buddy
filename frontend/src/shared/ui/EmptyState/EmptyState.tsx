@@ -23,6 +23,8 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
         {icon || (
           <svg
             className={styles.defaultIcon}
+            width="48"
+            height="48"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"

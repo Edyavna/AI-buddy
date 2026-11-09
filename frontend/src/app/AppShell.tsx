@@ -43,6 +43,8 @@ export const AppShell: React.FC<AppShellProps> = ({
             >
               <svg
                 className={styles.navIcon}
+                width="20"
+                height="20"
                 viewBox="0 0 20 20"
                 fill="currentColor"
                 aria-hidden="true"
@@ -60,6 +62,8 @@ export const AppShell: React.FC<AppShellProps> = ({
             >
               <svg
                 className={styles.navIcon}
+                width="20"
+                height="20"
                 viewBox="0 0 20 20"
                 fill="currentColor"
                 aria-hidden="true"
