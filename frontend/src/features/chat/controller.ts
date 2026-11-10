@@ -52,7 +52,7 @@ export class ChatController {
         // Retain partial text while an earlier persisted snapshot catches up.
         const merged = history.map(m => {
           const local = this.state.messages.find(x => x.id === m.id);
-          return m.status === 'generating' && local && local.text.length > m.text.length ? { ...m, text: local.text } : m;
+          return ['generating', 'interrupted'].includes(m.status) && local && local.text.length > m.text.length ? { ...m, text: local.text } : m;
         });
         if (history.length) this.update({ messages: merged });
         this.client.setQueryData(queryKeys.messages(id), history);

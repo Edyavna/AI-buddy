@@ -55,7 +55,7 @@ export async function readSse(body: ReadableStream<Uint8Array>, onEvent: (event:
     }
     if (!terminal) throw protocolError();
   } finally {
-    await reader.cancel().catch(() => undefined);
+    void reader.cancel().catch(() => undefined);
     reader.releaseLock();
   }
 }
