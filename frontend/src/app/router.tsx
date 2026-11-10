@@ -2,7 +2,7 @@ import { createBrowserRouter, Navigate, RouteObject } from 'react-router-dom';
 import { AppShell } from './AppShell';
 import { LoginPage, RequireAuth } from '@/features/session';
 import { PlanPage } from '@/features/onboarding';
-import { ChatPlaceholderPage } from './routes/ChatPlaceholderPage';
+import { ChatPage } from '@/features/chat';
 
 export const routes: RouteObject[] = [
   {
@@ -27,11 +27,11 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'chat',
-        element: <ChatPlaceholderPage />,
+        element: <ChatPage />,
       },
       {
         path: 'chat/:conversationId',
-        element: <ChatPlaceholderPage />,
+        element: <ChatPage />,
       },
       {
         path: '*',
