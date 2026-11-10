@@ -21,7 +21,7 @@ func TestRealDemoGrantEnablesStepCompletion(t *testing.T) {
 		t.Fatal(err)
 	}
 	cfg := config.Config{DemoMode: true, SessionTTL: time.Hour, AllowedOrigins: []string{"http://localhost:5173"}}
-	h := NewHandler(cfg, db, slog.New(slog.NewTextHandler(io.Discard, nil)), nil, nil)
+	h := NewHandler(cfg, db, slog.New(slog.NewTextHandler(io.Discard, nil)), nil, Dependencies{})
 	cookie := loginCookie(t, h, testkit.UserID, nil)
 	p := integrations.New(db)
 	task, err := p.FirstTask(ctx)

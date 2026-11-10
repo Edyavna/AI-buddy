@@ -60,6 +60,8 @@ jobs:
   containers:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    env:
+      DEMO_CHAT_DELAY: 1s
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -74,6 +76,7 @@ jobs:
         run: |
           docker compose --profile demo run --rm seed
           python scripts/smoke_session_onboarding.py prepare
+          python scripts/smoke_chat.py prepare
       - name: Persist a probe and recreate containers without removing the volume
         run: |
           docker compose exec -T db psql -U buddy -d buddy -v ON_ERROR_STOP=1 -c "CREATE TABLE day1_restart_probe (id integer PRIMARY KEY); INSERT INTO day1_restart_probe VALUES (1);"
@@ -86,6 +89,13 @@ jobs:
         run: |
           docker compose --profile demo run --rm seed
           python scripts/smoke_session_onboarding.py verify
+          python scripts/smoke_chat.py verify
+      - name: Kill API during a generating chat reply
+        run: python scripts/smoke_chat.py crash --docker
+      - name: Recover interrupted generation without replaying the agent
+        run: |
+          docker compose up -d --wait --wait-timeout 120 api
+          python scripts/smoke_chat.py recover
       - if: failure()
         run: docker compose logs
       - if: always()

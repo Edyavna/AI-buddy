@@ -1,14 +1,24 @@
 package migrations
 
 import (
+	"slices"
 	"testing"
 	"testing/fstest"
 )
 
 func TestRead(t *testing.T) {
 	items, err := read(Files)
-	if err != nil || len(items) != 4 {
+	if err != nil {
 		t.Fatal(err)
+	}
+	names := make([]string, 0, len(items))
+	for _, item := range items {
+		names = append(names, item.name)
+	}
+	demo := slices.Index(names, "000004_demo_external.sql")
+	chat := slices.Index(names, "000005_chat.sql")
+	if demo < 0 || chat <= demo || !slices.IsSorted(names) {
+		t.Fatalf("expected demo integration before chat: %v", names)
 	}
 	for _, source := range []fstest.MapFS{
 		{}, {"sql/readme.txt": {Data: []byte("bad")}},
