@@ -163,6 +163,16 @@ func (s SQLStore) Begin(ctx context.Context, p identity.Principal, id, clientID,
 		if !errors.Is(err, sql.ErrNoRows) {
 			return err
 		}
+		// The conversation lock serializes recovery with Begin, Finish and draft links.
+		// Use the persisted start and DB clock, never the most recent checkpoint:
+		// even a failed final write must eventually release the conversation.
+		if _, err := tx.ExecContext(ctx, `UPDATE chat_messages SET status='interrupted',
+ error=jsonb_build_object('error',jsonb_build_object('code','GENERATION_INTERRUPTED',
+ 'message','Генерация прервана; результат доступен в истории','trace_id',trace_id))
+ WHERE conversation_id=$1 AND status='generating'
+ AND created_at <= clock_timestamp() - make_interval(secs => $2)`, id, generationLease.Seconds()); err != nil {
+			return err
+		}
 		var busy bool
 		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM chat_messages WHERE conversation_id=$1 AND status='generating')`, id).Scan(&busy); err != nil {
 			return err

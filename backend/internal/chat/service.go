@@ -181,7 +181,16 @@ func (s Service) proposed(ctx context.Context, p Prepared, event ports.AgentEven
 	return &dto, nil
 }
 
+const (
+	maxGenerationTimeout = 120 * time.Second
+	maxCleanupTimeout    = 5 * time.Second
+	maxWriteTimeout      = 5 * time.Second
+	// A pending write may finish after the generation deadline, followed by cleanup.
+	generationLease = maxGenerationTimeout + maxWriteTimeout + maxCleanupTimeout
+)
+
 // StreamOptions are server/test settings, not client-controlled timeouts.
+// Durations may shorten but never exceed the server budgets used by the lease.
 // Tick and Deadline permit deterministic tests without waiting 15/120 seconds.
 type StreamOptions struct {
 	GenerationTimeout, Heartbeat, SaveInterval, WriteTimeout, CleanupTimeout time.Duration
@@ -190,8 +199,8 @@ type StreamOptions struct {
 }
 
 func (o StreamOptions) defaults() StreamOptions {
-	if o.GenerationTimeout <= 0 {
-		o.GenerationTimeout = 120 * time.Second
+	if o.GenerationTimeout <= 0 || o.GenerationTimeout > maxGenerationTimeout {
+		o.GenerationTimeout = maxGenerationTimeout
 	}
 	if o.Heartbeat <= 0 {
 		o.Heartbeat = 15 * time.Second
@@ -199,11 +208,11 @@ func (o StreamOptions) defaults() StreamOptions {
 	if o.SaveInterval <= 0 {
 		o.SaveInterval = time.Second
 	}
-	if o.WriteTimeout <= 0 {
-		o.WriteTimeout = 5 * time.Second
+	if o.WriteTimeout <= 0 || o.WriteTimeout > maxWriteTimeout {
+		o.WriteTimeout = maxWriteTimeout
 	}
-	if o.CleanupTimeout <= 0 {
-		o.CleanupTimeout = 5 * time.Second
+	if o.CleanupTimeout <= 0 || o.CleanupTimeout > maxCleanupTimeout {
+		o.CleanupTimeout = maxCleanupTimeout
 	}
 	if o.Tick == nil {
 		o.Tick = func(d time.Duration) (<-chan time.Time, func()) { t := time.NewTicker(d); return t.C, t.Stop }
