@@ -5,7 +5,10 @@ import { App } from './app/App';
 async function bootstrap() {
   if (import.meta.env.DEV && import.meta.env.VITE_API_MOCKING === 'enabled') {
     const { startBrowserMocks } = await import('./mocks/browser');
-    await startBrowserMocks({ development: true, enabled: true });
+    const handlers = import.meta.env.VITE_DEMO_PREVIEW === 'enabled'
+      ? (await import('./mocks/handlers/preview')).createPreviewHandlers()
+      : [];
+    await startBrowserMocks({ development: true, enabled: true, handlers });
   }
 
   const rootElement = document.getElementById('root');
