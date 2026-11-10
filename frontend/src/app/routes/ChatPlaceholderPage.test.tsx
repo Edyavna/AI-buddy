@@ -1,7 +1,18 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { fireEvent, render, screen, act } from '@testing-library/react';
+import { fireEvent, screen, act } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { renderWithQuery } from '@/test/render';
 import { ChatPlaceholderPage } from './ChatPlaceholderPage';
+
+function renderChat(route: string, path = '/chat') {
+  return renderWithQuery(
+    <MemoryRouter initialEntries={[route]}>
+      <Routes>
+        <Route path={path} element={<ChatPlaceholderPage />} />
+      </Routes>
+    </MemoryRouter>,
+  );
+}
 
 describe('ChatPlaceholderPage', () => {
   beforeEach(() => {
@@ -14,13 +25,7 @@ describe('ChatPlaceholderPage', () => {
   });
 
   it('renders chat heading, bot info, and default draft badge when no conversationId', () => {
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <Routes>
-          <Route path="/chat" element={<ChatPlaceholderPage />} />
-        </Routes>
-      </MemoryRouter>
-    );
+    renderChat('/chat');
 
     expect(screen.getByRole('heading', { level: 1, name: 'Чат' })).toBeInTheDocument();
     expect(screen.getByText('Новый диалог')).toBeInTheDocument();
@@ -29,13 +34,7 @@ describe('ChatPlaceholderPage', () => {
   });
 
   it('displays step context banner when stepId search param is present', () => {
-    render(
-      <MemoryRouter initialEntries={['/chat?stepId=step_local_setup']}>
-        <Routes>
-          <Route path="/chat" element={<ChatPlaceholderPage />} />
-        </Routes>
-      </MemoryRouter>
-    );
+    renderChat('/chat?stepId=step_local_setup');
 
     expect(screen.getByText('Контекст шага адаптации:')).toBeInTheDocument();
     expect(screen.getByText('step_local_setup')).toBeInTheDocument();
@@ -43,25 +42,13 @@ describe('ChatPlaceholderPage', () => {
   });
 
   it('displays conversationId badge when route has conversationId param', () => {
-    render(
-      <MemoryRouter initialEntries={['/chat/conv-123']}>
-        <Routes>
-          <Route path="/chat/:conversationId" element={<ChatPlaceholderPage />} />
-        </Routes>
-      </MemoryRouter>
-    );
+    renderChat('/chat/conv-123', '/chat/:conversationId');
 
     expect(screen.getByText('Диалог: conv-123')).toBeInTheDocument();
   });
 
   it('allows user to type, send message via submit button, and simulates bot reply', () => {
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <Routes>
-          <Route path="/chat" element={<ChatPlaceholderPage />} />
-        </Routes>
-      </MemoryRouter>
-    );
+    renderChat('/chat');
 
     const input = screen.getByRole('textbox', { name: 'Сообщение ассистенту' });
     const sendButton = screen.getByRole('button', { name: 'Отправить сообщение' });
@@ -89,13 +76,7 @@ describe('ChatPlaceholderPage', () => {
   });
 
   it('sends message on Enter key without shift and ignores Shift+Enter', () => {
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <Routes>
-          <Route path="/chat" element={<ChatPlaceholderPage />} />
-        </Routes>
-      </MemoryRouter>
-    );
+    renderChat('/chat');
 
     const input = screen.getByRole('textbox', { name: 'Сообщение ассистенту' });
 
@@ -110,51 +91,23 @@ describe('ChatPlaceholderPage', () => {
     expect(input).toHaveValue('');
   });
 
-  it('handles access request confirmation dialog workflow', () => {
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <Routes>
-          <Route path="/chat" element={<ChatPlaceholderPage />} />
-        </Routes>
-      </MemoryRouter>
-    );
+  // Единый AccessRequestPanel из плана (integration.md §4): данные — через общий
+  // кеш и GET, подтверждение — кнопкой карточки, локальных копий состояния нет.
+  it('renders the shared access request panel bound to the saved request', async () => {
+    renderChat('/chat');
 
-    // Initial draft card
-    expect(screen.getByText('Черновик')).toBeInTheDocument();
-    const openDialogButton = screen.getByRole('button', { name: 'Подтвердить отправку' });
-    fireEvent.click(openDialogButton);
+    expect(await screen.findByText('Черновик')).toBeInTheDocument();
+    expect(screen.getByText('Тестовый репозиторий')).toBeInTheDocument();
+    const confirmButton = screen.getByRole('button', { name: 'Подтвердить отправку' });
 
-    // Dialog is visible
-    expect(screen.getByRole('heading', { name: 'Подтверждение заявки на доступ' })).toBeInTheDocument();
-    expect(screen.getByText('Алексей Морозов (Lead Backend Engineer)')).toBeInTheDocument();
-
-    // Cancel closes dialog
-    const cancelButton = screen.getByRole('button', { name: 'Отмена' });
-    fireEvent.click(cancelButton);
-    expect(screen.queryByText('Подтверждение заявки на доступ')).not.toBeInTheDocument();
-    expect(screen.getByText('Черновик')).toBeInTheDocument();
-
-    // Open again and confirm
-    fireEvent.click(screen.getByRole('button', { name: 'Подтвердить отправку' }));
-    const confirmButton = screen.getByRole('button', { name: 'Отправить заявку' });
+    // Явное подтверждение: сервер принимает заявку (202), карточка уходит в отправку.
     fireEvent.click(confirmButton);
-
-    // Status updated
-    expect(screen.queryByText('Подтверждение заявки на доступ')).not.toBeInTheDocument();
-    expect(screen.getByText(/На согласовании \(ACCESS-1001\)/i)).toBeInTheDocument();
-    expect(
-      screen.getByText(/Заявка ACCESS-1001 отправлена на согласование Алексею Морозову/i)
-    ).toBeInTheDocument();
+    expect(await screen.findByText('Отправляем заявку / уточняем результат')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Подтвердить отправку' })).not.toBeInTheDocument();
   });
 
   it('opens and closes source documentation drawer', () => {
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <Routes>
-          <Route path="/chat" element={<ChatPlaceholderPage />} />
-        </Routes>
-      </MemoryRouter>
-    );
+    renderChat('/chat');
 
     const sourceChip = screen.getByRole('button', { name: 'local_setup.md, стр. 4' });
     fireEvent.click(sourceChip);
@@ -169,13 +122,7 @@ describe('ChatPlaceholderPage', () => {
   });
 
   it('toggles mobile sidebar and closes on backdrop click', () => {
-    render(
-      <MemoryRouter initialEntries={['/chat']}>
-        <Routes>
-          <Route path="/chat" element={<ChatPlaceholderPage />} />
-        </Routes>
-      </MemoryRouter>
-    );
+    renderChat('/chat');
 
     const toggleBtn = screen.getByLabelText(/открыть список диалогов/i);
     fireEvent.click(toggleBtn);
@@ -199,13 +146,7 @@ describe('ChatPlaceholderPage', () => {
     });
 
     try {
-      render(
-        <MemoryRouter initialEntries={['/chat']}>
-          <Routes>
-            <Route path="/chat" element={<ChatPlaceholderPage />} />
-          </Routes>
-        </MemoryRouter>
-      );
+      renderChat('/chat');
 
       const input = screen.getByRole('textbox', { name: 'Сообщение ассистенту' });
       fireEvent.change(input, { target: { value: 'Тест скролла' } });

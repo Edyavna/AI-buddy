@@ -13,6 +13,7 @@ const createDemoSessionSchema = z.object({ account_id: z.string() }).strict();
 const updateStepSchema = z
   .object({ status: z.enum(['not_started', 'in_progress', 'completed']) })
   .strict();
+const confirmRequestSchema = z.object({ draft_version: z.number().int().min(1) }).strict();
 
 const jsonError = (status: number, code: string, message: string) =>
   HttpResponse.json({ error: { code, message, trace_id: 'trace_mock' } }, { status });
@@ -58,7 +59,7 @@ export function createFe2Handlers() {
 
   let currentUser: User | null = intern;
   let plan: Plan = withServerProgress(planSchema.parse(fixture.plan));
-  const request: AccessRequest = accessRequestSchema.parse(fixture.draft);
+  let request: AccessRequest = accessRequestSchema.parse(fixture.draft);
 
   return [
     http.get('*/api/v1/demo/accounts', () => HttpResponse.json(accounts)),
@@ -105,7 +106,39 @@ export function createFe2Handlers() {
 
     http.get('*/api/v1/access-requests/:id', ({ params }) => {
       if (!currentUser) return unauthorized();
-      return params.id === request.id ? HttpResponse.json(request) : notFound();
+      if (params.id !== request.id) return notFound();
+      // Детерминированная имитация сверки с внешним сервисом (behavior.md §4):
+      // каждый GET продвигает активную заявку ровно на один шаг, без таймеров.
+      if (request.status === 'submitting') {
+        request = accessRequestSchema.parse(fixture.pending);
+      } else if (request.status === 'pending') {
+        request = accessRequestSchema.parse(fixture.granted);
+      }
+      if (request.status === 'granted') {
+        plan = withServerProgress(planSchema.parse(fixture.granted_plan));
+      }
+      return HttpResponse.json(request);
+    }),
+
+    // Идемпотентный confirm (behavior.md §4): для draft/failed проверяется версия
+    // черновика и возвращается 202 submitting; для отправленных — текущая запись
+    // без повторного действия (202 для submitting, 200 для остальных).
+    http.post('*/api/v1/access-requests/:id/confirm', async ({ params, request: incoming }) => {
+      if (!currentUser) return unauthorized();
+      if (params.id !== request.id) return notFound();
+      const parsed = confirmRequestSchema.safeParse(await incoming.json().catch(() => null));
+      if (!parsed.success) return jsonError(422, 'VALIDATION_ERROR', 'Некорректный запрос');
+      if (request.status === 'draft' || request.status === 'failed') {
+        if (parsed.data.draft_version !== request.draft_version) {
+          return jsonError(409, 'DRAFT_CHANGED', 'Параметры заявки изменились, подтвердите новую версию');
+        }
+        request = accessRequestSchema.parse({
+          ...fixture.submitting, draft_version: request.draft_version,
+        });
+        return HttpResponse.json(request, { status: 202 });
+      }
+      if (request.status === 'submitting') return HttpResponse.json(request, { status: 202 });
+      return HttpResponse.json(request, { status: 200 });
     }),
   ];
 }
