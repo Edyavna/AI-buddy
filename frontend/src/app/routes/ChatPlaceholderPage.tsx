@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
-import { Button, StatusBadge, Drawer, Dialog } from '@/shared/ui';
+import { Button, StatusBadge, Drawer } from '@/shared/ui';
+import { AccessRequestPanel } from '@/features/access-requests';
 import styles from './ChatPlaceholderPage.module.css';
 
 interface ChatMessage {
@@ -48,8 +49,6 @@ export const ChatPlaceholderPage: React.FC = () => {
   const stepId = searchParams.get('stepId');
 
   const [inputValue, setInputValue] = useState('');
-  const [isConfirmed, setIsConfirmed] = useState(false);
-  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [activeDocKey, setActiveDocKey] = useState<string | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -106,11 +105,6 @@ export const ChatPlaceholderPage: React.FC = () => {
       };
       setMessages((prev) => [...prev, botResponse]);
     }, 500);
-  };
-
-  const handleConfirmRequest = () => {
-    setIsConfirmed(true);
-    setIsConfirmDialogOpen(false);
   };
 
   const activeDoc = activeDocKey ? DOCUMENTATION[activeDocKey] : null;
@@ -226,39 +220,9 @@ export const ChatPlaceholderPage: React.FC = () => {
                   <div className={`${styles.messageBubble} ${isUser ? styles.userBubble : styles.botBubble}`}>
                     <p>{msg.text}</p>
 
-                    {/* Embedded Access Request Card */}
+                    {/* Access request: the shared panel also used in the plan (integration.md §4) */}
                     {msg.hasRequestCard && (
-                      <div className={styles.requestPreviewCard}>
-                        <div className={styles.requestCardHeader}>
-                          <span className={styles.requestCardTitle}>
-                            Заявка на доступ к репозиторию
-                          </span>
-                          <StatusBadge
-                            status={isConfirmed ? 'pending' : 'draft'}
-                            label={isConfirmed ? 'На согласовании (ACCESS-1001)' : 'Черновик'}
-                            size="sm"
-                          />
-                        </div>
-
-                        <div className={styles.requestDetailRow}>
-                          <span>Ресурс: <strong>repo_demo_backend</strong></span>
-                          <span>Права: <strong>Чтение (read)</strong></span>
-                        </div>
-
-                        {!isConfirmed ? (
-                          <Button
-                            variant="primary"
-                            size="sm"
-                            onClick={() => setIsConfirmDialogOpen(true)}
-                          >
-                            Подтвердить отправку
-                          </Button>
-                        ) : (
-                          <div className={styles.requestSuccess}>
-                            Заявка ACCESS-1001 отправлена на согласование Алексею Морозову (ожидание до 2 часов).
-                          </div>
-                        )}
-                      </div>
+                      <AccessRequestPanel requestId="request_demo_1" />
                     )}
 
                     {/* Source References */}
@@ -333,53 +297,6 @@ export const ChatPlaceholderPage: React.FC = () => {
           </form>
         </div>
       </div>
-
-      {/* Confirmation Dialog for Access Request */}
-      <Dialog
-        isOpen={isConfirmDialogOpen}
-        onClose={() => setIsConfirmDialogOpen(false)}
-        title="Подтверждение заявки на доступ"
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => setIsConfirmDialogOpen(false)}
-            >
-              Отмена
-            </Button>
-            <Button
-              variant="primary"
-              onClick={handleConfirmRequest}
-            >
-              Отправить заявку
-            </Button>
-          </>
-        }
-      >
-        <div>
-          <p className={styles.dialogIntro}>
-            Проверьте параметры доступа перед формированием тикета в Access Manager:
-          </p>
-
-          <div className={styles.dialogMetaGrid}>
-            <span className={styles.dialogMetaLabel}>Ресурс:</span>
-            <span className={styles.dialogMetaValue}>repo_demo_backend</span>
-
-            <span className={styles.dialogMetaLabel}>Запрашиваемые права:</span>
-            <span className={styles.dialogMetaValue}>Чтение (read)</span>
-
-            <span className={styles.dialogMetaLabel}>Согласующий:</span>
-            <span className={styles.dialogMetaValue}>Алексей Морозов (Lead Backend Engineer)</span>
-
-            <span className={styles.dialogMetaLabel}>Нормативный срок:</span>
-            <span className={styles.dialogMetaValue}>до 2 рабочих часов (регламент команды)</span>
-          </div>
-
-          <div className={styles.dialogCallout}>
-            После отправки тикет поступит на согласование наставнику. Уведомление об одобрении придет в рабочий мессенджер, а SSH-ключи синхронизируются автоматически.
-          </div>
-        </div>
-      </Dialog>
 
       {/* Documentation Drawer */}
       <Drawer

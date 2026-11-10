@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Edyavna/AI-buddy/backend/internal/chat"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/config"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/migrations"
@@ -28,6 +29,20 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		if err := migrations.Verify(startup, db, migrations.Files); err != nil {
 			return errors.New("database schema check failed; run cmd/migrate with the same DATABASE_URL")
 		}
+		// Recovery may interrupt all unfinished messages. Refuse a second active
+		// process for this schema rather than interrupting another live API instance.
+		guard, err := db.Conn(startup)
+		if err != nil {
+			return errors.New("chat runtime lock unavailable")
+		}
+		defer guard.Close()
+		var locked bool
+		if err := guard.QueryRowContext(startup, `SELECT pg_try_advisory_lock(1729010,hashtext(current_schema()))`).Scan(&locked); err != nil || !locked {
+			return errors.New("chat runtime requires one active API process per database schema")
+		}
+		if err := (chat.SQLStore{DB: db}).Recover(startup); err != nil {
+			return errors.New("chat recovery failed; check database availability")
+		}
 	} else {
 		logger.Warn("database disabled; infrastructure-only mode, business API is unavailable")
 	}
@@ -44,9 +59,9 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	defer listener.Close()
 	logger.Info("server listening", "address", listener.Addr().String(), "database_enabled", cfg.DatabaseEnabled)
 	server := &http.Server{
-		Handler:           NewHandler(cfg, db, logger, ready, nil),
+		Handler:           NewHandler(cfg, db, logger, ready, Dependencies{}),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second,
-		// WriteTimeout=0 for future SSE. Chat owns its 120s generation deadline.
+		// WriteTimeout=0 for SSE. Chat owns its 120s generation deadline.
 		BaseContext: func(net.Listener) context.Context { return ctx },
 		ErrorLog:    slog.NewLogLogger(logger.Handler(), slog.LevelError),
 	}

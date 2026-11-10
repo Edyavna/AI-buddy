@@ -19,11 +19,13 @@ type Config struct {
 	ShutdownTimeout     time.Duration
 	SessionTTL          time.Duration
 	SessionCookieSecure bool
+	DemoChatDelay       time.Duration
 }
 
 // Load deliberately does not read .env files. The launcher supplies environment.
 func Load(getenv func(string) string) (Config, error) {
 	c := Config{HTTPAddr: ":8080", DatabaseEnabled: true, StartupTimeout: 15 * time.Second, ShutdownTimeout: 10 * time.Second, SessionTTL: 24 * time.Hour}
+	c.DemoChatDelay = 250 * time.Millisecond
 	if value := getenv("HTTP_ADDR"); value != "" {
 		c.HTTPAddr = value
 	}
@@ -59,6 +61,13 @@ func Load(getenv func(string) string) (Config, error) {
 			}
 			*target = parsed
 		}
+	}
+	if value := getenv("DEMO_CHAT_DELAY"); value != "" {
+		delay, err := time.ParseDuration(value)
+		if err != nil || delay < 0 || delay > 5*time.Second {
+			return Config{}, fmt.Errorf("DEMO_CHAT_DELAY must be between 0s and 5s")
+		}
+		c.DemoChatDelay = delay
 	}
 	c.DatabaseURL = getenv("DATABASE_URL")
 	if c.DatabaseEnabled {

@@ -1,20 +1,20 @@
 import React from 'react';
 import { NavLink, Outlet, Link } from 'react-router-dom';
 import clsx from 'clsx';
-import { AvitoLogo } from '@/shared/ui';
+import { AvitoLogo, Button } from '@/shared/ui';
+import { useLogout, useMe } from '@/features/session';
 import styles from './AppShell.module.css';
 
-export interface AppShellProps {
-  userName?: string;
-  userRole?: string;
-}
+const ROLE_LABEL = { intern: 'Стажёр', mentor: 'Наставник' } as const;
 
-export const AppShell: React.FC<AppShellProps> = ({
-  userName = 'Иван Стажёров',
-  userRole = 'Стажёр Backend',
-}) => {
-  const initials = userName
-    .split(' ')
+export const AppShell: React.FC = () => {
+  const me = useMe();
+  const logout = useLogout();
+  const user = me.data;
+
+  const initials = (user?.name ?? '')
+    .split(/\s+/)
+    .filter(Boolean)
     .map((part) => part[0])
     .join('')
     .slice(0, 2)
@@ -53,23 +53,28 @@ export const AppShell: React.FC<AppShellProps> = ({
             </NavLink>
           </nav>
 
-          <div className={styles.userSection}>
-            <div className={styles.userAvatarChip} title={userName}>
-              {initials}
+          {user && (
+            <div className={styles.userSection}>
+              <div className={styles.userAvatarChip} title={user.name}>
+                {initials}
+              </div>
+              <div className={styles.userInfo}>
+                <span className={styles.userName}>{user.name}</span>
+                <span className={styles.userRole}>
+                  {ROLE_LABEL[user.role]}, {user.team.name}
+                </span>
+              </div>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={styles.switchAccountButton}
+                onClick={() => logout.mutate()}
+                isLoading={logout.isPending}
+              >
+                Выйти
+              </Button>
             </div>
-            <div className={styles.userInfo}>
-              <span className={styles.userName}>{userName}</span>
-              <span className={styles.userRole}>{userRole}</span>
-            </div>
-            <Link
-              to="/login"
-              className={styles.switchAccountButton}
-              title="Сменить тестового пользователя"
-              aria-label="Сменить тестового пользователя"
-            >
-              Сменить
-            </Link>
-          </div>
+          )}
         </div>
       </header>
 
