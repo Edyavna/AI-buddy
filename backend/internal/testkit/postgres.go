@@ -14,9 +14,20 @@ import (
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/migrations"
 )
 
-// Postgres creates an isolated schema, applies real migrations and registers
+// Postgres creates an isolated database, applies real migrations and registers
 // cleanup. A configured but unreachable database is a failure, never a skip.
 func Postgres(t *testing.T) *sql.DB {
+	t.Helper()
+	db := UnmigratedPostgres(t)
+	if err := migrations.Apply(context.Background(), db, migrations.Files); err != nil {
+		t.Fatal(err)
+	}
+	return db
+}
+
+// UnmigratedPostgres also isolates modules that own fixed schemas.
+// TEST_DATABASE_URL must name a disposable test server with CREATEDB permission.
+func UnmigratedPostgres(t *testing.T) *sql.DB {
 	t.Helper()
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
@@ -31,15 +42,15 @@ func Postgres(t *testing.T) *sql.DB {
 	if err != nil {
 		t.Fatal(err)
 	}
-	schema := "issue9_" + strings.ToLower(rand.Text())
-	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
+	schema := "buddy_test_" + strings.ToLower(rand.Text())
+	if _, err := admin.ExecContext(ctx, "CREATE DATABASE "+schema); err != nil {
 		admin.Close()
 		t.Fatal(err)
 	}
 	t.Cleanup(func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
-		if _, err := admin.ExecContext(ctx, "DROP SCHEMA "+schema+" CASCADE"); err != nil {
+		if _, err := admin.ExecContext(ctx, "DROP DATABASE "+schema+" WITH (FORCE)"); err != nil {
 			t.Error(err)
 		}
 		admin.Close()
@@ -49,15 +60,13 @@ func Postgres(t *testing.T) *sql.DB {
 		t.Fatal(err)
 	}
 	q := u.Query()
-	q.Set("search_path", schema)
+	q.Del("search_path")
 	u.RawQuery = q.Encode()
+	u.Path = "/" + schema
 	db, err := database.Open(ctx, u.String())
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { db.Close() })
-	if err := migrations.Apply(ctx, db, migrations.Files); err != nil {
-		t.Fatal(err)
-	}
 	return db
 }

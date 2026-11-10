@@ -13,7 +13,8 @@ cmd/seed                   идемпотентные синтетические
 internal/auth              серверные сессии, me/logout, middleware
 internal/onboarding        план, переходы и транзакционная связь с заявками
 internal/chat              диалоги, HTTP/SSE, сообщения и recovery
-internal/demo              seed и явная read-only заглушка AccessChecker
+internal/demo              seed и синтетический агент
+internal/integrations      сохраняемая корпоративная имитация и AccessChecker
 internal/app               сборка приложения и graceful shutdown
 internal/platform/config   конфигурация из environment
 internal/platform/database PostgreSQL pool через database/sql и unit of work
@@ -43,7 +44,7 @@ HTTP не импортирует реализацию агента и адапт
 | SESSION_TTL | `24h`, допустимо `1s..8760h` |
 | SESSION_COOKIE_SECURE | `false`; `true` при HTTPS на доверенном proxy; прямой TLS включает автоматически |
 | DEMO_CHAT_DELAY | `250ms`, `0s..5s`, только chunks синтетического агента |
-| TEST_DATABASE_URL | Только тесты; отдельная БД с правом CREATE SCHEMA |
+| TEST_DATABASE_URL | Только тесты; выделенный тестовый сервер, роль с CREATEDB |
 
 Неизвестный boolean, неправильный URL, Origin с путем и неположительные таймауты
 останавливают запуск. URL/пароли, тело запроса, cookie и содержимое panic не логируются.
@@ -81,7 +82,8 @@ HTTP-каркас. `/readyz` отвечает 503 и не выдает имит�
 
 1. Владелец доменного модуля пишет SQL в `internal/platform/migrations/sql`.
 2. BE1 перед объединением выделяет следующий номер после максимального в dev.
-   Заняты `000001_platform.sql`, `000002_session.sql`, `000003_plan.sql`, `000004_chat.sql`.
+   Заняты `000001_platform.sql`, `000002_session.sql`, `000003_plan.sql`,
+   `000004_demo_external.sql`, `000005_chat.sql`.
    Следующий номер резервируется в PR.
 3. Одинаковые номера, неизвестные имена, изменение примененного файла и добавление
    миграции перед уже примененной версией приводят к ошибке.
@@ -89,6 +91,14 @@ HTTP-каркас. `/readyz` отвечает 503 и не выдает имит�
    PostgreSQL advisory lock сериализует параллельные команды. Повтор ничего не меняет.
 5. Примененные файлы не редактируются/удаляются. Исправление — новая миграция вперед.
    DDL вне транзакции (например CREATE INDEX CONCURRENTLY) этим runner не поддерживается.
+
+В PR №20 миграция чата перенумерована с `000004_chat.sql` в `000005_chat.sql`,
+поскольку `000004_demo_external.sql` уже выпущена в dev. Если старая миграция чата
+уже применена на стенде, обычный migrate остановится на неизвестной записи журнала.
+Для одноразового стенда используйте новую пустую БД и повторный seed. Для стенда
+с нужными данными сначала сделайте резервную копию и подготовьте отдельный проверенный
+переход схемы и журнала; простое переименование файла или удаление записи журнала
+не выполняет такой переход. Обычное обновление с dev не требует ручных действий.
 
 Репозитории внутри одной операции получают **тот же** `*sql.Tx` из
 `database.WithinTx`. Ошибка callback и panic откатывают обе записи. Внешние вызовы
@@ -119,8 +129,8 @@ Set-Location backend
 go test -race -count=1 ./...
 ```
 
-Тесты создают случайную изолированную схему и удаляют только ее; не удаляют данные
-остальных схем. Проверяют параллельный/повторный migrate, checksum, откат DDL,
+Тесты создают случайную изолированную БД buddy_test_* и удаляют только её; сохраняют данные
+остальных БД. Проверяют параллельный/повторный migrate, checksum, откат DDL,
 откат unit of work при ошибке/panic и успешный commit. Без TEST_DATABASE_URL — явный
 SKIP, в CI отсутствие переменной считается ошибкой.
 
@@ -167,3 +177,5 @@ Compose build/start, повтор migrate и перезапуск API. В Go-job
 `TestModulesCanBeReplacedWithoutChangingHandler` проверяет подстановку разных
 fake Agent/AccessProvider через один handler с реальной регистрацией httpapi.New.
 Результат покрытия этого прогона — 85.3% statements, не line coverage.
+
+Корпоративная имитация #13, demo-control и сценарии передачи модулей описаны в [README интеграций](internal/integrations/README.md).

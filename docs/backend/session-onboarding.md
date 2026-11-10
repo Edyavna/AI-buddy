@@ -100,11 +100,10 @@ allowed_statuses не содержит текущий статус, но его 
 При blocked никакие пользовательские переходы не разрешены. Самостоятельно
 выставить blocked нельзя. Выдача доступа не означает выполненную настройку.
 
-В internal/app.NewHandler передается AccessChecker. Пока №13 не подключен,
-DEMO_MODE явно использует demo.Access: известные ресурсы своей команды возвращают
-false. Поэтому стажер может начать/сбросить шаг и открыть чат, но completed дает
-409. Нет автоматического fake fallback при ошибках; вне demo отсутствующая
-реализация дает 503. Настоящие grants подключаются через тот же порт.
+В internal/app.NewHandler передается AccessChecker. В DEMO_MODE подключается
+устойчивая имитация #13. Check читает demo_external.grants. Pending возвращает false,
+после demo-control approve выдача права позволяет завершить шаг вручную.
+Вне demo отсутствующая реализация дает 503.
 
 Для №14 подготовлен `onboarding.ApplyRequestStateTx(ctx, tx, owner, stepID, request)`.
 request — ports.RequestState с RequestID, Resource.ID/Permission, Status и при
@@ -137,7 +136,7 @@ go test -race -count=1 -timeout=2m ./...
 go build ./...
 ```
 
-PostgreSQL-тесты создают изолированные схемы. Проверяют серверные сессии, истечение,
+PostgreSQL-тесты создают изолированные базы данных (требуется CREATEDB). Проверяют серверные сессии, истечение,
 смену аккаунта, mentor, чужой шаг в той же и другой команде, повтор PATCH/seed,
 rollback связи/блокировки, несколько ресурсов, сохранение состояния и гонку
 подтверждения со старой кнопкой completed. Без БД локально — явный SKIP; в CI БД

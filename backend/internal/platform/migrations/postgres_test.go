@@ -2,64 +2,75 @@ package migrations_test
 
 import (
 	"context"
-	"crypto/rand"
+
 	"database/sql"
 	"errors"
 	"io/fs"
-	"net/url"
-	"os"
 	"strings"
+
 	"sync"
 	"testing"
 	"testing/fstest"
-	"time"
 
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/migrations"
+	"github.com/Edyavna/AI-buddy/backend/internal/testkit"
 )
 
-func testDB(t *testing.T) *sql.DB {
-	t.Helper()
-	dsn := os.Getenv("TEST_DATABASE_URL")
-	if dsn == "" {
-		if os.Getenv("CI") != "" {
-			t.Fatal("TEST_DATABASE_URL is required in CI")
-		}
-		t.Skip("set TEST_DATABASE_URL to run real PostgreSQL checks")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	admin, err := database.Open(ctx, dsn)
+func testDB(t *testing.T) *sql.DB { return testkit.UnmigratedPostgres(t) }
+
+func TestPostgresUpgradeFromDev(t *testing.T) {
+	db := testDB(t)
+	ctx := context.Background()
+	// Reconstruct the released dev migration set, before chat was added.
+	dev := fstest.MapFS{}
+	entries, err := fs.ReadDir(migrations.Files, "sql")
 	if err != nil {
-		t.Fatal("test database connection failed")
-	}
-	schema := "day1_" + strings.ToLower(rand.Text())
-	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
-		_ = admin.Close()
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_, err := admin.ExecContext(ctx, "DROP SCHEMA "+schema+" CASCADE")
-		if err != nil {
-			t.Error(err)
+	for _, entry := range entries {
+		if entry.Name() > "000004_demo_external.sql" {
+			continue
 		}
-		_ = admin.Close()
-	})
-	u, err := url.Parse(dsn)
-	if err != nil {
-		t.Fatal("TEST_DATABASE_URL must be a URL")
+		data, err := fs.ReadFile(migrations.Files, "sql/"+entry.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		dev["sql/"+entry.Name()] = &fstest.MapFile{Data: data}
 	}
-	q := u.Query()
-	q.Set("search_path", schema)
-	u.RawQuery = q.Encode()
-	db, err := database.Open(ctx, u.String())
-	if err != nil {
-		t.Fatal("schema connection failed")
+	if err := migrations.Apply(ctx, db, dev); err != nil {
+		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = db.Close() })
-	return db
+	var appliedAt string
+	if err := db.QueryRow(`SELECT applied_at::text FROM buddy_schema_migrations WHERE name='000004_demo_external.sql'`).Scan(&appliedAt); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrations.Apply(ctx, db, migrations.Files); err != nil {
+		t.Fatal(err)
+	}
+	if err := migrations.Verify(ctx, db, migrations.Files); err != nil {
+		t.Fatal(err)
+	}
+	var kept string
+	if err := db.QueryRow(`SELECT applied_at::text FROM buddy_schema_migrations WHERE name='000004_demo_external.sql'`).Scan(&kept); err != nil || kept != appliedAt {
+		t.Fatalf("dev migration reapplied: %q != %q: %v", kept, appliedAt, err)
+	}
+	assertDemoAndChat(t, db)
+}
+
+func assertDemoAndChat(t *testing.T, db *sql.DB) {
+	t.Helper()
+	var names string
+	if err := db.QueryRow(`SELECT string_agg(name, ',' ORDER BY name) FROM buddy_schema_migrations`).Scan(&names); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(names, "000004_demo_external.sql,000005_chat.sql") {
+		t.Fatalf("incorrect migration order: %s", names)
+	}
+	var present bool
+	if err := db.QueryRow(`SELECT to_regclass('demo_external.resources') IS NOT NULL AND to_regclass('chat_messages') IS NOT NULL`).Scan(&present); err != nil || !present {
+		t.Fatalf("demo or chat tables missing: %v", err)
+	}
 }
 
 func TestPostgresMigrationLifecycle(t *testing.T) {
@@ -80,6 +91,7 @@ func TestPostgresMigrationLifecycle(t *testing.T) {
 	if err := migrations.Verify(ctx, db, migrations.Files); err != nil {
 		t.Fatal(err)
 	}
+	assertDemoAndChat(t, db)
 	var count int
 	entries, err := fs.ReadDir(migrations.Files, "sql")
 	if err != nil {

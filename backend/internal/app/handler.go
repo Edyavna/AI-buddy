@@ -9,6 +9,7 @@ import (
 	"github.com/Edyavna/AI-buddy/backend/internal/auth"
 	"github.com/Edyavna/AI-buddy/backend/internal/chat"
 	"github.com/Edyavna/AI-buddy/backend/internal/demo"
+	"github.com/Edyavna/AI-buddy/backend/internal/integrations"
 	"github.com/Edyavna/AI-buddy/backend/internal/onboarding"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/config"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/httpapi"
@@ -22,12 +23,12 @@ type Dependencies struct {
 }
 
 // NewHandler is the composition root. Supplying AccessChecker connects #13
-// without changing HTTP handlers. Only explicit demo mode installs the stub.
+// without changing HTTP handlers. Explicit demo mode installs the persistent simulator.
 func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(context.Context) error, deps Dependencies) http.Handler {
 	opts := httpapi.Options{Logger: logger, AllowedOrigins: cfg.AllowedOrigins, Readiness: ready}
 	if db != nil {
 		if deps.Access == nil && cfg.DemoMode {
-			deps.Access = demo.Access{}
+			deps.Access = integrations.New(db)
 		}
 		if deps.Agent == nil && cfg.DemoMode {
 			deps.Agent = demo.Agent{Delay: cfg.DemoChatDelay}
