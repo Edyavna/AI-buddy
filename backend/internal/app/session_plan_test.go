@@ -51,7 +51,7 @@ func TestPostgresPlanPrerequisitesAndEmptyPlan(t *testing.T) {
 	}
 	cfg := config.Config{DemoMode: true, SessionTTL: time.Hour, AllowedOrigins: []string{"http://localhost:5173"}}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	h := NewHandler(cfg, db, logger, nil, grantedAccess{})
+	h := NewHandler(cfg, db, logger, nil, Dependencies{Access: grantedAccess{}})
 	cookie := loginCookie(t, h, "intern_demo_1", nil)
 	if _, err := db.Exec(`INSERT INTO onboarding_steps(id,plan_id,position,title,description,status)
  VALUES('step_next','plan_demo_1',1,'Первая задача','Тестовый второй шаг','not_started');
@@ -116,7 +116,7 @@ func TestPostgresSessionPlanLifecycle(t *testing.T) {
 	}
 	cfg := config.Config{DemoMode: true, SessionTTL: time.Hour, AllowedOrigins: []string{"http://localhost:5173"}}
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
-	h := NewHandler(cfg, db, logger, nil, nil)
+	h := NewHandler(cfg, db, logger, nil, Dependencies{})
 	accounts := apiRequest(t, h, "GET", "/api/v1/demo/accounts", "", nil, 200)
 	var users []auth.User
 	if err := json.Unmarshal(accounts.Body.Bytes(), &users); err != nil || len(users) != 4 {
@@ -155,7 +155,7 @@ func TestPostgresSessionPlanLifecycle(t *testing.T) {
 	if err := demo.Seed(ctx, db, true); err != nil {
 		t.Fatal(err)
 	}
-	restarted := NewHandler(cfg, db, logger, nil, nil)
+	restarted := NewHandler(cfg, db, logger, nil, Dependencies{})
 	apiRequest(t, restarted, "GET", "/api/v1/me", "", cookie, 200)
 	p = decodePlan(t, apiRequest(t, restarted, "GET", "/api/v1/onboarding/plan", "", cookie, 200))
 	if p.Steps[0].Status != "not_started" {
@@ -196,7 +196,7 @@ func TestPostgresSessionPlanLifecycle(t *testing.T) {
 	apiRequest(t, h, "POST", "/api/v1/demo/session", `{"account_id":"private"}`, valid, 404)
 	apiRequest(t, h, "GET", "/api/v1/me", "", valid, 200)
 	cfg.DemoMode = false
-	production := NewHandler(cfg, db, logger, nil, nil)
+	production := NewHandler(cfg, db, logger, nil, Dependencies{})
 	apiRequest(t, production, "GET", "/api/v1/demo/accounts", "", nil, 404)
 	apiRequest(t, production, "POST", "/api/v1/demo/session", `{"account_id":"intern_demo_1"}`, nil, 404)
 	apiRequest(t, production, "GET", "/api/v1/me", "", valid, 200)

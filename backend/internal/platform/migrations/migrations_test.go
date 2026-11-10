@@ -7,7 +7,7 @@ import (
 
 func TestRead(t *testing.T) {
 	items, err := read(Files)
-	if err != nil || len(items) != 3 {
+	if err != nil || len(items) != 4 {
 		t.Fatal(err)
 	}
 	for _, source := range []fstest.MapFS{

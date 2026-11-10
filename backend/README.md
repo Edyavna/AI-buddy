@@ -12,6 +12,7 @@ cmd/migrate                отдельная команда применени�
 cmd/seed                   идемпотентные синтетические аккаунты и планы
 internal/auth              серверные сессии, me/logout, middleware
 internal/onboarding        план, переходы и транзакционная связь с заявками
+internal/chat              диалоги, HTTP/SSE, сообщения и recovery
 internal/demo              seed и явная read-only заглушка AccessChecker
 internal/app               сборка приложения и graceful shutdown
 internal/platform/config   конфигурация из environment
@@ -41,6 +42,7 @@ HTTP не импортирует реализацию агента и адапт
 | SHUTDOWN_TIMEOUT | `10s`, положительная Go duration |
 | SESSION_TTL | `24h`, допустимо `1s..8760h` |
 | SESSION_COOKIE_SECURE | `false`; `true` при HTTPS на доверенном proxy; прямой TLS включает автоматически |
+| DEMO_CHAT_DELAY | `250ms`, `0s..5s`, только chunks синтетического агента |
 | TEST_DATABASE_URL | Только тесты; отдельная БД с правом CREATE SCHEMA |
 
 Неизвестный boolean, неправильный URL, Origin с путем и неположительные таймауты
@@ -79,7 +81,7 @@ HTTP-каркас. `/readyz` отвечает 503 и не выдает имит�
 
 1. Владелец доменного модуля пишет SQL в `internal/platform/migrations/sql`.
 2. BE1 перед объединением выделяет следующий номер после максимального в dev.
-   Заняты `000001_platform.sql`, `000002_session.sql`, `000003_plan.sql`.
+   Заняты `000001_platform.sql`, `000002_session.sql`, `000003_plan.sql`, `000004_chat.sql`.
    Следующий номер резервируется в PR.
 3. Одинаковые номера, неизвестные имена, изменение примененного файла и добавление
    миграции перед уже примененной версией приводят к ошибке.
@@ -143,12 +145,13 @@ ALLOWED_ORIGINS должен содержать фактический адре�
 считаются разными origin). Вход, me/logout и план реализованы в №9.
 Команды запуска, шесть HTTP-примеров и границы demo-заглушки:
 [сессии и план](../docs/backend/session-onboarding.md).
+Диалоги, SSE и восстановление: [чат №10](../docs/backend/chat.md).
 Инфраструктурные `/healthz` и `/readyz` не меняют бизнес-OpenAPI.
 
 Для будущего SSE middleware не буферизует ответ и поддерживает Flush/ResponseController.
-У сервера нет общего WriteTimeout; генерация получит собственные 120 секунд в #10.
+У сервера нет общего WriteTimeout; генерация ограничена 120 секундами в chat.
 При reverse proxy отключить buffering и выставить read timeout >120 секунд;
-heartbeat 15 секунд реализуется вместе с чат-потоком. До отправки заголовков panic
+heartbeat реализован с интервалом 15 секунд. До отправки заголовков panic
 дает 500 ApiError, после начала ответа соединение обрывается без добавления JSON.
 
 ## CI и границы проверки

@@ -92,3 +92,17 @@ testkit.Agent, Knowledge, Tasks, Access, Requests и Drafts доступны д�
 валидность версии/перехода заявки и права проверяет request-service. После изменения
 revision плана старый PATCH повторяет проверку. SQL-транзакция не содержит сетевых
 вызовов. Подробности и примеры: [сессии и план](session-onboarding.md).
+
+## Чат (#10)
+
+Composition root получает app.Dependencies с Access, Agent и Requests. Сигнатуры
+ports.Agent/RequestReader/DraftService сохранены. Chat хранит сообщения/историю,
+управляет SSE и отменой. В DEMO_MODE явно подключён demo.Agent без источников/заявок;
+вне demo отсутствие Agent даёт 503. [Запуск и подключение](chat.md).
+
+`chat.LinkRequestTx(ctx, tx, owner, assistantID, requestID)` — SQL-стык для #14:
+вызывается в транзакции сохранения проверенного draft. Порядок блокировок:
+план → заявка → диалог → assistant. Helper не коммитит и не подтверждает заявку.
+draft.saved перечитывается через RequestReader, сверяется с SQL-связью и контекстом;
+только актуальный draft превращается в action.proposed. Финал сохраняет committed
+связи даже при ошибке модели. Настоящий SQL Store заявок/confirm остаются в #14.
