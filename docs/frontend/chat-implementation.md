@@ -1,6 +1,6 @@
 # FE1: диалоги и SSE (#3)
 
-Ветка feature/fe1-chat-sse создана от dev (5fea9b6). В dev на старте были
+Ветка codex/fe1-chat-sse создана от dev (5fea9b6). В dev на старте были
 каркас #1 и транспорт #2; features/session, onboarding и access-requests пока
 не публиковали реализацию. Чужие task-ветки не объединялись автоматически.
 
@@ -53,18 +53,3 @@ npm run test:coverage, npm run build, npm run check:api.
 Unit/component-тесты покрывают байтовые разрывы, EOF, ошибки протокола, 409/401,
 восстановление, лимит ожидания, создание без дублей, stepId и смену URL.
 Проверка с реальным Go/LLM и визуальная проверка в браузере пока не заявляются.
-
-## Локальный просмотр чата без backend
-
-Из frontend в PowerShell:
-
-```powershell
-$env:VITE_API_MOCKING = 'enabled'
-$env:VITE_DEMO_PREVIEW = 'enabled'
-npm run dev -- --host 127.0.0.1
-```
-
-Открыть http://127.0.0.1:5173/chat. Preview добавляет синтетические me/plan
-только при двух явно включённых флагах в development-сборке. Это демонстрация
-UI и SSE с MSW, а не настоящий LLM. Обычный запуск: убрать обе переменные
-окружения и выполнить npm run dev (для запросов нужен API на localhost:8080).
