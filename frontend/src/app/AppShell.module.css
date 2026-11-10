@@ -160,12 +160,7 @@
   position: relative;
   min-height: 44px;
   margin-left: var(--space-2);
-  display: inline-flex;
-  align-items: center;
-  color: var(--color-text-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-medium);
-  text-decoration: none;
+  border-radius: var(--radius-pill);
 }
 
 .switchAccountButton::after {

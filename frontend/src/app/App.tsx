@@ -6,13 +6,11 @@ import { createQueryClient } from '@/shared/api';
 import '@/shared/styles/tokens.css';
 import '@/shared/styles/reset.css';
 
-const queryClient = createQueryClient();
+export const queryClient = createQueryClient();
 
 export interface AppProps {
   routerOverride?: ReturnType<typeof import('react-router-dom').createMemoryRouter>;
-}
-
-export const App: React.FC<AppProps> = ({ routerOverride }) => {
+}export const App: React.FC<AppProps> = ({ routerOverride }) => {
   return (
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={routerOverride || router} />
