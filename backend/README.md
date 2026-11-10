@@ -41,7 +41,7 @@ HTTP не импортирует реализацию агента и адапт
 | SHUTDOWN_TIMEOUT | `10s`, положительная Go duration |
 | SESSION_TTL | `24h`, допустимо `1s..8760h` |
 | SESSION_COOKIE_SECURE | `false`; `true` при HTTPS на доверенном proxy; прямой TLS включает автоматически |
-| TEST_DATABASE_URL | Только тесты; отдельная БД с правом CREATE SCHEMA |
+| TEST_DATABASE_URL | Только тесты; выделенный тестовый сервер, роль с CREATEDB |
 
 Неизвестный boolean, неправильный URL, Origin с путем и неположительные таймауты
 останавливают запуск. URL/пароли, тело запроса, cookie и содержимое panic не логируются.
@@ -117,8 +117,8 @@ Set-Location backend
 go test -race -count=1 ./...
 ```
 
-Тесты создают случайную изолированную схему и удаляют только ее; не удаляют данные
-остальных схем. Проверяют параллельный/повторный migrate, checksum, откат DDL,
+Тесты создают случайную изолированную БД buddy_test_* и удаляют только её; сохраняют данные
+остальных БД. Проверяют параллельный/повторный migrate, checksum, откат DDL,
 откат unit of work при ошибке/panic и успешный commit. Без TEST_DATABASE_URL — явный
 SKIP, в CI отсутствие переменной считается ошибкой.
 
@@ -164,3 +164,5 @@ Compose build/start, повтор migrate и перезапуск API. В Go-job
 `TestModulesCanBeReplacedWithoutChangingHandler` проверяет подстановку разных
 fake Agent/AccessProvider через один handler с реальной регистрацией httpapi.New.
 Результат покрытия этого прогона — 85.3% statements, не line coverage.
+
+Корпоративная имитация #13, demo-control и сценарии передачи модулей описаны в [README интеграций](internal/integrations/README.md).

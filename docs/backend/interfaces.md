@@ -84,7 +84,7 @@ testkit.Agent, Knowledge, Tasks, Access, Requests и Drafts доступны д�
 `auth.Handler.Require` проверяет cookie и устанавливает доверенный Principal.
 Для бизнес-маршрутов передается internOnly=true; сервисы повторно проверяют роль
 и владельца. `app.NewHandler` получает ports.AccessChecker для правил завершения
-шага; в DEMO_MODE до #13 явно подключается demo.Access без выданных прав.
+шага; в DEMO_MODE подключается integrations.Provider из #13, читающий demo_external.grants.
 
 `onboarding.LockPlanTx(ctx, tx, owner)` задает порядок блокировок для #14:
 план, затем запись заявки/job. `ApplyRequestStateTx(ctx, tx, owner, stepID, request)`

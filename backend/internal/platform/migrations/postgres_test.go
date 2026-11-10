@@ -2,65 +2,21 @@ package migrations_test
 
 import (
 	"context"
-	"crypto/rand"
+
 	"database/sql"
 	"errors"
 	"io/fs"
-	"net/url"
-	"os"
-	"strings"
+
 	"sync"
 	"testing"
 	"testing/fstest"
-	"time"
 
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/migrations"
+	"github.com/Edyavna/AI-buddy/backend/internal/testkit"
 )
 
-func testDB(t *testing.T) *sql.DB {
-	t.Helper()
-	dsn := os.Getenv("TEST_DATABASE_URL")
-	if dsn == "" {
-		if os.Getenv("CI") != "" {
-			t.Fatal("TEST_DATABASE_URL is required in CI")
-		}
-		t.Skip("set TEST_DATABASE_URL to run real PostgreSQL checks")
-	}
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	admin, err := database.Open(ctx, dsn)
-	if err != nil {
-		t.Fatal("test database connection failed")
-	}
-	schema := "day1_" + strings.ToLower(rand.Text())
-	if _, err := admin.ExecContext(ctx, "CREATE SCHEMA "+schema); err != nil {
-		_ = admin.Close()
-		t.Fatal(err)
-	}
-	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_, err := admin.ExecContext(ctx, "DROP SCHEMA "+schema+" CASCADE")
-		if err != nil {
-			t.Error(err)
-		}
-		_ = admin.Close()
-	})
-	u, err := url.Parse(dsn)
-	if err != nil {
-		t.Fatal("TEST_DATABASE_URL must be a URL")
-	}
-	q := u.Query()
-	q.Set("search_path", schema)
-	u.RawQuery = q.Encode()
-	db, err := database.Open(ctx, u.String())
-	if err != nil {
-		t.Fatal("schema connection failed")
-	}
-	t.Cleanup(func() { _ = db.Close() })
-	return db
-}
+func testDB(t *testing.T) *sql.DB { return testkit.UnmigratedPostgres(t) }
 
 func TestPostgresMigrationLifecycle(t *testing.T) {
 	db := testDB(t)

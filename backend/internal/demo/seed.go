@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/Edyavna/AI-buddy/backend/internal/integrations"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/identity"
 	"github.com/Edyavna/AI-buddy/backend/internal/ports"
@@ -17,7 +18,7 @@ func Seed(ctx context.Context, db *sql.DB, enabled bool) error {
 	if !enabled {
 		return errors.New("demo seed requires DEMO_MODE=true")
 	}
-	return database.WithinTx(ctx, db, func(tx *sql.Tx) error {
+	err := database.WithinTx(ctx, db, func(tx *sql.Tx) error {
 		statements := []string{
 			`INSERT INTO teams(id,name) VALUES ('team_demo_backend','Тестовая backend-команда'),('team_demo_frontend','Тестовая frontend-команда') ON CONFLICT DO NOTHING`,
 			`INSERT INTO users(id,team_id,name,role,demo_account) VALUES
@@ -41,9 +42,13 @@ func Seed(ctx context.Context, db *sql.DB, enabled bool) error {
 		}
 		return nil
 	})
+	if err != nil {
+		return err
+	}
+	return integrations.Seed(ctx, db, true)
 }
 
-// Access is a read-only demo fixture until #13 is connected. No grant is issued
+// Access is a legacy read-only fixture for explicit callers. No grant is issued
 // by this stub; a pending/nonexistent request never counts as an access right.
 type Access struct{}
 
