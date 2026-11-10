@@ -113,6 +113,14 @@ func TestServer(t *testing.T) {
 }
 
 func TestOriginAndValidation(t *testing.T) {
+	// An arbitrary caller's root mux handler is an operation, not our 404 fallback.
+	root := http.NewServeMux()
+	root.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(200) })
+	rootResponse := httptest.NewRecorder()
+	Middleware(quietLogger(), nil, root).ServeHTTP(rootResponse, httptest.NewRequest("POST", "/", nil))
+	if rootResponse.Code != 403 {
+		t.Fatal("root mux bypassed Origin")
+	}
 	h := New(Options{Logger: quietLogger(), AllowedOrigins: []string{"http://localhost:5173"}, Register: func(mux *http.ServeMux) {
 		mux.HandleFunc("POST /api/v1/test", func(w http.ResponseWriter, r *http.Request) {
 			WriteError(w, r, ValidationError(map[string]string{"name": "Обязательное поле"}))

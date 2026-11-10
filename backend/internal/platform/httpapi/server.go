@@ -41,6 +41,10 @@ func (w *responseWriter) Flush() { _ = w.FlushError() }
 
 // Middleware must remain streaming-friendly: never buffer HTTP response bodies.
 func Middleware(logger *slog.Logger, origins []string, next http.Handler) http.Handler {
+	return middleware(logger, origins, next, nil)
+}
+
+func middleware(logger *slog.Logger, origins []string, next http.Handler, missing func(*http.Request) bool) http.Handler {
 	allowed := make(map[string]bool)
 	for _, origin := range origins {
 		allowed[origin] = true
@@ -68,6 +72,12 @@ func Middleware(logger *slog.Logger, origins []string, next http.Handler) http.H
 			}
 			logger.Info("request finished", "trace_id", id, "method", r.Method, "status", tracked.status, "duration_ms", time.Since(started).Milliseconds())
 		}()
+		// No operation exists on the fallback route. Return its uniform 404
+		// before Origin checks, including demo endpoints disabled by configuration.
+		if missing != nil && missing(r) {
+			next.ServeHTTP(w, r)
+			return
+		}
 		switch r.Method {
 		case http.MethodPost, http.MethodPatch, http.MethodDelete, http.MethodPut:
 			if !allowed[r.Header.Get("Origin")] {
@@ -107,5 +117,8 @@ func New(opts Options) http.Handler {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		WriteError(w, r, &Error{Status: 404, Code: "NOT_FOUND", Message: "Маршрут отсутствует или пока не реализован"})
 	})
-	return Middleware(opts.Logger, opts.AllowedOrigins, mux)
+	return middleware(opts.Logger, opts.AllowedOrigins, mux, func(r *http.Request) bool {
+		_, pattern := mux.Handler(r)
+		return pattern == "/"
+	})
 }

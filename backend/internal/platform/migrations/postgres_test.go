@@ -81,14 +81,14 @@ func TestPostgresMigrationLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	var count int
-	if err := db.QueryRowContext(ctx, "SELECT count(*) FROM buddy_schema_migrations").Scan(&count); err != nil || count != 1 {
-		t.Fatalf("journal=%d: %v", count, err)
-	}
-	source := fstest.MapFS{}
 	entries, err := fs.ReadDir(migrations.Files, "sql")
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := db.QueryRowContext(ctx, "SELECT count(*) FROM buddy_schema_migrations").Scan(&count); err != nil || count != len(entries) {
+		t.Fatalf("journal=%d: %v", count, err)
+	}
+	source := fstest.MapFS{}
 	for _, entry := range entries {
 		data, err := fs.ReadFile(migrations.Files, "sql/"+entry.Name())
 		if err != nil {
@@ -96,7 +96,7 @@ func TestPostgresMigrationLifecycle(t *testing.T) {
 		}
 		source["sql/"+entry.Name()] = &fstest.MapFile{Data: data}
 	}
-	source["sql/000002_broken.sql"] = &fstest.MapFile{Data: []byte("CREATE TABLE must_rollback(id integer); SELECT missing_column;")}
+	source["sql/999999_broken.sql"] = &fstest.MapFile{Data: []byte("CREATE TABLE must_rollback(id integer); SELECT missing_column;")}
 	if err := migrations.Apply(ctx, db, source); err == nil {
 		t.Fatal("invalid SQL accepted")
 	}
@@ -104,7 +104,7 @@ func TestPostgresMigrationLifecycle(t *testing.T) {
 	if err := db.QueryRowContext(ctx, "SELECT to_regclass('must_rollback') IS NOT NULL").Scan(&tableExists); err != nil || tableExists {
 		t.Fatalf("DDL escaped rollback: %v", err)
 	}
-	delete(source, "sql/000002_broken.sql")
+	delete(source, "sql/999999_broken.sql")
 	source["sql/000001_platform.sql"] = &fstest.MapFile{Data: []byte("SELECT 2;")}
 	if err := migrations.Apply(ctx, db, source); err == nil {
 		t.Fatal("changed applied migration accepted")

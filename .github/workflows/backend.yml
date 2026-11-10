@@ -62,11 +62,18 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
       - run: docker compose config --quiet
       - run: docker compose up --build --wait --wait-timeout 180 api
       - run: curl --fail http://localhost:8080/healthz && curl --fail http://localhost:8080/readyz
       - name: Reapply migrations
         run: docker compose run --rm migrate
+      - name: Seed demo accounts and save session and progress
+        run: |
+          docker compose --profile demo run --rm seed
+          python scripts/smoke_session_onboarding.py prepare
       - name: Persist a probe and recreate containers without removing the volume
         run: |
           docker compose exec -T db psql -U buddy -d buddy -v ON_ERROR_STOP=1 -c "CREATE TABLE day1_restart_probe (id integer PRIMARY KEY); INSERT INTO day1_restart_probe VALUES (1);"
@@ -74,7 +81,11 @@ jobs:
           docker compose up -d --wait --wait-timeout 120 api
           curl --fail http://localhost:8080/readyz
           test "$(docker compose exec -T db psql -U buddy -d buddy -tAc 'SELECT count(*) FROM day1_restart_probe')" = "1"
-          test "$(docker compose exec -T db psql -U buddy -d buddy -tAc 'SELECT count(*) FROM buddy_schema_migrations')" = "1"
+          test "$(docker compose exec -T db psql -U buddy -d buddy -tAc 'SELECT count(*) FROM buddy_schema_migrations')" = "$(find backend/internal/platform/migrations/sql -name '*.sql' | wc -l | tr -d ' ')"
+      - name: Repeat seed without resetting progress and verify after restart
+        run: |
+          docker compose --profile demo run --rm seed
+          python scripts/smoke_session_onboarding.py verify
       - if: failure()
         run: docker compose logs
       - if: always()

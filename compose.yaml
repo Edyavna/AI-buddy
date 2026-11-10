@@ -11,6 +11,8 @@ x-backend: &backend
     ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:8080}
     STARTUP_TIMEOUT: ${STARTUP_TIMEOUT:-15s}
     SHUTDOWN_TIMEOUT: ${SHUTDOWN_TIMEOUT:-10s}
+    SESSION_TTL: ${SESSION_TTL:-24h}
+    SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
 
 services:
   db:
@@ -35,6 +37,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    restart: "no"
+
+  seed:
+    <<: *backend
+    command: ["/app/seed"]
+    profiles: ["demo"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
     restart: "no"
 
   api:

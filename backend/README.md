@@ -1,4 +1,4 @@
-# Go-бэкенд: первый этап
+# Go-бэкенд
 
 Один Go module `github.com/Edyavna/AI-buddy/backend`, Go 1.26.5,
 PostgreSQL 17, драйвер pgx v5.11.0; точные Go-зависимости в go.mod/go.sum.
@@ -9,6 +9,10 @@ PostgreSQL 17, драйвер pgx v5.11.0; точные Go-зависимост�
 ```text
 cmd/server                 конфигурация, сигналы, запуск
 cmd/migrate                отдельная команда применения миграций
+cmd/seed                   идемпотентные синтетические аккаунты и планы
+internal/auth              серверные сессии, me/logout, middleware
+internal/onboarding        план, переходы и транзакционная связь с заявками
+internal/demo              seed и явная read-only заглушка AccessChecker
 internal/app               сборка приложения и graceful shutdown
 internal/platform/config   конфигурация из environment
 internal/platform/database PostgreSQL pool через database/sql и unit of work
@@ -31,10 +35,12 @@ HTTP не импортирует реализацию агента и адапт
 | HTTP_ADDR | `:8080` |
 | DATABASE_ENABLED | `true`; `false` разрешен только с DEMO_MODE=true |
 | DATABASE_URL | Обязательный PostgreSQL URL при включенной БД |
-| DEMO_MODE | `false`; сам по себе пока не создает аккаунты |
+| DEMO_MODE | `false`; включает accounts/session, seed запускается отдельно |
 | ALLOWED_ORIGINS | `http://localhost:5173,http://localhost:8080` |
 | STARTUP_TIMEOUT | `15s`, положительная Go duration |
 | SHUTDOWN_TIMEOUT | `10s`, положительная Go duration |
+| SESSION_TTL | `24h`, допустимо `1s..8760h` |
+| SESSION_COOKIE_SECURE | `false`; `true` при HTTPS на доверенном proxy; прямой TLS включает автоматически |
 | TEST_DATABASE_URL | Только тесты; отдельная БД с правом CREATE SCHEMA |
 
 Неизвестный boolean, неправильный URL, Origin с путем и неположительные таймауты
@@ -54,6 +60,7 @@ $env:DEMO_MODE = 'true'
 $env:ALLOWED_ORIGINS = 'http://localhost:5173,http://localhost:8080'
 Set-Location backend
 go run ./cmd/migrate
+go run ./cmd/seed
 go run ./cmd/server
 ```
 
@@ -71,8 +78,9 @@ HTTP-каркас. `/readyz` отвечает 503 и не выдает имит�
 в бинарнике через embed. Отдельную CLI устанавливать не нужно.
 
 1. Владелец доменного модуля пишет SQL в `internal/platform/migrations/sql`.
-2. BE1 перед объединением выделяет следующий номер после максимального в main:
-   `000002_session.sql`, затем `000003_plan.sql` и т.д. Номер резервируется в PR.
+2. BE1 перед объединением выделяет следующий номер после максимального в dev.
+   Заняты `000001_platform.sql`, `000002_session.sql`, `000003_plan.sql`.
+   Следующий номер резервируется в PR.
 3. Одинаковые номера, неизвестные имена, изменение примененного файла и добавление
    миграции перед уже примененной версией приводят к ошибке.
 4. SQL выполняется в одной транзакции с журналом `buddy_schema_migrations`;
@@ -84,8 +92,8 @@ HTTP-каркас. `/readyz` отвечает 503 и не выдает имит�
 `database.WithinTx`. Ошибка callback и panic откатывают обе записи. Внешние вызовы
 не входят в транзакцию. Черновик и связь с assistant координирует `drafts.Service`;
 реальный SQL Store с проверкой владельцев появится с таблицами чата/заявок.
-Сегодняшняя baseline-миграция намеренно не создает доменные таблицы и не засеивает
-аккаунты: их владельцы добавят миграции и идемпотентный seed в следующих задачах.
+Миграции №9 создают пользователей/команды, серверные сессии и планы/шаги.
+Demo seed — отдельная команда; повтор не изменяет прогресс и заявки.
 
 ## Тесты
 
@@ -128,12 +136,14 @@ CI сохраняет этот отчет, но не объявляет выпо
 
 ## Передача фронтенду
 
-API: `http://localhost:8080`, будущие операции — `/api/v1`.
+API: `http://localhost:8080`, операции сессий и плана — `/api/v1`.
 Vite proxy: `/api` → `http://localhost:8080`, `changeOrigin: false`, чтобы сохранить
 браузерный Origin. React обращается по относительным URL с cookie через fetch.
 ALLOWED_ORIGINS должен содержать фактический адрес фронтенда (127.0.0.1 и localhost
-считаются разными origin). До задачи #9 входа и `/me` нет; используйте согласованные
-MSW-примеры. Инфраструктурные `/healthz` и `/readyz` не меняют бизнес-OpenAPI.
+считаются разными origin). Вход, me/logout и план реализованы в №9.
+Команды запуска, шесть HTTP-примеров и границы demo-заглушки:
+[сессии и план](../docs/backend/session-onboarding.md).
+Инфраструктурные `/healthz` и `/readyz` не меняют бизнес-OpenAPI.
 
 Для будущего SSE middleware не буферизует ответ и поддерживает Flush/ResponseController.
 У сервера нет общего WriteTimeout; генерация получит собственные 120 секунд в #10.
@@ -146,7 +156,8 @@ heartbeat 15 секунд реализуется вместе с чат-пото
 [Workflow](../.github/workflows/backend.yml): gofmt, go mod verify, go vet,
 unit/PostgreSQL tests с race, statement coverage, сборка, валидатор контрактов,
 Compose build/start, повтор migrate и перезапуск API. В Go-job тесты не требуют
-личного .env или LLM-ключа. Контейнерный job проверяет инфраструктурный каркас.
+личного .env или LLM-ключа. Контейнерный job дополнительно проверяет вход, изменение
+плана, повтор seed, сохранение сессии и прогресса после пересоздания контейнеров.
 [Прогон CI](https://github.com/Edyavna/AI-buddy/actions/runs/42664225153) подтвердил
 настоящие SQL-тесты, контейнерный запуск, повтор миграций и сохранность данных после
 пересоздания контейнеров без удаления тома. Тест

@@ -10,18 +10,20 @@ import (
 )
 
 type Config struct {
-	HTTPAddr        string
-	DatabaseURL     string
-	AllowedOrigins  []string
-	DemoMode        bool
-	DatabaseEnabled bool
-	StartupTimeout  time.Duration
-	ShutdownTimeout time.Duration
+	HTTPAddr            string
+	DatabaseURL         string
+	AllowedOrigins      []string
+	DemoMode            bool
+	DatabaseEnabled     bool
+	StartupTimeout      time.Duration
+	ShutdownTimeout     time.Duration
+	SessionTTL          time.Duration
+	SessionCookieSecure bool
 }
 
 // Load deliberately does not read .env files. The launcher supplies environment.
 func Load(getenv func(string) string) (Config, error) {
-	c := Config{HTTPAddr: ":8080", DatabaseEnabled: true, StartupTimeout: 15 * time.Second, ShutdownTimeout: 10 * time.Second}
+	c := Config{HTTPAddr: ":8080", DatabaseEnabled: true, StartupTimeout: 15 * time.Second, ShutdownTimeout: 10 * time.Second, SessionTTL: 24 * time.Hour}
 	if value := getenv("HTTP_ADDR"); value != "" {
 		c.HTTPAddr = value
 	}
@@ -33,7 +35,7 @@ func Load(getenv func(string) string) (Config, error) {
 	if err != nil || p < 0 || p > 65535 {
 		return Config{}, fmt.Errorf("HTTP_ADDR port must be 0..65535")
 	}
-	for key, target := range map[string]*bool{"DEMO_MODE": &c.DemoMode, "DATABASE_ENABLED": &c.DatabaseEnabled} {
+	for key, target := range map[string]*bool{"DEMO_MODE": &c.DemoMode, "DATABASE_ENABLED": &c.DatabaseEnabled, "SESSION_COOKIE_SECURE": &c.SessionCookieSecure} {
 		if value := getenv(key); value != "" {
 			parsed, err := strconv.ParseBool(value)
 			if err != nil {
@@ -41,6 +43,13 @@ func Load(getenv func(string) string) (Config, error) {
 			}
 			*target = parsed
 		}
+	}
+	if value := getenv("SESSION_TTL"); value != "" {
+		ttl, err := time.ParseDuration(value)
+		if err != nil || ttl < time.Second || ttl > 365*24*time.Hour {
+			return Config{}, fmt.Errorf("SESSION_TTL must be between 1s and 8760h")
+		}
+		c.SessionTTL = ttl
 	}
 	for key, target := range map[string]*time.Duration{"STARTUP_TIMEOUT": &c.StartupTimeout, "SHUTDOWN_TIMEOUT": &c.ShutdownTimeout} {
 		if value := getenv(key); value != "" {

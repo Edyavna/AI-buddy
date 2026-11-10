@@ -29,6 +29,12 @@ func TestLoad(t *testing.T) {
 		{"startup", "STARTUP_TIMEOUT", "25s", ""},
 		{"bad startup", "STARTUP_TIMEOUT", "bad", "STARTUP_TIMEOUT"},
 		{"zero shutdown", "SHUTDOWN_TIMEOUT", "0s", "SHUTDOWN_TIMEOUT"},
+		{"session ttl", "SESSION_TTL", "2h", ""},
+		{"bad session ttl", "SESSION_TTL", "bad", "SESSION_TTL"},
+		{"short session ttl", "SESSION_TTL", "500ms", "SESSION_TTL"},
+		{"long session ttl", "SESSION_TTL", "8761h", "SESSION_TTL"},
+		{"secure cookie", "SESSION_COOKIE_SECURE", "true", ""},
+		{"bad secure flag", "SESSION_COOKIE_SECURE", "bad", "SESSION_COOKIE_SECURE"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

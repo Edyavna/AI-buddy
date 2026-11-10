@@ -11,7 +11,6 @@ import (
 
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/config"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
-	"github.com/Edyavna/AI-buddy/backend/internal/platform/httpapi"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/migrations"
 )
 
@@ -45,7 +44,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	defer listener.Close()
 	logger.Info("server listening", "address", listener.Addr().String(), "database_enabled", cfg.DatabaseEnabled)
 	server := &http.Server{
-		Handler:           httpapi.New(httpapi.Options{Logger: logger, AllowedOrigins: cfg.AllowedOrigins, Readiness: ready}),
+		Handler:           NewHandler(cfg, db, logger, ready, nil),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second,
 		// WriteTimeout=0 for future SSE. Chat owns its 120s generation deadline.
 		BaseContext: func(net.Listener) context.Context { return ctx },
