@@ -26,4 +26,5 @@ Thumbs.db
 .agents/
 .claude/
 agent/
+!backend/internal/agent/
 skills-lock.json
