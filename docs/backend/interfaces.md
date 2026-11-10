@@ -78,3 +78,17 @@ AccessResult использует pending/granted/rejected/failed. Для пер
 ## Тестовые подключения
 
 testkit.Agent, Knowledge, Tasks, Access, Requests и Drafts доступны для независимой работы. Это doubles, не долговечное хранилище/LLM. Согласованный интерфейс не доказывает реальную интеграцию. Задания: [Рома](roma.md), [Егор](egor.md).
+
+## Сессии и план (#9)
+
+`auth.Handler.Require` проверяет cookie и устанавливает доверенный Principal.
+Для бизнес-маршрутов передается internOnly=true; сервисы повторно проверяют роль
+и владельца. `app.NewHandler` получает ports.AccessChecker для правил завершения
+шага; в DEMO_MODE до #13 явно подключается demo.Access без выданных прав.
+
+`onboarding.LockPlanTx(ctx, tx, owner)` задает порядок блокировок для #14:
+план, затем запись заявки/job. `ApplyRequestStateTx(ctx, tx, owner, stepID, request)`
+обновляет связь и блокировку шага в той же транзакции. request — ports.RequestState;
+валидность версии/перехода заявки и права проверяет request-service. После изменения
+revision плана старый PATCH повторяет проверку. SQL-транзакция не содержит сетевых
+вызовов. Подробности и примеры: [сессии и план](session-onboarding.md).
