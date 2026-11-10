@@ -4,6 +4,7 @@ import styles from './StatusBadge.module.css';
 
 export type BadgeStatus =
   // Onboarding step statuses
+  | 'not_started'
   | 'in_progress'
   | 'blocked'
   | 'completed'
@@ -27,6 +28,7 @@ const STATUS_CONFIG: Record<
   { label: string; tone: 'neutral' | 'info' | 'warning' | 'success' | 'danger' }
 > = {
   // Plan steps
+  not_started: { label: 'Не начат', tone: 'neutral' },
   in_progress: { label: 'В работе', tone: 'info' },
   blocked: { label: 'Заблокирован', tone: 'neutral' },
   completed: { label: 'Выполнен', tone: 'success' },

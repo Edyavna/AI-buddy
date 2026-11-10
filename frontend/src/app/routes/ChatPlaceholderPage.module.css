@@ -286,48 +286,6 @@
   color: rgba(255, 255, 255, 0.7);
 }
 
-.requestPreviewCard {
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  border-radius: var(--radius-md);
-  background-color: var(--color-surface);
-}
-
-.requestCardHeader {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: var(--space-3);
-}
-
-.requestCardTitle {
-  color: var(--color-text-primary);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-bold);
-}
-
-.requestDetailRow {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2) var(--space-6);
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-}
-
-.requestDetailRow strong {
-  color: var(--color-text-primary);
-  font-weight: var(--font-weight-semibold);
-}
-
-.requestSuccess {
-  color: var(--avito-green-text);
-  font-size: var(--font-size-sm);
-  font-weight: var(--font-weight-semibold);
-  line-height: var(--line-height-normal);
-}
-
 .sourcesGroup {
   padding-top: var(--space-3);
   display: flex;
@@ -425,41 +383,6 @@
 .composerIcon {
   width: 20px;
   height: 20px;
-}
-
-.dialogMetaGrid {
-  padding: var(--space-3) 0;
-  display: grid;
-  grid-template-columns: 150px 1fr;
-  row-gap: var(--space-3);
-  column-gap: var(--space-4);
-  font-size: var(--font-size-sm);
-}
-
-.dialogMetaLabel {
-  color: var(--color-text-secondary);
-  font-weight: var(--font-weight-medium);
-}
-
-.dialogMetaValue {
-  color: var(--color-text-primary);
-  font-weight: var(--font-weight-semibold);
-}
-
-.dialogCallout {
-  margin-top: var(--space-4);
-  padding: var(--space-4);
-  border-radius: var(--radius-md);
-  background-color: var(--avito-blue-bg);
-  color: var(--avito-blue-text);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-normal);
-}
-
-.dialogIntro {
-  color: var(--color-text-secondary);
-  font-size: var(--font-size-sm);
-  line-height: var(--line-height-normal);
 }
 
 .docContainer {
@@ -607,15 +530,6 @@
     max-width: 100%;
   }
 
-  .requestCardHeader {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .requestDetailRow {
-    flex-direction: column;
-  }
-
   .composerBar {
     padding: var(--space-3);
   }
@@ -624,15 +538,6 @@
     padding-right: var(--space-4);
     padding-left: var(--space-4);
     font-size: var(--font-size-base);
-  }
-
-  .dialogMetaGrid {
-    grid-template-columns: 1fr;
-    gap: var(--space-1);
-  }
-
-  .dialogMetaValue {
-    margin-bottom: var(--space-2);
   }
 }
 

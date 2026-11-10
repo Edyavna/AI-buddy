@@ -1,17 +1,21 @@
 import { createBrowserRouter, Navigate, RouteObject } from 'react-router-dom';
 import { AppShell } from './AppShell';
-import { OnboardingPlaceholderPage } from './routes/OnboardingPlaceholderPage';
+import { LoginPage, RequireAuth } from '@/features/session';
+import { PlanPage } from '@/features/onboarding';
 import { ChatPlaceholderPage } from './routes/ChatPlaceholderPage';
-import { LoginPlaceholderPage } from './routes/LoginPlaceholderPage';
 
 export const routes: RouteObject[] = [
   {
     path: '/login',
-    element: <LoginPlaceholderPage />,
+    element: <LoginPage />,
   },
   {
     path: '/',
-    element: <AppShell />,
+    element: (
+      <RequireAuth>
+        <AppShell />
+      </RequireAuth>
+    ),
     children: [
       {
         index: true,
@@ -19,7 +23,7 @@ export const routes: RouteObject[] = [
       },
       {
         path: 'onboarding',
-        element: <OnboardingPlaceholderPage />,
+        element: <PlanPage />,
       },
       {
         path: 'chat',
