@@ -42,6 +42,13 @@ pgvector; TestPostgresACLAndImport проверяет повторный имп�
 Search/Read/GET, чужую команду, отличение сбоя от пустого поиска.
 Без TEST_DATABASE_URL этот тест пропускается, качество embeddings он не измеряет.
 
+Тестовая база в CI и Compose использует pgvector/pgvector:0.8.7-pg17
+([официальные образы](https://github.com/pgvector/pgvector#docker)).
+Из корня проекта: `docker compose --profile test up -d --wait db-test`.
+В PowerShell перед Go-тестами:
+`$env:TEST_DATABASE_URL='postgres://buddy:buddy_test_only@localhost:5433/buddy_test?sslmode=disable'`.
+Платные API для SQL-теста не нужны: используется fake Embedder, а PostgreSQL настоящий.
+
 Набор для живой оценки (ожидаемый документ):
 
 | Вопрос | Ожидание |
