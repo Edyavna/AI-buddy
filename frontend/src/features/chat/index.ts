@@ -1,2 +1,2 @@
 // FE1 (Никита): Чат и диалоги (#2, #3)
-export {};
+export { ChatPage } from './ChatPage';
