@@ -1,0 +1,92 @@
+[
+  {
+    "ID": "doc_local_setup",
+    "Source": "demo-markdown",
+    "SourceID": "local_setup.md",
+    "Title": "Локальный запуск",
+    "TeamID": "team_demo_backend",
+    "Users": [],
+    "UpdatedAt": "2026-11-10T12:00:00Z"
+  },
+  {
+    "ID": "doc_tools",
+    "Source": "demo-markdown",
+    "SourceID": "tools.md",
+    "Title": "Инструменты",
+    "TeamID": "team_demo_backend",
+    "Users": [],
+    "UpdatedAt": "2026-11-10T12:00:00Z"
+  },
+  {
+    "ID": "doc_access",
+    "Source": "demo-markdown",
+    "SourceID": "access.md",
+    "Title": "Запрос доступа",
+    "TeamID": "team_demo_backend",
+    "Users": [],
+    "UpdatedAt": "2026-11-10T12:00:00Z"
+  },
+  {
+    "ID": "doc_contacts",
+    "Source": "demo-markdown",
+    "SourceID": "contacts.md",
+    "Title": "Контакты",
+    "TeamID": "team_demo_backend",
+    "Users": [],
+    "UpdatedAt": "2026-11-10T12:00:00Z"
+  },
+  {
+    "ID": "doc_first_task",
+    "Source": "demo-markdown",
+    "SourceID": "first_task.md",
+    "Title": "Первая задача",
+    "TeamID": "team_demo_backend",
+    "Users": [],
+    "UpdatedAt": "2026-11-10T12:00:00Z"
+  },
+  {
+    "ID": "doc_tests",
+    "Source": "demo-markdown",
+    "SourceID": "tests.md",
+    "Title": "Проверка изменений",
+    "TeamID": "team_demo_backend",
+    "Users": [],
+    "UpdatedAt": "2026-11-10T12:00:00Z"
+  },
+  {
+    "ID": "doc_troubleshooting",
+    "Source": "demo-markdown",
+    "SourceID": "troubleshooting.md",
+    "Title": "Ошибки запуска",
+    "TeamID": "team_demo_backend",
+    "Users": [],
+    "UpdatedAt": "2026-11-10T12:00:00Z"
+  },
+  {
+    "ID": "doc_pull_request",
+    "Source": "demo-markdown",
+    "SourceID": "pull_request.md",
+    "Title": "Сдача первой задачи",
+    "TeamID": "team_demo_backend",
+    "Users": [],
+    "UpdatedAt": "2026-11-10T12:00:00Z"
+  },
+  {
+    "ID": "doc_security",
+    "Source": "demo-markdown",
+    "SourceID": "security.md",
+    "Title": "Безопасность",
+    "TeamID": "team_demo_backend",
+    "Users": [],
+    "UpdatedAt": "2026-11-10T12:00:00Z"
+  },
+  {
+    "ID": "doc_other_team",
+    "Source": "demo-markdown",
+    "SourceID": "other_team.md",
+    "Title": "Закрытая инструкция другой команды",
+    "TeamID": "team_demo_analytics",
+    "Users": [],
+    "UpdatedAt": "2026-11-10T12:00:00Z"
+  }
+]
