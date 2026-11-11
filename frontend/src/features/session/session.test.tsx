@@ -35,10 +35,10 @@ describe('demo login flow (#4)', () => {
     await user.click(mentorCard);
     await user.click(screen.getByRole('button', { name: /войти как алексей морозов/i }));
 
-    // Navigated to the plan with a session-backed me
-    expect(await screen.findByText('Подготовка к первой задаче')).toBeInTheDocument();
+    // Mentor accounts land on their role-specific workspace.
+    expect(await screen.findByRole('heading', { name: 'Вопросы без ответа' })).toBeInTheDocument();
     expect(screen.getByText('Алексей Морозов')).toBeInTheDocument();
-    expect(screen.getByText(/наставник/i)).toBeInTheDocument();
+    expect(screen.getByText(/Наставник,/i)).toBeInTheDocument();
   });
 
   it('logs out, clears the query cache and session drafts, and shows the login page', async () => {

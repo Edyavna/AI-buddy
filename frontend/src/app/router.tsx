@@ -3,6 +3,7 @@ import { AppShell } from './AppShell';
 import { LoginPage, RequireAuth } from '@/features/session';
 import { PlanPage } from '@/features/onboarding';
 import { ChatPage } from '@/features/chat';
+import { RoleHome, MentorGate, InternGate, MentorQuestionsPage, MentorQuestionPage, MentorDocumentsPage, MentorInternsPage, MentorInternPlanPage } from '@/features/mentor';
 
 export const routes: RouteObject[] = [
   {
@@ -19,24 +20,29 @@ export const routes: RouteObject[] = [
     children: [
       {
         index: true,
-        element: <Navigate to="/onboarding" replace />,
+        element: <RoleHome />,
       },
       {
         path: 'onboarding',
-        element: <PlanPage />,
+        element: <InternGate><PlanPage /></InternGate>,
       },
       {
         path: 'chat',
-        element: <ChatPage />,
+        element: <InternGate><ChatPage /></InternGate>,
       },
       {
         path: 'chat/:conversationId',
-        element: <ChatPage />,
+        element: <InternGate><ChatPage /></InternGate>,
       },
-      {
-        path: '*',
-        element: <Navigate to="/onboarding" replace />,
-      },
+      { path: 'mentor', element: <MentorGate />, children: [
+        { index: true, element: <Navigate to="questions" replace /> },
+        { path: 'questions', element: <MentorQuestionsPage /> },
+        { path: 'questions/:id', element: <MentorQuestionPage /> },
+        { path: 'documents', element: <MentorDocumentsPage /> },
+        { path: 'interns', element: <MentorInternsPage /> },
+        { path: 'interns/:id', element: <MentorInternPlanPage /> },
+      ] },
+      { path: '*', element: <RoleHome /> },
     ],
   },
 ];

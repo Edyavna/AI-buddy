@@ -11,6 +11,10 @@ export const AppShell: React.FC = () => {
   const me = useMe();
   const logout = useLogout();
   const user = me.data;
+  const home = user?.role === 'mentor' ? '/mentor/questions' : '/onboarding';
+  const navigation = user?.role === 'mentor'
+    ? [{ to: '/mentor/questions', text: 'Вопросы' }, { to: '/mentor/documents', text: 'Знания' }, { to: '/mentor/interns', text: 'Стажёры' }]
+    : [{ to: '/onboarding', text: 'Мой план' }, { to: '/chat', text: 'Чат' }];
 
   const initials = (user?.name ?? '')
     .split(/\s+/)
@@ -25,32 +29,24 @@ export const AppShell: React.FC = () => {
       <a className={styles.skipLink} href="#main-content">
         К содержимому
       </a>
-      <header className={styles.header}>
+      <header className={clsx(styles.header, user?.role === 'mentor' && styles.mentorHeader)}>
         <div className={styles.headerInner}>
           <div className={styles.brandSection}>
-            <Link to="/onboarding" className={styles.logoLink} aria-label="AI-buddy — На главную (план адаптации)">
+            <Link to={home} className={styles.logoLink} aria-label={user?.role === 'mentor' ? 'AI-buddy — На главную (вопросы наставнику)' : 'AI-buddy — На главную (план адаптации)'}>
               <AvitoLogo size="md" />
               <span className={styles.buddyTag}>AI-buddy</span>
             </Link>
           </div>
 
           <nav className={styles.navigation} aria-label="Основная навигация">
-            <NavLink
-              to="/onboarding"
+            {navigation.map(item => <NavLink key={item.to}
+              to={item.to}
               className={({ isActive }) =>
                 clsx(styles.navLink, isActive && styles.activeLink)
               }
             >
-              Мой план
-            </NavLink>
-            <NavLink
-              to="/chat"
-              className={({ isActive }) =>
-                clsx(styles.navLink, isActive && styles.activeLink)
-              }
-            >
-              Чат
-            </NavLink>
+              {item.text}
+            </NavLink>)}
           </nav>
 
           {user && (

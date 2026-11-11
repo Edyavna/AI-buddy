@@ -259,3 +259,13 @@
     gap: var(--space-3);
   }
 }
+.mentorHeader { min-height: var(--header-height); }
+@media (max-width: 960px) {
+  .mentorHeader .switchAccountButton { display: inline-flex; }
+}
+@media (max-width: 767px) {
+  .mentorHeader { height: auto; }
+  .mentorHeader .headerInner { grid-template-columns: 1fr auto; padding-block: var(--space-2); row-gap: 0; }
+  .mentorHeader .navigation { grid-row: 2; grid-column: 1 / -1; justify-self: stretch; justify-content: space-between; }
+  .mentorHeader .userSection { display: flex; grid-column: 2; grid-row: 1; }
+}
