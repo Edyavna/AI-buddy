@@ -190,6 +190,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mentor/interns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Список стажёров, назначенных текущему наставнику. */
+        get: operations["listAssignedInterns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/interns/{id}/plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description План назначенного стажёра только для чтения. Чужой ID возвращает 404. */
+        get: operations["getAssignedInternPlan"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/access-requests": {
         parameters: {
             query?: never;
@@ -361,6 +395,11 @@ export interface components {
             text: string;
             /** @enum {string} */
             status: "generating" | "completed" | "failed" | "interrupted";
+            /**
+             * @description Результат assistant. Для старых ответов и технических сбоев используется unknown.
+             * @enum {string}
+             */
+            outcome?: "unknown" | "answered" | "needs_clarification" | "knowledge_gap";
             sources: components["schemas"]["Source"][];
             request_ids: string[];
             error?: components["schemas"]["ApiError"];
@@ -368,6 +407,21 @@ export interface components {
             created_at: string;
             /** @description Для assistant — ID исходного user-сообщения; для user — null. */
             in_reply_to_message_id: string | null;
+        };
+        InternSummary: {
+            id: string;
+            name: string;
+            team: {
+                id: string;
+                name: string;
+            };
+            progress_percent: number;
+            next_step_id: string | null;
+            completed_steps: number;
+            total_steps: number;
+            blocked_steps: number;
+            /** @description null, пока модуль очереди вопросов не подключён. */
+            open_questions: number | null;
         };
         /** @description draft_version меняется только при редактировании параметров draft. revision меняется при каждом обновлении записи. external_id не null для pending/granted/rejected, null для draft/failed; submitting может содержать номер при сверке. Причина обязательна для rejected/failed. */
         AccessRequest: {
@@ -873,6 +927,59 @@ export interface operations {
             404: components["responses"]["Error"];
             429: components["responses"]["Error"];
             500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listAssignedInterns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Назначенные стажёры и прогресс */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["InternSummary"][];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getAssignedInternPlan: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description План с пустым allowed_statuses для каждого шага */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
             503: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };

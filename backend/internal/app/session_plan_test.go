@@ -119,7 +119,7 @@ func TestPostgresSessionPlanLifecycle(t *testing.T) {
 	h := NewHandler(cfg, db, logger, nil, Dependencies{})
 	accounts := apiRequest(t, h, "GET", "/api/v1/demo/accounts", "", nil, 200)
 	var users []auth.User
-	if err := json.Unmarshal(accounts.Body.Bytes(), &users); err != nil || len(users) != 4 {
+	if err := json.Unmarshal(accounts.Body.Bytes(), &users); err != nil || len(users) != 5 {
 		t.Fatal(err, users)
 	}
 	for _, path := range []string{"/api/v1/me", "/api/v1/onboarding/plan"} {

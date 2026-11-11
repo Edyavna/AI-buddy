@@ -12,6 +12,7 @@ import (
 	"github.com/Edyavna/AI-buddy/backend/internal/demo"
 	"github.com/Edyavna/AI-buddy/backend/internal/integrations"
 	"github.com/Edyavna/AI-buddy/backend/internal/knowledge"
+	"github.com/Edyavna/AI-buddy/backend/internal/mentor"
 	"github.com/Edyavna/AI-buddy/backend/internal/onboarding"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/config"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/httpapi"
@@ -23,6 +24,7 @@ type Dependencies struct {
 	Agent     ports.Agent
 	Requests  ports.RequestReader
 	Knowledge ports.Knowledge
+	Questions ports.OpenQuestionCounter
 }
 
 // NewHandler is the composition root. Supplying AccessChecker connects #13
@@ -51,6 +53,7 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 		opts.Register = func(mux *http.ServeMux) {
 			session.Register(mux)
 			plans.Register(mux, session)
+			mentor.Handler{Store: mentor.Store{DB: db}, Questions: deps.Questions}.Register(mux, session)
 			requests.Register(mux, session)
 			mux.Handle("GET /api/v1/documents/{document_id}", session.Require(knowledge.Handler(deps.Knowledge), true))
 			conversations.Register(mux, session)
