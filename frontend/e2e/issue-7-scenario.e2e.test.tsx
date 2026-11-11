@@ -45,6 +45,7 @@ afterEach(() => {
 
 it('проходит полный путь от входа до завершения шага: черновик из нового вопроса, reload с пустым кешем', async () => {
   const stopCounting = countCalls();
+  let finishAnswer: (() => void) | undefined;
   // История диалога, созданного в этом тесте, живёт здесь: дефолтный чат-мок о ней
   // не знает, поэтому GET messages для нового диалога обслуживаем этой же картой.
   const streamedHistories = new Map<string, unknown[]>();
@@ -58,16 +59,30 @@ it('проходит полный путь от входа до завершен
       const user = messageSchema.parse({ ...f.messages[0], id: userId, text: body.text, client_message_id: body.client_message_id });
       const draft = accessRequestSchema.parse({ ...f.draft, conversation_id: id });
       const assistant = messageSchema.parse({ ...f.messages[1], id: assistantId, in_reply_to_message_id: userId, request_ids: [draft.id] });
-      streamedHistories.set(id, [user, assistant]);
+      streamedHistories.set(id, [user]);
       const events = [
         { event: 'message.started', data: { user_message_id: userId, message_id: assistantId } },
         { event: 'tool.started', data: { message_id: assistantId, tool_call_id: 'lookup', label: 'Ищу документы' } },
         { event: 'tool.finished', data: { message_id: assistantId, tool_call_id: 'lookup', status: 'succeeded' } },
         { event: 'action.proposed', data: { message_id: assistantId, request: draft } },
-        { event: 'answer.delta', data: { message_id: assistantId, text: assistant.text } },
-        { event: 'message.completed', data: { message: assistant } },
       ];
-      return new HttpResponse(events.map(e => `event: ${e.event}\ndata: ${JSON.stringify(e.data)}\n\n`).join(''), { headers: { 'Content-Type': 'text/event-stream' } });
+      const encoder = new TextEncoder();
+      const encode = (event: { event: string; data: unknown }) =>
+        encoder.encode(`event: ${event.event}\ndata: ${JSON.stringify(event.data)}\n\n`);
+      const stream = new ReadableStream<Uint8Array>({
+        start(controller) {
+          for (const event of events) controller.enqueue(encode(event));
+          finishAnswer = () => {
+            finishAnswer = undefined;
+            streamedHistories.set(id, [user, assistant]);
+            controller.enqueue(encode({ event: 'answer.delta', data: { message_id: assistantId, text: assistant.text } }));
+            controller.enqueue(encode({ event: 'message.completed', data: { message: assistant } }));
+            controller.close();
+          };
+        },
+        cancel() { finishAnswer = undefined; },
+      });
+      return new HttpResponse(stream, { headers: { 'Content-Type': 'text/event-stream' } });
     }),
     http.get('*/api/v1/conversations/:id/messages', ({ params }) => {
       const id = String(params.id);
@@ -106,13 +121,18 @@ it('проходит полный путь от входа до завершен
     //    Внешней заявки ещё нет: номер не показан, confirm не вызывался.
     fireEvent.change(screen.getByLabelText('Ваш вопрос'), { target: { value: 'Как запустить проект?' } });
     fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
-    expect(await screen.findByText(f.messages[1]!.text)).toBeInTheDocument();
     const chat = screen.getByLabelText('Чат с помощником');
     const card = await within(chat).findByText(f.draft.resource.name);
     expect(card.closest('article')).toHaveAttribute('data-request-id', f.draft.id);
     expect(within(chat).getByRole('button', { name: 'Подтвердить отправку' })).toBeInTheDocument();
     expect(within(chat).queryByText(/Номер: /)).not.toBeInTheDocument();
     expect(confirms).toBe(0);
+
+    // Финальный ответ ещё не отправлен: карточку могло дать только action.proposed.
+    expect(within(chat).queryByText(f.messages[1]!.text)).not.toBeInTheDocument();
+    expect(finishAnswer).toBeTypeOf('function');
+    await act(async () => { finishAnswer!(); });
+    expect(await within(chat).findByText(f.messages[1]!.text)).toBeInTheDocument();
 
     // 4. Открыть источник и вернуться в чат без потери сообщения.
     fireEvent.click(await screen.findByRole('button', { name: new RegExp('Тестовая инструкция запуска') }));
@@ -156,6 +176,7 @@ it('проходит полный путь от входа до завершен
     expect(await screen.findByText(/Завершено 1 из 1 шагов\./)).toBeInTheDocument();
     expect(screen.getByRole('progressbar', { name: 'Прогресс плана адаптации' })).toHaveAttribute('aria-valuenow', '100');
   } finally {
+    await act(async () => { finishAnswer?.(); });
     stopCounting();
   }
 });
