@@ -1,0 +1,5 @@
+.host { display: contents; }
+.documentDrawer.documentDrawer { min-width: 0; }
+@media (max-width: 767px) {
+  .documentDrawer.documentDrawer { width: 100%; max-width: none; border-radius: 0; }
+}
