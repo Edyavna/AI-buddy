@@ -19,7 +19,11 @@ async function request<T>(path: string, schema: z.ZodType<T>, options: RequestOp
   return result.data;
 }
 const segment = encodeURIComponent;
+export type QuestionUpdate = { status: 'new' | 'in_progress' | 'resolved'; revision: number; resolution?: string; document_ids?: string[] };
 export const mentorApi = {
+  updateQuestion: (id: string, body: QuestionUpdate, signal: AbortSignal) => request(`/mentor/questions/${segment(id)}`, questionSchema, { method: 'PATCH', body, signal }),
+  upload: (body: FormData, signal: AbortSignal) => request('/mentor/documents', mentorDocumentSchema, { method: 'POST', body, signal }),
+  retryDocument: (id: string, signal: AbortSignal) => request(`/mentor/documents/${segment(id)}/retry`, mentorDocumentSchema, { method: 'POST', signal }),
   questions: (status: string, signal: AbortSignal) => request('/mentor/questions', z.object({ items: z.array(questionSchema) }), { signal, search: { status: status || undefined } }),
   question: (id: string, signal: AbortSignal) => request(`/mentor/questions/${segment(id)}`, questionSchema, { signal }),
   documents: (signal: AbortSignal) => request('/mentor/documents', z.object({ items: z.array(mentorDocumentSchema) }), { signal }),
