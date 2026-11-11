@@ -51,6 +51,12 @@ export function escalateMentorQuestionShared(
     acceptMentorQuestion(queryClient, messageId, question);
     return question;
   })().catch(async error => {
+    session.throwIfAborted();
+    // With the session still active, transport cancellation is a deadline,
+    // including the reconciliation GET. Do not hide an uncertain transfer.
+    if (error instanceof ClientError && error.kind === 'aborted') {
+      throw new Error('Не удалось подтвердить передачу. Повторите попытку', { cause: error });
+    }
     if (!session.aborted && isAccessError(error)) {
       await queryClient.cancelQueries({ queryKey: key, exact: true }, { revert: false });
       if (!session.aborted) revokeMentorQuestion(queryClient, messageId);
