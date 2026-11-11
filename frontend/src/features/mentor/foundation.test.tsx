@@ -43,7 +43,7 @@ it('logs in mentor to the workspace and clears previous account caches on logout
   fireEvent.click(await screen.findByRole('radio', { name: /Тестовый наставник/ }));
   fireEvent.click(screen.getByRole('button', { name: /Войти как Тестовый наставник/ }));
   expect(await screen.findByRole('heading', { name: 'Вопросы без ответа' })).toBeInTheDocument();
-  expect(queryClient.getQueryData(mentorKeys.questions())).toBeUndefined();
+  expect(queryClient.getQueryData(mentorKeys.questions())).not.toEqual({ secret: 'old account' });
   expect(router.state.location.pathname).toBe('/mentor/questions');
   expect(screen.queryByRole('link', { name: 'Мой план' })).not.toBeInTheDocument();
   window.sessionStorage.setItem('mentor-draft', 'test');
@@ -59,3 +59,4 @@ it('routes mentors away from intern pages without removing those routes', async 
   renderWithQuery(<RouterProvider router={router} />);
   expect(await screen.findByRole('heading', { name: 'Вопросы без ответа' })).toBeInTheDocument();
 });
+

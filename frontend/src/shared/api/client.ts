@@ -65,10 +65,11 @@ async function send(path: string, options: RequestOptions, accept: string) {
     const search = new URLSearchParams();
     for (const [key, value] of Object.entries(options.search ?? {})) if (value !== undefined) search.set(key, value);
     const query = search.size ? `?${search}` : '';
+    const multipart = options.body instanceof FormData;
     const response = await fetch(`${API_BASE}${path}${query}`, {
       method: options.method ?? 'GET', credentials: 'same-origin',
-      headers: { Accept: accept, ...(options.body !== undefined && { 'Content-Type': 'application/json' }) },
-      ...(options.body !== undefined && { body: JSON.stringify(options.body) }),
+      headers: { Accept: accept, ...(options.body !== undefined && !multipart && { 'Content-Type': 'application/json' }) },
+      ...(options.body !== undefined && { body: multipart ? options.body as FormData : JSON.stringify(options.body) }),
       ...(options.signal && { signal: options.signal }),
     });
     await checkHttp(response);
