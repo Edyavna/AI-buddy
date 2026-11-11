@@ -55,6 +55,18 @@ func (a draftAgent) Run(ctx context.Context, in ports.AgentInput, emit ports.Emi
 		emit(ctx, ports.AgentEvent{Kind: "draft.saved", Draft: &draft})
 }
 
+type accessCheckerOnly struct{ ports.AccessChecker }
+
+func TestPostgresAccessRequestConfirmWithCheckerOnly(t *testing.T) {
+	db := testkit.Postgres(t)
+	_, cookie, _ := prepareDraft(t, db)
+	h := requestHandler(db, Dependencies{Access: accessCheckerOnly{integrations.New(db)}})
+	w := apiRequest(t, h, "POST", confirmURL, confirmBody, cookie, http.StatusAccepted)
+	if got := decodeRequest(t, w); got.Status != "submitting" {
+		t.Fatalf("expected queued request: %+v", got)
+	}
+}
+
 func TestPostgresAccessRequestLifecycle(t *testing.T) {
 	db := testkit.Postgres(t)
 	ctx := testkit.Context(context.Background())

@@ -35,8 +35,7 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 			deps.Agent = demo.Agent{Delay: cfg.DemoChatDelay}
 		}
 		requestStore := accessrequests.Store{DB: db}
-		checker, _ := deps.Access.(ports.AccessProvider)
-		requests := accessrequests.Handler{Store: requestStore, Checker: checker}
+		requests := accessrequests.Handler{Store: requestStore, Checker: deps.Access}
 		if deps.Requests == nil {
 			deps.Requests = requestStore
 		}
