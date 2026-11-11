@@ -43,7 +43,10 @@ def main():
 
     if args.phase == "prepare":
         accounts, _ = call("GET", "/demo/accounts")
-        assert len(accounts) == 4
+        roles = {account["id"]: account["role"] for account in accounts}
+        assert roles.get("intern_demo_1") == "intern", roles
+        assert roles.get("mentor_demo_1") == "mentor", roles
+        assert roles.get("mentor_demo_2") == "mentor", roles
         user, headers = call("POST", "/demo/session", {"account_id": "intern_demo_1"})
         assert user["id"] == "intern_demo_1"
         parsed_cookie = SimpleCookie()
