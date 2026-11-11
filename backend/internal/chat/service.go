@@ -408,6 +408,13 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 		}
 		message.Error = failure(code, httpapi.TraceID(ctx))
 	}
+	message.Outcome = ports.OutcomeUnknown
+	if message.Status == "completed" {
+		switch result.Outcome {
+		case ports.OutcomeAnswered, ports.OutcomeNeedsClarification, ports.OutcomeKnowledgeGap:
+			message.Outcome = result.Outcome
+		}
+	}
 	saved, err := s.Store.Finish(cleanup, owner, p.Conversation.ID, message)
 	if err != nil {
 		return err

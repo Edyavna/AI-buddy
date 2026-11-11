@@ -5,15 +5,18 @@ import (
 	"context"
 	"errors"
 	"time"
+
+	"github.com/Edyavna/AI-buddy/backend/internal/platform/identity"
 )
 
 var (
-	ErrNotFound       = errors.New("not found or inaccessible")
-	ErrForbidden      = errors.New("operation forbidden")
-	ErrInvalid        = errors.New("invalid input")
-	ErrConflict       = errors.New("idempotency conflict")
-	ErrUnavailable    = errors.New("dependency unavailable")
-	ErrOutcomeUnknown = errors.New("external outcome unknown; reconcile using the same request ID")
+	ErrNotFound         = errors.New("not found or inaccessible")
+	ErrForbidden        = errors.New("operation forbidden")
+	ErrInvalid          = errors.New("invalid input")
+	ErrConflict         = errors.New("idempotency conflict")
+	ErrUnavailable      = errors.New("dependency unavailable")
+	ErrMentorUnassigned = errors.New("intern has no assigned mentor")
+	ErrOutcomeUnknown   = errors.New("external outcome unknown; reconcile using the same request ID")
 )
 
 type Resource struct{ ID, Name, Permission string }
@@ -35,10 +38,20 @@ type AgentInput struct {
 	History                                  []ChatMessage
 }
 
+type Outcome string
+
+const (
+	OutcomeUnknown            Outcome = "unknown"
+	OutcomeAnswered           Outcome = "answered"
+	OutcomeNeedsClarification Outcome = "needs_clarification"
+	OutcomeKnowledgeGap       Outcome = "knowledge_gap"
+)
+
 // Return collected Sources/RequestIDs even with an error after partial work.
 type AgentResult struct {
 	Sources    []Source
 	RequestIDs []string
+	Outcome    Outcome // set only when the agent completes successfully
 }
 type ToolEvent struct{ CallID, Label, Status string }
 
@@ -112,4 +125,20 @@ type RequestReader interface {
 type DraftService interface {
 	// SaveAndLink atomically persists draft and assistant.request_ids before emit.
 	SaveAndLink(context.Context, DraftInput) (Draft, error)
+}
+
+// MentorAssignments checks current assignment using the trusted session.
+type MentorAssignments interface {
+	// AssignedMentor is for an intern session and returns ErrMentorUnassigned
+	// when there is no assignment.
+	AssignedMentor(context.Context) (identity.Principal, error)
+	// CheckMentor is for a mentor session. A missing or foreign intern returns
+	// ErrNotFound.
+	CheckMentor(context.Context, string) error
+}
+
+// OpenQuestionCounter is implemented by the question queue. The caller carries
+// the mentor Principal and the implementation must enforce the assignment.
+type OpenQuestionCounter interface {
+	CountOpen(context.Context, string) (int, error)
 }

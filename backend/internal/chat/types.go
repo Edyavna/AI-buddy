@@ -37,16 +37,17 @@ type APIError struct {
 	Error httpapi.Error `json:"error"`
 }
 type Message struct {
-	ID         string    `json:"id"`
-	ClientID   *string   `json:"client_message_id"`
-	Role       string    `json:"role"`
-	Text       string    `json:"text"`
-	Status     string    `json:"status"`
-	Sources    []Source  `json:"sources"`
-	RequestIDs []string  `json:"request_ids"`
-	Error      *APIError `json:"error,omitempty"`
-	CreatedAt  time.Time `json:"created_at"`
-	InReplyTo  *string   `json:"in_reply_to_message_id"`
+	ID         string        `json:"id"`
+	ClientID   *string       `json:"client_message_id"`
+	Role       string        `json:"role"`
+	Text       string        `json:"text"`
+	Status     string        `json:"status"`
+	Sources    []Source      `json:"sources"`
+	RequestIDs []string      `json:"request_ids"`
+	Outcome    ports.Outcome `json:"outcome,omitempty"`
+	Error      *APIError     `json:"error,omitempty"`
+	CreatedAt  time.Time     `json:"created_at"`
+	InReplyTo  *string       `json:"in_reply_to_message_id"`
 }
 type Reservation struct {
 	Conversation    Conversation

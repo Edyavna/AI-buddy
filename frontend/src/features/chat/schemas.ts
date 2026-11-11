@@ -17,6 +17,7 @@ export const messageSchema = z.object({
   role: z.enum(['user', 'assistant']), text: z.string(),
   status: z.enum(['generating', 'completed', 'failed', 'interrupted']),
   sources: z.array(source), request_ids: z.array(z.string()), created_at: date,
+  outcome: z.enum(['unknown', 'answered', 'needs_clarification', 'knowledge_gap']).optional(),
   error: apiErrorSchema.optional(),
 }).superRefine((m, ctx) => {
   if (m.role === 'user' && (m.status !== 'completed' || m.client_message_id === null || m.in_reply_to_message_id !== null))

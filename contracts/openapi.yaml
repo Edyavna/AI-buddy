@@ -21,6 +21,7 @@ tags:
 - name: Onboarding
 - name: Chat
 - name: Requests
+- name: Mentor
 paths:
   /demo/accounts:
     get:
@@ -468,6 +469,62 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+  /mentor/interns:
+    get:
+      tags:
+      - Mentor
+      operationId: listAssignedInterns
+      description: Список стажёров, назначенных текущему наставнику.
+      responses:
+        '200':
+          description: Назначенные стажёры и прогресс
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/InternSummary'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /mentor/interns/{id}/plan:
+    get:
+      tags:
+      - Mentor
+      operationId: getAssignedInternPlan
+      description: План назначенного стажёра только для чтения. Чужой ID возвращает 404.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: План с пустым allowed_statuses для каждого шага
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /access-requests:
     get:
       tags:
@@ -865,6 +922,10 @@ components:
           - completed
           - failed
           - interrupted
+        outcome:
+          type: string
+          enum: [unknown, answered, needs_clarification, knowledge_gap]
+          description: Результат assistant. Для старых ответов и технических сбоев используется unknown.
         sources:
           type: array
           items:
@@ -885,6 +946,43 @@ components:
       description: User всегда completed, имеет client_message_id и null in_reply_to_message_id. Assistant имеет
         null client_message_id и ссылку на user. failed/interrupted обязаны содержать error; остальные error не
         содержат. Порядок GET детерминирован серверной последовательностью, а не только временем.
+    InternSummary:
+      type: object
+      required: [id, name, team, progress_percent, next_step_id, completed_steps, total_steps, blocked_steps, open_questions]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        team:
+          type: object
+          required: [id, name]
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        progress_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+        next_step_id:
+          type: string
+          nullable: true
+        completed_steps:
+          type: integer
+          minimum: 0
+        total_steps:
+          type: integer
+          minimum: 0
+        blocked_steps:
+          type: integer
+          minimum: 0
+        open_questions:
+          type: integer
+          minimum: 0
+          nullable: true
+          description: null, пока модуль очереди вопросов не подключён.
     AccessRequest:
       type: object
       required:

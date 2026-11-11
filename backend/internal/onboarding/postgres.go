@@ -68,18 +68,39 @@ func readSteps(ctx context.Context, tx *sql.Tx, s *Snapshot) error {
 	}
 	return rows.Err()
 }
+func readSnapshotTx(ctx context.Context, tx *sql.Tx, owner identity.Principal) (Snapshot, error) {
+	snapshot, err := lockPlan(ctx, tx, owner, false)
+	if err != nil {
+		return Snapshot{}, err
+	}
+	err = readSteps(ctx, tx, &snapshot)
+	return snapshot, err
+}
+
 func (s SQLStore) Read(ctx context.Context, p identity.Principal) (Snapshot, error) {
 	var snapshot Snapshot
 	err := database.WithinTx(ctx, s.DB, func(tx *sql.Tx) error {
 		var err error
-		snapshot, err = lockPlan(ctx, tx, p, false)
-		if err != nil {
-			return err
-		}
-		return readSteps(ctx, tx, &snapshot)
+		snapshot, err = readSnapshotTx(ctx, tx, p)
+		return err
 	})
 	return snapshot, sqlError(err)
 }
+
+// ReadOnlyPlanTx renders the assigned intern's snapshot with the same progress
+// rules. The caller must authorize owner in this transaction before reading it.
+func ReadOnlyPlanTx(ctx context.Context, tx *sql.Tx, owner identity.Principal) (Plan, error) {
+	snapshot, err := readSnapshotTx(ctx, tx, owner)
+	if err != nil {
+		return Plan{}, sqlError(err)
+	}
+	plan := project(snapshot, nil)
+	for i := range plan.Steps {
+		plan.Steps[i].AllowedStatuses = []string{}
+	}
+	return plan, nil
+}
+
 func (s SQLStore) Patch(ctx context.Context, p identity.Principal, revision int64, id, status string) (Snapshot, error) {
 	var snapshot Snapshot
 	err := database.WithinTx(ctx, s.DB, func(tx *sql.Tx) error {

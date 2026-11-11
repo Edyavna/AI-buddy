@@ -2,9 +2,8 @@
 
 Статус: согласованное направление продукта, проект API для реализации.
 Frontend-владелец новой функции — Никита. Основная ветка — dev.
-Backend-операции ниже пока не реализованы. Существующий OpenAPI 0.2 продолжает
-действовать; новые операции нужно включить в contracts/openapi.yaml перед
-подключением настоящего API.
+Первая серверная поставка добавляет назначенных стажёров и планы в OpenAPI.
+Очередь вопросов и документы остаются проектом API для следующих поставок.
 
 ## Пользовательский результат
 
@@ -89,7 +88,7 @@ resolution|null, created_at, updated_at. Полную чужую перепис�
 MentorDocument: id, title, status(processing/ready/failed), author{id,name},
 created_at, updated_at, error|null; detail дополнительно content.
 InternSummary: id,name,team{id,name},progress_percent,next_step_id|null,
-completed_steps,total_steps,blocked_steps,open_questions.
+completed_steps,total_steps,blocked_steps,open_questions (null до подключения очереди).
 404 для чужого объекта; 401 без сессии; 403 для неверной роли; 422 для валидации;
 409 QUESTION_CHANGED при устаревшей revision, 409 DOCUMENT_NOT_READY при попытке
 решить вопрос с неготовым документом. После 409 обновить данные и потребовать

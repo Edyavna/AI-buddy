@@ -17,7 +17,7 @@ export const mentorDocumentDetailSchema = mentorDocumentSchema.extend({ content:
 export const internSchema = person.extend({
   team: person, progress_percent: z.number().int().min(0).max(100), next_step_id: z.string().nullable(),
   completed_steps: z.number().int().nonnegative(), total_steps: z.number().int().nonnegative(),
-  blocked_steps: z.number().int().nonnegative(), open_questions: z.number().int().nonnegative(),
+  blocked_steps: z.number().int().nonnegative(), open_questions: z.number().int().nonnegative().nullable(),
 });
 export type Question = z.infer<typeof questionSchema>;
 export type MentorDocument = z.infer<typeof mentorDocumentSchema>;
