@@ -33,6 +33,22 @@ it('reports 404 without showing stale content', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Открыть источник' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Документ недоступен или удалён');
 });
+
+it('wraps keyboard focus between the close control and the final document link', async () => {
+  server.use(http.get('*/api/v1/documents/:id', () => HttpResponse.json({
+    id: 'doc_local_setup', title: 'Инструкция', content: '```sh\necho test\n```\n\n[Открыть справку](https://example.org)', updated_at: '2026-11-09T12:00:00Z',
+  })));
+  const user = userEvent.setup();
+  renderWithQuery(<Harness />);
+  await user.click(screen.getByRole('button', { name: 'Открыть источник' }));
+  const link = await screen.findByRole('link', { name: 'Открыть справку' });
+  const close = screen.getByRole('button', { name: 'Закрыть панель' });
+  await waitFor(() => expect(close).toHaveFocus());
+  await user.tab({ shift: true }); expect(link).toHaveFocus();
+  await user.tab(); expect(close).toHaveFocus();
+  await user.keyboard('{Escape}');
+  expect(screen.getByRole('button', { name: 'Открыть источник' })).toHaveFocus();
+});
 it('shows protocol errors and permits explicit retry', async () => {
   let correct = false;
   server.use(http.get('*/api/v1/documents/:id', () => HttpResponse.json(correct ? {
