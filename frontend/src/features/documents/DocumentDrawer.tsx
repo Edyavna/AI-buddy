@@ -29,12 +29,17 @@ export function DocumentDrawer({ documentId, onClose }: DocumentDrawerProps) {
     else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first.focus(); }
   }
   const notFound = query.error instanceof ClientError && query.error.status === 404;
+  const unavailable = query.isError && query.error instanceof ClientError &&
+    [401, 403, 404].includes(query.error.status ?? 0);
+  // A failed refetch retains query.data. Access errors must hide both the body
+  // and the title, including the dialog's accessible name.
+  const visibleDocument = unavailable ? undefined : query.data;
   return <div ref={root} onKeyDown={trapFocus} className={styles.host}>
-    <Drawer isOpen={documentId !== null} onClose={onClose} title={query.data?.title ?? 'Источник ответа'} width="lg" className={styles.documentDrawer ?? ''}>
+    <Drawer isOpen={documentId !== null} onClose={onClose} title={visibleDocument?.title ?? 'Источник ответа'} width="lg" className={styles.documentDrawer ?? ''}>
       {query.isPending && <div role="status"><Spinner /><p>Загружаем документ…</p></div>}
       {query.isError && <InlineError message={notFound ? 'Документ недоступен или удалён' : query.error.message}
         {...(!notFound && { onRetry: () => void query.refetch(), isRetrying: query.isRefetching })} />}
-      {query.data && <MarkdownContent content={query.data.content} />}
+      {visibleDocument && <MarkdownContent content={visibleDocument.content} />}
     </Drawer>
   </div>;
 }

@@ -34,6 +34,38 @@ it('reports 404 without showing stale content', async () => {
   expect(await screen.findByRole('alert')).toHaveTextContent('Документ недоступен или удалён');
 });
 
+it.each([401, 403, 404])('hides cached document title and content after reopening returns %s', async status => {
+  let allowed = true;
+  const cachedDocument = {
+    id: 'doc_local_setup', title: 'Закрытое название документа',
+    content: 'Закрытый текст документа', updated_at: '2026-11-09T12:00:00Z',
+  };
+  server.use(http.get('*/api/v1/documents/:id', () => allowed
+    ? HttpResponse.json(cachedDocument)
+    : HttpResponse.json({ error: { code: 'ACCESS_REVOKED', message: 'Документ недоступен', trace_id: 't' } }, { status })));
+  const { queryClient } = renderWithQuery(<Harness />);
+  fireEvent.click(screen.getByRole('button', { name: 'Открыть источник' }));
+  expect(await screen.findByText(cachedDocument.content)).toBeInTheDocument();
+  expect(screen.getByRole('dialog')).toHaveAccessibleName(cachedDocument.title);
+  expect(queryClient.getQueryData(['documents', cachedDocument.id])).toEqual(cachedDocument);
+
+  fireEvent.click(screen.getByRole('button', { name: 'Закрыть панель' }));
+  allowed = false;
+  fireEvent.click(screen.getByRole('button', { name: 'Открыть источник' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Документ недоступен');
+  // React Query deliberately retains old data after a refetch error.
+  expect(queryClient.getQueryData(['documents', cachedDocument.id])).toEqual(cachedDocument);
+  expect(screen.queryByText(cachedDocument.content)).not.toBeInTheDocument();
+  expect(screen.queryByText(cachedDocument.title)).not.toBeInTheDocument();
+  expect(screen.getByRole('dialog')).toHaveAccessibleName('Источник ответа');
+
+  fireEvent.click(screen.getByRole('button', { name: 'Закрыть панель' }));
+  allowed = true;
+  fireEvent.click(screen.getByRole('button', { name: 'Открыть источник' }));
+  expect(await screen.findByText(cachedDocument.content)).toBeInTheDocument();
+  expect(screen.getByRole('dialog')).toHaveAccessibleName(cachedDocument.title);
+});
+
 it('wraps keyboard focus between the close control and the final document link', async () => {
   server.use(http.get('*/api/v1/documents/:id', () => HttpResponse.json({
     id: 'doc_local_setup', title: 'Инструкция', content: '```sh\necho test\n```\n\n[Открыть справку](https://example.org)', updated_at: '2026-11-09T12:00:00Z',
