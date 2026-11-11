@@ -23,7 +23,9 @@
     "clsx": "^2.1.1",
     "react": "19.3.1",
     "react-dom": "19.3.1",
+    "react-markdown": "10.1.0",
     "react-router-dom": "^6.28.2",
+    "remark-gfm": "4.0.1",
     "zod": "4.6.7"
   },
   "devDependencies": {
@@ -35,14 +37,14 @@
     "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/coverage-v8": "5.1.0",
+    "eslint": "10.14.0",
     "jsdom": "31.0.0",
+    "msw": "2.15.0",
     "openapi-typescript": "7.13.0",
     "typescript": "5.9.3",
+    "typescript-eslint": "8.72.1",
     "vite": "^6.0.0",
-    "vitest": "5.1.0",
-    "eslint": "10.14.0",
-    "msw": "2.15.0",
-    "typescript-eslint": "8.72.1"
+    "vitest": "5.1.0"
   },
   "overrides": {
     "minimatch": "11.0.1"

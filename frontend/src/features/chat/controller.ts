@@ -1,8 +1,9 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { ClientError, openApiStream, queryKeys } from '@/shared/api';
+import { acceptAccessRequest } from '@/features/access-requests';
 import { createConversation, listMessages } from './api';
-import { applyEvent, readSse, type StreamState } from './stream';
+import { applyEvent, protocolError, readSse, type StreamState } from './stream';
 
 const pendingSchema = z.object({ conversationId: z.uuid(), messageId: z.uuid(), text: z.string().min(1).max(8000), stepId: z.string().nullable() });
 type Pending = z.infer<typeof pendingSchema>;
@@ -107,7 +108,15 @@ export class ChatController {
         method: 'POST', body: { client_message_id: pending.messageId, text }, signal,
       });
       this.update({ phase: 'streaming' });
-      await readSse(response.body!, event => this.update(applyEvent(this.state, event)));
+      await readSse(response.body!, event => {
+        if (signal.aborted) return;
+        const next = applyEvent(this.state, event);
+        if (event.event === 'action.proposed') {
+          if (event.data.request.conversation_id !== id) throw protocolError();
+          acceptAccessRequest(this.client, event.data.request);
+        }
+        this.update(next);
+      });
       this.pending = null;
       this.client.setQueryData(queryKeys.messages(id), this.state.messages);
       this.update({ phase: this.state.messages.at(-1)?.status === 'failed' ? 'failed' : 'idle' });
