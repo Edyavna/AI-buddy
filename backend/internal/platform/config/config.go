@@ -20,6 +20,7 @@ type Config struct {
 	SessionTTL          time.Duration
 	SessionCookieSecure bool
 	DemoChatDelay       time.Duration
+	AI                  *AIConfig
 }
 
 // Load deliberately does not read .env files. The launcher supplies environment.
@@ -89,6 +90,10 @@ func Load(getenv func(string) string) (Config, error) {
 			return Config{}, fmt.Errorf("ALLOWED_ORIGINS must contain comma-separated HTTP origins without paths")
 		}
 		c.AllowedOrigins = append(c.AllowedOrigins, raw)
+	}
+	c.AI, err = loadAI(getenv, c)
+	if err != nil {
+		return Config{}, err
 	}
 	return c, nil
 }

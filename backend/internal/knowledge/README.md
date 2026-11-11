@@ -15,19 +15,19 @@ Jina jina-embeddings-v3: 1024 float, retrieval.passage/query. Exact cosine, бе
 Из backend:
 
 ```sh
-go run ./cmd/knowledge-import -schema
-# Владелец миграций применяет напечатанную схему к PostgreSQL с pgvector.
+go run ./cmd/migrate
 go run ./cmd/knowledge-import -dir ../demo/knowledge
 go test ./internal/knowledge -v
 ```
 
 DATABASE_URL, EMBEDDING_BASE_URL=https://api.jina.ai/v1 и EMBEDDING_API_KEY
 читаются из окружения (файл .env сам по себе команда не загружает).
-Схема передаётся Лёше через knowledge.Schema, номер общей миграции не занят.
-Нужен образ PostgreSQL с установленным pgvector; текущий stock postgres его не содержит.
-Необходимо согласовать образ и миграцию перед подключением app.
+Миграция 000007_knowledge.sql устанавливает pgvector и таблицы поиска.
+Compose использует PostgreSQL 17 с pgvector. Для удалённой БД расширение
+должно быть доступно до запуска миграций. Импорт в Compose:
+`docker compose --profile demo run --rm knowledge-import`.
 
-Регистрация Лёшей под существующим middleware сессии:
+Приложение регистрирует чтение документа под middleware сессии:
 
 ```go
 k := &knowledge.Service{DB: db, Embedder: knowledge.JinaFromEnv()}

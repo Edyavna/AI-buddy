@@ -63,7 +63,7 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	var deps Dependencies
 	if db != nil && cfg.DemoMode {
 		provider := integrations.New(db)
-		deps.Access = provider
+		deps = demoDependencies(db, provider, cfg.AI)
 		worker := accessrequests.Worker{Store: accessrequests.Store{DB: db}, Provider: provider}
 		workerCtx, stopWorker := context.WithCancel(ctx)
 		workerDone := make(chan struct{})
