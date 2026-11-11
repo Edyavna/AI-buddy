@@ -179,3 +179,20 @@ fake Agent/AccessProvider через один handler с реальной рег
 Результат покрытия этого прогона — 85.3% statements, не line coverage.
 
 Корпоративная имитация #13, demo-control и сценарии передачи модулей описаны в [README интеграций](internal/integrations/README.md).
+
+## Подтверждение заявок на доступ
+
+Тестовый стажёр читает свои заявки через `GET /api/v1/access-requests` и
+`GET /api/v1/access-requests/{request_id}`. Черновик создаёт агент через
+`DraftService` в транзакции со связью сообщения. Браузер отправляет
+`POST /api/v1/access-requests/{request_id}/confirm` с текущим `draft_version`.
+
+Ответ 202 означает, что операция записана и продолжится в фоне. Проверяйте
+статус через GET. Сервис сверяет активные заявки с корпоративным провайдером.
+В деморежиме выдать или отклонить доступ можно через
+[demo-control](internal/integrations/README.md). После выдачи стажёр вручную
+завершает разблокированный шаг.
+
+В каталоге `backend` запустите `go test -race ./internal/app -run TestPostgresAccessRequest`
+с `TEST_DATABASE_URL`. Тесты используют настоящий PostgreSQL и постоянную
+имитацию внешнего сервиса, включая потерю ответа после создания заявки.

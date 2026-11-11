@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/Edyavna/AI-buddy/backend/internal/accessrequests"
 	"github.com/Edyavna/AI-buddy/backend/internal/auth"
 	"github.com/Edyavna/AI-buddy/backend/internal/chat"
 	"github.com/Edyavna/AI-buddy/backend/internal/demo"
@@ -33,12 +34,18 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 		if deps.Agent == nil && cfg.DemoMode {
 			deps.Agent = demo.Agent{Delay: cfg.DemoChatDelay}
 		}
+		requestStore := accessrequests.Store{DB: db}
+		requests := accessrequests.Handler{Store: requestStore, Checker: deps.Access}
+		if deps.Requests == nil {
+			deps.Requests = requestStore
+		}
 		session := auth.Handler{Service: &auth.Service{Store: auth.SQLStore{DB: db}, TTL: cfg.SessionTTL}, DemoMode: cfg.DemoMode, CookieSecure: cfg.SessionCookieSecure}
 		plans := onboarding.Handler{Service: onboarding.Service{Store: onboarding.SQLStore{DB: db}, Access: deps.Access}}
 		conversations := chat.Handler{Service: chat.Service{Store: chat.SQLStore{DB: db}, Agent: deps.Agent, Requests: deps.Requests}, Logger: logger}
 		opts.Register = func(mux *http.ServeMux) {
 			session.Register(mux)
 			plans.Register(mux, session)
+			requests.Register(mux, session)
 			conversations.Register(mux, session)
 		}
 	}

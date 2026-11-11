@@ -22,14 +22,14 @@ func testDB(t *testing.T) *sql.DB { return testkit.UnmigratedPostgres(t) }
 func TestPostgresUpgradeFromDev(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()
-	// Reconstruct the released dev migration set, before chat was added.
+	// Reconstruct the released dev migration set, before access requests were added.
 	dev := fstest.MapFS{}
 	entries, err := fs.ReadDir(migrations.Files, "sql")
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {
-		if entry.Name() > "000004_demo_external.sql" {
+		if entry.Name() > "000005_chat.sql" {
 			continue
 		}
 		data, err := fs.ReadFile(migrations.Files, "sql/"+entry.Name())
@@ -42,7 +42,7 @@ func TestPostgresUpgradeFromDev(t *testing.T) {
 		t.Fatal(err)
 	}
 	var appliedAt string
-	if err := db.QueryRow(`SELECT applied_at::text FROM buddy_schema_migrations WHERE name='000004_demo_external.sql'`).Scan(&appliedAt); err != nil {
+	if err := db.QueryRow(`SELECT applied_at::text FROM buddy_schema_migrations WHERE name='000005_chat.sql'`).Scan(&appliedAt); err != nil {
 		t.Fatal(err)
 	}
 	if err := migrations.Apply(ctx, db, migrations.Files); err != nil {
@@ -52,7 +52,7 @@ func TestPostgresUpgradeFromDev(t *testing.T) {
 		t.Fatal(err)
 	}
 	var kept string
-	if err := db.QueryRow(`SELECT applied_at::text FROM buddy_schema_migrations WHERE name='000004_demo_external.sql'`).Scan(&kept); err != nil || kept != appliedAt {
+	if err := db.QueryRow(`SELECT applied_at::text FROM buddy_schema_migrations WHERE name='000005_chat.sql'`).Scan(&kept); err != nil || kept != appliedAt {
 		t.Fatalf("dev migration reapplied: %q != %q: %v", kept, appliedAt, err)
 	}
 	assertDemoAndChat(t, db)
@@ -64,11 +64,11 @@ func assertDemoAndChat(t *testing.T, db *sql.DB) {
 	if err := db.QueryRow(`SELECT string_agg(name, ',' ORDER BY name) FROM buddy_schema_migrations`).Scan(&names); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(names, "000004_demo_external.sql,000005_chat.sql") {
+	if !strings.Contains(names, "000004_demo_external.sql,000005_chat.sql,000006_access_requests.sql") {
 		t.Fatalf("incorrect migration order: %s", names)
 	}
 	var present bool
-	if err := db.QueryRow(`SELECT to_regclass('demo_external.resources') IS NOT NULL AND to_regclass('chat_messages') IS NOT NULL`).Scan(&present); err != nil || !present {
+	if err := db.QueryRow(`SELECT to_regclass('demo_external.resources') IS NOT NULL AND to_regclass('chat_messages') IS NOT NULL AND to_regclass('access_request_jobs') IS NOT NULL`).Scan(&present); err != nil || !present {
 		t.Fatalf("demo or chat tables missing: %v", err)
 	}
 }
