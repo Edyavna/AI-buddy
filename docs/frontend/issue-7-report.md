@@ -1,6 +1,6 @@
 # Отчёт по issue №7 — первая поставка (черновик + DraftService)
 
-Дата: 2026-11-09. Ветка: `feature/issue-7-draft-card-integration` (от `dev`).
+Дата: 2026-11-09 (обновлено после ревью). Ветка: `feature/issue-7-draft-card-integration` (от `dev`).
 
 Согласно комментарию тимлида задача разбита на две поставки. Этот отчёт — по
 первой: **сохранение черновика и DraftService** — «Никита проверяет, что в чате
@@ -13,14 +13,15 @@
 
 | Проверка (issue №7) | Результат | Где |
 |---|---|---|
-| Карточка с ID сохранённого черновика появляется в чате | ✅ | `sources-requests.test.tsx`, e2e, скриншот `chat-draft-*.png` |
-| Отсутствие внешней заявки до подтверждения | ✅ | в e2e: внешний номер не показан, confirm не вызывался |
-| Ровно одно создание, reload и сохранение external_id/status | ✅ | e2e: счётчик confirm == 1 после remount, `Номер: ACCESS-1001` сохраняется |
+| Создание черновика из нового вопроса (`action.proposed` до финального сообщения) | ✅ | e2e: карточка с ID `request_demo_1` появляется в новом диалоге |
+| Отсутствие внешней заявки до подтверждения | ✅ | e2e: внешний номер не показан, confirm не вызывался |
+| Ровно одно создание | ✅ | e2e: счётчик confirm == 1 после всего сценария |
+| Reload: восстановление из API, а не из кеша | ✅ | e2e: кеш очищен (`queryClient.clear()`), карточка получена повторным GET /access-requests |
 | granted и обновление плана, завершение шага пользователем | ✅ | e2e: поллинг submitting → pending → granted, прогресс 100% после «Отметить выполненным» |
 | rejected, DRAFT_CHANGED, обрыв SSE, неизвестный исход confirm | ✅ | unit: `access-requests.test.tsx` (409/сеть/polling), `stream.test.ts`, `recovery_test.go` на бэкенде |
 | 401/404 и сбои | ✅ | unit: `router.integration.test.tsx`, `access-requests.test.tsx`, `ChatPage.test.tsx` |
 | 360 / 768 / 1440 px, клавиатура и фокус | ✅ | скриншоты `screenshots/`, фокус-проверки в `access-revocation.test.tsx` |
-| generate:api, typecheck, lint, test:coverage, build, test:e2e | ✅ | команды ниже, покрытие lines **95.67%** (порог 81%) |
+| generate:api, typecheck, lint, test:coverage, build, test:e2e | ✅ | команды ниже; e2e добавлен в CI (`.github/workflows/frontend.yml`), покрытие lines **95.67%** (порог 81%) |
 | Реальный сценарий с Go/LLM | ⏳ ждёт вторую поставку бэкенда | см. «Ограничения» |
 
 ## Команды проверки (воспроизводимые)
@@ -32,8 +33,8 @@ npm run generate:api   # диффа с закоммиченными типами
 npm run typecheck      # ✅
 npm run lint           # ✅
 npm run test:coverage  # ✅ 29 файлов, 168 тестов; lines 95.67% (порог 81%)
+npm run test:e2e       # ✅ e2e/issue-7-scenario.e2e.test.tsx (также шаг CI)
 npm run build          # ✅
-npm run test:e2e       # ✅ e2e/issue-7-scenario.e2e.test.tsx
 ```
 
 Отчёты покрытия (text/HTML/LCOV) сохраняются в `frontend/coverage/`
@@ -41,9 +42,11 @@ npm run test:e2e       # ✅ e2e/issue-7-scenario.e2e.test.tsx
 
 Сквозной e2e-сценарий (`npm run test:e2e`, `vitest.e2e.config.ts` + `e2e/`)
 проходит весь путь приёмки `docs/frontend/acceptance.md`: вход тестовым
-стажером → план → «Спросить помощника» без автоотправки → отправка вопроса,
-источник, черновик без внешнего номера → один confirm → reload с сохранением
-номера → granted и разблокировка шага → «Отметить выполненным» → прогресс 100%.
+стажером → план → «Спросить помощника» без автоотправки → отправка вопроса →
+**агент предлагает черновик через `action.proposed`, карточка с ID заявки
+появляется в новом диалоге** → источник → один confirm → reload с пустым
+кешем (карточка восстановлена запросом к API-моку) → granted и разблокировка
+шага → «Отметить выполненным» → прогресс 100%.
 
 ## Скриншоты (dev-сервер с MSW-имитацией)
 
@@ -68,5 +71,8 @@ npm run test:e2e       # ✅ e2e/issue-7-scenario.e2e.test.tsx
   перезагрузки страницы. В активной вкладке полный цикл подтверждён вручную
   (см. `chat-granted-1440.png`). Поведение поллинга при скрытой вкладке
   покрыто unit-тестом «skips polls while the tab is hidden».
+- Единичная нестабильность unit-прогона: один запуск из шести `test:coverage`
+  показал одно падение, в пяти повторных прогонах (включая два с записью лога)
+  не воспроизвелось; затронутые e2e-изменения unit-набор не меняют.
 - Покрытие измерено только по frontend `src`; итоговый охват проекта
   согласуется с бэкендом после второй поставки.
