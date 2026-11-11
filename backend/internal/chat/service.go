@@ -118,32 +118,7 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 	return Prepared{Reservation: r, Input: in, StartedAt: started}, nil
 }
 
-type accessRequest struct {
-	ID             string  `json:"id"`
-	Revision       int64   `json:"revision"`
-	Version        int64   `json:"draft_version"`
-	ConversationID string  `json:"conversation_id"`
-	StepID         *string `json:"step_id"`
-	Resource       struct {
-		ID         string `json:"id"`
-		Name       string `json:"name"`
-		Permission string `json:"permission"`
-	} `json:"resource"`
-	Reason        string     `json:"reason"`
-	Status        string     `json:"status"`
-	ExternalID    *string    `json:"external_id"`
-	CheckedAt     *time.Time `json:"status_checked_at"`
-	FailureReason string     `json:"failure_reason,omitempty"`
-	CreatedAt     time.Time  `json:"created_at"`
-	UpdatedAt     time.Time  `json:"updated_at"`
-}
-
-func requestDTO(r ports.RequestState) accessRequest {
-	v := accessRequest{ID: r.RequestID, Revision: r.Revision, Version: r.Version, ConversationID: r.ConversationID, StepID: r.StepID, Reason: r.Reason, Status: r.Status, ExternalID: r.ExternalID, CheckedAt: r.StatusCheckedAt, FailureReason: r.FailureReason, CreatedAt: r.CreatedAt.UTC(), UpdatedAt: r.UpdatedAt.UTC()}
-	v.Resource.ID, v.Resource.Name, v.Resource.Permission = r.Resource.ID, r.Resource.Name, r.Resource.Permission
-	return v
-}
-func (s Service) proposed(ctx context.Context, p Prepared, event ports.AgentEvent) (*accessRequest, error) {
+func (s Service) proposed(ctx context.Context, p Prepared, event ports.AgentEvent) (*httpapi.AccessRequest, error) {
 	if event.Draft == nil || event.Draft.RequestID == "" {
 		return nil, ports.ErrInvalid
 	}
@@ -177,7 +152,7 @@ func (s Service) proposed(ctx context.Context, p Prepared, event ports.AgentEven
 	if request.Version < 1 || request.Revision < 1 || request.CreatedAt.IsZero() || request.UpdatedAt.IsZero() || request.ExternalID != nil || request.Resource.ID == "" || request.Resource.Name == "" || request.Reason == "" || (request.Resource.Permission != "read" && request.Resource.Permission != "write") {
 		return nil, ports.ErrInvalid
 	}
-	dto := requestDTO(request)
+	dto := httpapi.RequestDTO(request)
 	return &dto, nil
 }
 

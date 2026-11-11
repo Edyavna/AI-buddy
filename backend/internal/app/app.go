@@ -9,7 +9,9 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/Edyavna/AI-buddy/backend/internal/accessrequests"
 	"github.com/Edyavna/AI-buddy/backend/internal/chat"
+	"github.com/Edyavna/AI-buddy/backend/internal/integrations"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/config"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/migrations"
@@ -58,8 +60,24 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}
 	defer listener.Close()
 	logger.Info("server listening", "address", listener.Addr().String(), "database_enabled", cfg.DatabaseEnabled)
+	var deps Dependencies
+	if db != nil && cfg.DemoMode {
+		provider := integrations.New(db)
+		deps.Access = provider
+		worker := accessrequests.Worker{Store: accessrequests.Store{DB: db}, Provider: provider}
+		workerCtx, stopWorker := context.WithCancel(ctx)
+		workerDone := make(chan struct{})
+		go func() {
+			defer close(workerDone)
+			worker.Run(workerCtx, logger)
+		}()
+		defer func() {
+			stopWorker()
+			<-workerDone
+		}()
+	}
 	server := &http.Server{
-		Handler:           NewHandler(cfg, db, logger, ready, Dependencies{}),
+		Handler:           NewHandler(cfg, db, logger, ready, deps),
 		ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 10 * time.Second, IdleTimeout: 60 * time.Second,
 		// WriteTimeout=0 for SSE. Chat owns its 120s generation deadline.
 		BaseContext: func(net.Listener) context.Context { return ctx },

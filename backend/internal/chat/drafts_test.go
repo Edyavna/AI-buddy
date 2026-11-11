@@ -10,6 +10,7 @@ import (
 
 	"github.com/Edyavna/AI-buddy/backend/internal/drafts"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
+	"github.com/Edyavna/AI-buddy/backend/internal/platform/httpapi"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/identity"
 	"github.com/Edyavna/AI-buddy/backend/internal/ports"
 )
@@ -133,7 +134,7 @@ func TestPostgresDraftLinkCommitRollbackAndAgentFailure(t *testing.T) {
 	}
 	for i, kind := range sink.kinds {
 		if kind == "action.proposed" {
-			proposed := sink.data[i].(map[string]any)["request"].(*accessRequest)
+			proposed := sink.data[i].(map[string]any)["request"].(*httpapi.AccessRequest)
 			if proposed.Version != 1 || proposed.Status != "draft" {
 				t.Fatal("trusted emitted payload", proposed)
 			}
