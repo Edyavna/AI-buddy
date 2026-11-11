@@ -16,7 +16,8 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
-    "check:api": "node scripts/check-api.mjs"
+    "check:api": "node scripts/check-api.mjs",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts"
   },
   "dependencies": {
     "@tanstack/react-query": "5.107.1",
