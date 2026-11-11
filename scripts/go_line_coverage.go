@@ -14,6 +14,7 @@ import (
 )
 
 const module = "github.com/Edyavna/AI-buddy/backend/"
+const lineCoverageThreshold = 80
 
 type block struct {
 	startLine, startColumn, endLine, endColumn, count int
@@ -131,4 +132,8 @@ func main() {
 	}
 	fmt.Printf("Go line coverage: %.2f%% (%d/%d instrumented source lines)\n",
 		100*float64(covered)/float64(total), covered, total)
+	if 100*covered <= lineCoverageThreshold*total {
+		fmt.Fprintf(os.Stderr, "Go line coverage must be greater than %d%%.\n", lineCoverageThreshold)
+		os.Exit(1)
+	}
 }
