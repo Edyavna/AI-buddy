@@ -14,10 +14,16 @@ x-backend: &backend
     SESSION_TTL: ${SESSION_TTL:-24h}
     SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-false}
     DEMO_CHAT_DELAY: ${DEMO_CHAT_DELAY:-250ms}
+    AI_MODE: ${AI_MODE:-demo}
+    LLM_BASE_URL: ${LLM_BASE_URL:-}
+    LLM_MODEL: ${LLM_MODEL:-}
+    LLM_API_KEY: ${LLM_API_KEY:-}
+    EMBEDDING_BASE_URL: ${EMBEDDING_BASE_URL:-}
+    EMBEDDING_API_KEY: ${EMBEDDING_API_KEY:-}
 
 services:
   db:
-    image: postgres:17-alpine
+    image: pgvector/pgvector:0.8.7-pg17
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-buddy}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-buddy_dev_only}
@@ -43,6 +49,15 @@ services:
   seed:
     <<: *backend
     command: ["/app/seed"]
+    profiles: ["demo"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
+  knowledge-import:
+    <<: *backend
+    command: ["/app/knowledge-import", "-dir", "/app/knowledge"]
     profiles: ["demo"]
     depends_on:
       migrate:

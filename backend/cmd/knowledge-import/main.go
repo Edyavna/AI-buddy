@@ -7,16 +7,22 @@ import (
 	"fmt"
 	"github.com/Edyavna/AI-buddy/backend/internal/knowledge"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
+	"github.com/Edyavna/AI-buddy/backend/internal/platform/migrations"
 	"os"
 	"time"
 )
 
 func main() {
 	dir := flag.String("dir", "../demo/knowledge", "Markdown manifest directory")
-	schema := flag.Bool("schema", false, "Print proposed schema for migration owner")
+	schema := flag.Bool("schema", false, "Print the knowledge migration")
 	flag.Parse()
 	if *schema {
-		fmt.Println(knowledge.Schema)
+		sql, err := migrations.Files.ReadFile("sql/000007_knowledge.sql")
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "Knowledge migration not available")
+			os.Exit(1)
+		}
+		fmt.Print(string(sql))
 		return
 	}
 	if run(*dir) != nil {

@@ -24,11 +24,8 @@ func (f *fakeEmbedder) Embed(context.Context, string, string) ([]float64, error)
 
 // S05/S07: this exercises real pgvector/ACL, not a SQL mock or semantic quality.
 func TestPostgresACLAndImport(t *testing.T) {
-	db := testkit.UnmigratedPostgres(t)
+	db := testkit.Postgres(t)
 	ctx := testkit.Context(context.Background())
-	if _, e := db.ExecContext(ctx, Schema); e != nil {
-		t.Fatal(e)
-	}
 	embed := &fakeEmbedder{}
 	s := Service{DB: db, Embedder: embed}
 	d := Document{ID: "doc_local_setup", Source: "md", SourceID: "setup.md", Title: "Setup", Content: "Синтетический документ запуска", TeamID: testkit.TeamID, UpdatedAt: time.Now().UTC()}
