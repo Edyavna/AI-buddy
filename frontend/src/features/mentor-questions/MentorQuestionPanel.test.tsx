@@ -163,6 +163,22 @@ describe('MentorQuestionPanel — escalation', () => {
 });
 
 describe('MentorQuestionPanel — resolution and access', () => {
+  it('recovers after a denied POST when a subsequent GET confirms access', async () => {
+    let restored = false;
+    server.use(
+      http.get(URL, () => HttpResponse.json({ question: restored ? resolvedQuestion : null })),
+      http.post(URL, () => jsonError(403)),
+    );
+    renderWithQuery(<Panel />);
+    const user = userEvent.setup();
+    await user.click(await screen.findByRole('button', { name: 'Передать наставнику' }));
+    await screen.findByText('Вопрос наставнику недоступен');
+    restored = true;
+    fireEvent(document, new Event('visibilitychange'));
+    expect(await screen.findByText(resolvedQuestion.resolution!)).toBeInTheDocument();
+    expect(screen.queryByText('Вопрос наставнику недоступен')).not.toBeInTheDocument();
+  });
+
   it('opens a document and repeats the question once through callbacks', async () => {
     const openDocument = vi.fn();
     const repeat = vi.fn();

@@ -1,7 +1,7 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { ClientError } from '@/shared/api';
 import { mentorQuestionsApi } from './api';
-import { acceptMentorQuestion } from './cache';
+import { acceptMentorQuestion, isAccessError, revokeMentorQuestion } from './cache';
 import type { MentorQuestion } from './schemas';
 
 const inflight = new Map<string, Promise<MentorQuestion>>();
@@ -38,7 +38,10 @@ export function escalateMentorQuestionShared(
 
     acceptMentorQuestion(queryClient, messageId, question);
     return question;
-  })().finally(() => {
+  })().catch(error => {
+    if (isAccessError(error)) revokeMentorQuestion(queryClient, messageId);
+    throw error;
+  }).finally(() => {
     if (inflight.get(messageId) === task) {
       inflight.delete(messageId);
       controllers.delete(messageId);

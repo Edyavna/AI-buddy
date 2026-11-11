@@ -3,7 +3,8 @@ import { useMutation, useMutationState, useQuery, useQueryClient } from '@tansta
 import { ClientError } from '@/shared/api';
 import { Button, InlineError, Spinner, StatusBadge } from '@/shared/ui';
 import { mentorQuestionsApi } from './api';
-import { acceptMentorQuestion, mentorQuestionKeys } from './cache';
+import { acceptMentorQuestion, isAccessError, mentorQuestionKeys, revokeMentorQuestion } from './cache';
+import type { MentorQuestionCache } from './cache';
 import { escalateMentorQuestionShared } from './escalate';
 import type { MentorQuestion, MentorQuestionLookup } from './schemas';
 import styles from './MentorQuestionPanel.module.css';
@@ -19,11 +20,8 @@ export interface MentorQuestionPanelProps {
   isChatBusy?: boolean;
 }
 
-function isAccessError(error: unknown): boolean {
-  return error instanceof ClientError && [401, 403, 404].includes(error.status ?? 0);
-}
-
 function escalationErrorMessage(error: unknown): string | null {
+  if (isAccessError(error)) return null; // Access state lives in the shared cache until a successful refresh.
   if (!(error instanceof Error) || (error instanceof ClientError && error.kind === 'aborted')) return null;
   if (error instanceof ClientError && error.kind === 'network') {
     return 'Не удалось подтвердить передачу. Проверьте соединение и повторите: сервер не создаст дубль вопроса.';
@@ -50,8 +48,13 @@ export function MentorQuestionPanel({
     queryKey: key,
     enabled: canEscalate && isInView,
     queryFn: async ({ signal }) => {
-      const result = await mentorQuestionsApi.get(messageId, signal);
-      return acceptMentorQuestion(queryClient, messageId, result.question);
+      try {
+        const result = await mentorQuestionsApi.get(messageId, signal);
+        return acceptMentorQuestion(queryClient, messageId, result.question);
+      } catch (error) {
+        if (isAccessError(error)) revokeMentorQuestion(queryClient, messageId);
+        throw error;
+      }
     },
   });
   refetchRef.current = () => query.refetch();
@@ -80,14 +83,15 @@ export function MentorQuestionPanel({
   }, [canEscalate, isInView, key, queryClient]);
 
   useEffect(() => {
+    if (!canEscalate) return;
     const onVisibilityChange = () => {
       if (document.visibilityState !== 'visible' || !inViewRef.current) return;
-      const question = queryClient.getQueryData<MentorQuestionLookup>(key)?.question;
-      if (question) void refetchRef.current();
+      const cached = queryClient.getQueryData<MentorQuestionCache>(key);
+      if (cached?.question || cached?.accessDenied) void refetchRef.current();
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
-  }, [key, queryClient]);
+  }, [canEscalate, key, queryClient]);
 
   const escalation = useMutation({
     mutationKey: mentorQuestionKeys.mutation(messageId),
@@ -100,8 +104,8 @@ export function MentorQuestionPanel({
 
   if (!canEscalate) return null;
 
-  const accessError = [query.error, escalation.error].find(isAccessError);
-  if (accessError) {
+  const accessError = isAccessError(query.error);
+  if (accessError || query.data?.accessDenied) {
     return <div className={styles.state} role="status">Вопрос наставнику недоступен</div>;
   }
 

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { act, screen, waitFor } from '@testing-library/react';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { renderWithQuery } from '@/test/render';
 import { server } from '@/test/server';
@@ -43,6 +44,52 @@ function Panel() {
 }
 
 describe('MentorQuestionPanel — lifecycle', () => {
+  it.each([401, 403, 404])('keeps revoked details hidden after %s and a failed refresh, then recovers', async (deniedStatus) => {
+    let status = 200;
+    const question = { ...resolved, document_ids: ['private_document'] };
+    server.use(http.get(URL, () => status === 200
+      ? HttpResponse.json({ question })
+      : HttpResponse.json({}, { status })));
+    const { queryClient } = renderWithQuery(<Panel />);
+    const key = ['mentor-questions', 'message', MESSAGE_ID];
+    await screen.findByText(resolved.resolution!);
+    status = deniedStatus;
+    await act(async () => { await queryClient.refetchQueries({ queryKey: key }); });
+    await screen.findByText('Вопрос наставнику недоступен');
+    expect(queryClient.getQueryData(key)).toEqual({ question: null, accessDenied: true });
+    status = 503;
+    await act(async () => { await queryClient.refetchQueries({ queryKey: key }); });
+    expect(screen.getByText('Вопрос наставнику недоступен')).toBeInTheDocument();
+    expect(screen.queryByText(resolved.resolution!)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Открыть источник 1' })).not.toBeInTheDocument();
+    status = 200;
+    document.dispatchEvent(new Event('visibilitychange'));
+    await screen.findByText(resolved.resolution!);
+    expect(screen.getByRole('button', { name: 'Открыть источник 1' })).toBeInTheDocument();
+    expect(screen.queryByText('Вопрос наставнику недоступен')).not.toBeInTheDocument();
+  });
+
+  it('does not refetch cached data on tab return after escalation is disabled', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let gets = 0;
+    server.use(http.get(URL, () => {
+      gets += 1;
+      return HttpResponse.json({ question: resolved });
+    }));
+    const view = renderWithQuery(<Panel />);
+    await screen.findByText(resolved.resolution!);
+    view.rerender(<QueryClientProvider client={view.queryClient}>
+      <MentorQuestionPanel messageId={MESSAGE_ID} canEscalate={false}
+        onOpenDocument={() => {}} onRepeatQuestion={() => {}} />
+    </QueryClientProvider>);
+    await act(async () => {
+      document.dispatchEvent(new Event('visibilitychange'));
+      await vi.advanceTimersByTimeAsync(10000);
+    });
+    expect(gets).toBe(1);
+    expect(view.container).toBeEmptyDOMElement();
+  });
+
   afterEach(() => {
     vi.useRealTimers();
     vi.unstubAllGlobals();
