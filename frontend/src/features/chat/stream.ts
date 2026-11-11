@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { ClientError } from '@/shared/api';
-import { messageSchema, requestSchema } from './schemas';
+import { messageSchema } from './schemas';
+import { accessRequestSchema } from '@/features/access-requests';
 
 const id = z.string().min(1);
 export const eventSchema = z.discriminatedUnion('event', [
@@ -8,7 +9,7 @@ export const eventSchema = z.discriminatedUnion('event', [
   z.object({ event: z.literal('tool.started'), data: z.object({ message_id: id, tool_call_id: id, label: id }) }),
   z.object({ event: z.literal('tool.finished'), data: z.object({ message_id: id, tool_call_id: id, status: z.enum(['succeeded', 'failed']) }) }),
   z.object({ event: z.literal('answer.delta'), data: z.object({ message_id: id, text: z.string() }) }),
-  z.object({ event: z.literal('action.proposed'), data: z.object({ message_id: id, request: requestSchema.refine(r => r.status === 'draft') }) }),
+  z.object({ event: z.literal('action.proposed'), data: z.object({ message_id: id, request: accessRequestSchema.refine(r => r.status === 'draft' && r.external_id === null) }) }),
   z.object({ event: z.literal('message.completed'), data: z.object({ message: messageSchema.refine(m => m.role === 'assistant' && m.status === 'completed') }) }),
   z.object({ event: z.literal('message.failed'), data: z.object({ message: messageSchema.refine(m => m.role === 'assistant' && m.status === 'failed') }) }),
 ]);

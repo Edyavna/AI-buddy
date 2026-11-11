@@ -1,6 +1,8 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { http, HttpResponse } from 'msw';
 import { createQueryClient } from '@/shared/api';
+import { queryKeys } from '@/shared/api';
+import { accessRequestSchema } from '@/features/access-requests';
 import { server } from '@/test/server';
 import { createScenario } from '@/mocks/fixtures/scenario';
 import { ChatController } from './controller';
@@ -8,6 +10,24 @@ import { eventText } from '@/test/chat-stream';
 
 const f = createScenario();
 afterEach(() => { sessionStorage.clear(); vi.useRealTimers(); });
+
+it.each(['older', 'equal-conflict', 'foreign'])('reconciles action.proposed using the shared FE2 cache: %s', async mode => {
+  const { controller, client } = setup(); controller.reset(f.conversation.id);
+  const cached = accessRequestSchema.parse(mode === 'older' ? f.pending : { ...f.draft, reason: 'Уже обновлённая причина' });
+  client.setQueryData(queryKeys.request(f.draft.id), cached);
+  server.use(http.get('*/api/v1/conversations/:id/messages', () => HttpResponse.json([])),
+    http.post('*/api/v1/conversations/:id/messages', () => new HttpResponse(
+      eventText('message.started', { user_message_id: 'msg_u1', message_id: 'msg_a1' }) +
+      eventText('action.proposed', { message_id: 'msg_a1', request: { ...f.draft, conversation_id: mode === 'foreign' ? 'other' : f.conversation.id } }) +
+      eventText('message.completed', { message: f.messages[1] }),
+      { headers: { 'Content-Type': 'text/event-stream' } },
+    )));
+  await controller.send('Вопрос', f.user.id, null, vi.fn());
+  expect(client.getQueryData(queryKeys.request(f.draft.id))).toEqual(cached);
+  if (mode === 'equal-conflict') expect(client.getQueryState(queryKeys.request(f.draft.id))?.isInvalidated).toBe(true);
+  if (mode === 'foreign') expect(controller.state.messages.at(-1)?.request_ids).toEqual([]);
+  controller.stop(); client.clear();
+});
 function setup() {
   const client = createQueryClient(); client.setDefaultOptions({ queries: { retry: false } });
   const unauthorized = vi.fn(); const controller = new ChatController(client, unauthorized);

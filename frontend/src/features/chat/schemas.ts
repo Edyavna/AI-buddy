@@ -26,21 +26,6 @@ export const messageSchema = z.object({
   if (['failed', 'interrupted'].includes(m.status) !== Boolean(m.error))
     ctx.addIssue({ code: 'custom', message: 'Invalid error state' });
 });
-export const requestSchema = z.object({
-  id: z.string(), revision: z.number().int().min(1), draft_version: z.number().int().min(1),
-  conversation_id: z.string(), step_id: z.string().nullable(),
-  resource: z.object({ id: z.string(), name: z.string(), permission: z.enum(['read', 'write']) }),
-  reason: z.string(), status: z.enum(['draft', 'submitting', 'pending', 'granted', 'rejected', 'failed']),
-  external_id: z.string().nullable(), status_checked_at: date.nullable(),
-  created_at: date, updated_at: date, failure_reason: z.string().optional(),
-}).superRefine((r, ctx) => {
-  if (['pending', 'granted', 'rejected'].includes(r.status) && !r.external_id)
-    ctx.addIssue({ code: 'custom', message: 'Missing external ID' });
-  if (['draft', 'failed'].includes(r.status) && r.external_id !== null)
-    ctx.addIssue({ code: 'custom', message: 'Unexpected external ID' });
-  if (['failed', 'rejected'].includes(r.status) && !r.failure_reason)
-    ctx.addIssue({ code: 'custom', message: 'Missing failure reason' });
-});
 export const planSchema = z.object({
   id: z.string(), title: z.string(), progress_percent: z.number().int().min(0).max(100), next_step_id: z.string().nullable(),
   steps: z.array(z.object({
@@ -49,5 +34,4 @@ export const planSchema = z.object({
     allowed_statuses: z.array(z.enum(['not_started', 'in_progress', 'completed'])), blocked_reason: z.string().nullable(),
   })),
 });
-export const documentSchema = z.object({ id: z.string(), title: z.string(), content: z.string(), updated_at: date });
 

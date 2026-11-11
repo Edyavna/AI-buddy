@@ -5,11 +5,18 @@
 .chat { min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); }
 .chat h1 { font-size: var(--font-size-2xl); }
 .chat header p, .composer small { color: var(--color-text-secondary); }
-.messages { height: min(52vh,600px); min-height: 200px; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
-.messages article { max-width: 90%; padding: var(--space-4); border-radius: var(--radius-md); overflow-wrap: anywhere; }
+.messages { height: min(52vh,600px); min-height: 200px; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-4); }
+.messageContent { display: flex; flex-direction: column; gap: var(--space-4); min-height: 100%; min-width: 0; }
+.messageContent > article { max-width: 90%; min-width: 0; flex-shrink: 0; padding: var(--space-4); border-radius: var(--radius-md); overflow-wrap: anywhere; }
 .messages p { white-space: pre-wrap; }
 .user { align-self: flex-end; background: var(--color-surface-sunken); }
 .assistant { align-self: flex-start; }
+.sources { display: flex; flex-wrap: wrap; gap: var(--space-2); list-style: none; margin-top: var(--space-3); padding: 0; }
+.sources li { min-width: 0; max-width: 100%; }
+.source { display: flex; flex-direction: column; gap: var(--space-1); text-align: start; padding: var(--space-3); border: 1px solid var(--color-border); border-radius: var(--radius-sm); color: var(--avito-blue-text); background: var(--color-surface); min-height: 44px; max-width: 100%; overflow-wrap: anywhere; cursor: pointer; }
+.source:hover { background: var(--color-surface-hover); }
+.source span { color: var(--color-text-secondary); font-size: var(--font-size-sm); }
+.request { min-width: 0; margin-top: var(--space-3); }
 .welcome { margin: auto; text-align: center; }
 .composer { border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-4); }
 .composer textarea { display: block; width: 100%; resize: vertical; min-height: 80px; background: var(--color-surface); color: var(--color-text-primary); border: 0; font: inherit; }

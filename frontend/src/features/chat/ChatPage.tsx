@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, InlineError, Spinner } from '@/shared/ui';
@@ -6,6 +6,8 @@ import { ClientError, queryKeys } from '@/shared/api';
 import { getConversation, getData, listConversations, listMessages } from './api';
 import { planSchema, userSchema } from './schemas';
 import { ChatController } from './controller';
+import { AccessRequestPanel } from '@/features/access-requests';
+import { DocumentDrawer, MarkdownContent } from '@/features/documents';
 import styles from './ChatPage.module.css';
 
 export function ChatPage() {
@@ -17,8 +19,13 @@ export function ChatPage() {
   const state = useSyncExternalStore(controller.subscribe, controller.snapshot);
   const [text, setText] = useState('');
   const [newMessages, setNewMessages] = useState(false);
+  const [documentId, setDocumentId] = useState<string | null>(null);
+  const closeDocument = useCallback(() => setDocumentId(null), []);
+  const composer = useRef<HTMLTextAreaElement>(null);
+  const focusComposer = useCallback(() => composer.current?.focus(), []);
   const activeUser = useRef<string | null>(null);
   const list = useRef<HTMLDivElement>(null), nearBottom = useRef(true);
+  const messageContent = useRef<HTMLDivElement>(null);
   const busy = ['sending', 'streaming', 'recovering'].includes(state.phase);
   const me = useQuery({ queryKey: queryKeys.me(), queryFn: ({ signal }) => getData('/me', userSchema, signal) });
   const conversations = useQuery({ queryKey: queryKeys.conversations(), queryFn: ({ signal }) => listConversations(signal), enabled: !!me.data });
@@ -41,7 +48,7 @@ export function ChatPage() {
   useEffect(() => {
     // Internal replace after creation keeps the same controller and active request.
     if (controller.state.conversationId !== (conversationId ?? null)) {
-      controller.reset(conversationId ?? null); setText(''); nearBottom.current = true;
+      controller.reset(conversationId ?? null); setText(''); setDocumentId(null); nearBottom.current = true;
     }
   }, [conversationId, controller]);
   useEffect(() => {
@@ -67,6 +74,15 @@ export function ChatPage() {
     if (nearBottom.current && list.current) list.current.scrollTop = list.current.scrollHeight;
     else if (state.messages.length) setNewMessages(true);
   }, [state.messages, state.tools]);
+  useEffect(() => {
+    if (!messageContent.current || typeof ResizeObserver === 'undefined') return;
+    const observer = new ResizeObserver(() => {
+      if (nearBottom.current && list.current) list.current.scrollTop = list.current.scrollHeight;
+      else setNewMessages(true);
+    });
+    observer.observe(messageContent.current);
+    return () => observer.disconnect();
+  }, []);
   const send = () => {
     if (!me.data || (conversationId && !conversation.data) || !contextReady || contextInvalid || !text.trim() || text.length > 8000 || busy) return;
     void controller.send(text, me.data.id, contextId ?? null, id => navigate(`/chat/${encodeURIComponent(id)}`, { replace: true }));
@@ -84,16 +100,30 @@ export function ChatPage() {
       {error && <InlineError message={error.message} onRetry={() => { void client.invalidateQueries(); }} />}
       {contextInvalid && <InlineError message="Шаг не найден в вашем плане. Вернитесь к плану адаптации." />}
       {(me.isPending || (conversationId && history.isLoading)) && <Spinner />}
-      <div ref={list} className={styles.messages} onScroll={() => {
+      <div ref={list} className={styles.messages} role="log" aria-label="История сообщений" aria-live="off" onScroll={() => {
         const el = list.current!; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
         if (nearBottom.current) setNewMessages(false);
       }}>
+        <div ref={messageContent} className={styles.messageContent}>
         {!state.messages.length && !busy && <div className={styles.welcome}><h2>С чего начнём?</h2><p>Задайте вопрос о настройке окружения или выберите шаг в плане.</p><Link to="/onboarding">Открыть мой план</Link></div>}
         {state.messages.map(message => <article key={message.id} className={message.role === 'user' ? styles.user : styles.assistant}>
           <strong>{message.role === 'user' ? 'Вы' : 'AI-buddy'}</strong>
-          <p>{message.text || (message.status === 'generating' ? 'Готовлю ответ…' : 'Ответ без текста')}</p>
+          {message.role === 'assistant'
+            ? <MarkdownContent content={message.text || (message.status === 'generating' ? 'Готовлю ответ…' : 'Ответ без текста')} />
+            : <p>{message.text}</p>}
+          {message.sources.length > 0 && <ul className={styles.sources} aria-label="Источники ответа">
+            {message.sources.map(source => <li key={source.id}>
+              <button type="button" className={styles.source} onClick={() => setDocumentId(source.document_id)}>
+                <strong>{source.title}</strong><span>{source.excerpt}</span>
+              </button>
+            </li>)}
+          </ul>}
+          {[...new Set(message.request_ids)].map(requestId => <div className={styles.request} key={requestId}>
+            <AccessRequestPanel requestId={requestId} onDiscuss={focusComposer} />
+          </div>)}
           {['failed', 'interrupted'].includes(message.status) && <InlineError message={message.error?.error.message ?? 'Ответ прерван. Можно задать вопрос заново.'} />}
         </article>)}
+        </div>
       </div>
       {newMessages && <Button variant="secondary" onClick={() => { nearBottom.current = true; setNewMessages(false); if (list.current) list.current.scrollTop = list.current.scrollHeight; }}>Новые сообщения</Button>}
       <div role="status" aria-live="polite">{state.phase === 'sending' ? 'Отправляем вопрос…' : state.phase === 'recovering' ? 'Восстанавливаем ответ…' : ''}{Object.values(state.tools).map((label, i) => <p key={i}>{label}</p>)}</div>
@@ -102,11 +132,12 @@ export function ChatPage() {
       {state.conversationId && <Button variant="ghost" disabled={busy} onClick={() => void controller.recover(state.conversationId!)}>Обновить историю</Button>}
       <form className={styles.composer} onSubmit={event => { event.preventDefault(); send(); }}>
         <label htmlFor="chat-question">Ваш вопрос</label>
-        <textarea id="chat-question" value={text} maxLength={8000} onChange={event => setText(event.target.value)} onKeyDown={event => {
+        <textarea ref={composer} id="chat-question" value={text} maxLength={8000} onChange={event => setText(event.target.value)} onKeyDown={event => {
           if (event.key === 'Enter' && !event.shiftKey && !event.nativeEvent.isComposing && event.keyCode !== 229) { event.preventDefault(); send(); }
         }} placeholder="Спросите о чём-нибудь" />
         <div><small>{text.length}/8000 · Shift+Enter — новая строка</small><Button type="submit" disabled={busy || !text.trim() || !contextReady || contextInvalid || !me.data || !!conversation.error}>Отправить</Button></div>
       </form>
     </section>
+    <DocumentDrawer documentId={documentId} onClose={closeDocument} />
   </div>;
 }
