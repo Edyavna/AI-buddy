@@ -469,6 +469,205 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+  /messages/{id}/knowledge-gap:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      tags:
+      - Mentor
+      operationId: getInternKnowledgeGap
+      responses:
+        '200':
+          description: Вопрос стажёра или null, если передачи ещё не было
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - question
+                properties:
+                  question:
+                    type: object
+                    required:
+                    - id
+                    - message_id
+                    - status
+                    - revision
+                    - resolution
+                    - document_ids
+                    - created_at
+                    - updated_at
+                    properties:
+                      id:
+                        type: string
+                        format: uuid
+                      message_id:
+                        type: string
+                      status:
+                        type: string
+                        enum:
+                        - new
+                        - in_progress
+                        - resolved
+                      revision:
+                        type: integer
+                        minimum: 1
+                      resolution:
+                        type: string
+                        nullable: true
+                      document_ids:
+                        type: array
+                        items:
+                          type: string
+                      created_at:
+                        type: string
+                        format: date-time
+                      updated_at:
+                        type: string
+                        format: date-time
+                    nullable: true
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags:
+      - Mentor
+      operationId: createInternKnowledgeGap
+      responses:
+        '200':
+          description: Состояние передачи вопроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternKnowledgeGap'
+        '201':
+          description: Состояние передачи вопроса
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InternKnowledgeGap'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /mentor/questions:
+    get:
+      tags:
+      - Mentor
+      operationId: listMentorQuestions
+      parameters:
+      - name: status
+        in: query
+        schema:
+          type: string
+          enum:
+          - new
+          - in_progress
+          - resolved
+      responses:
+        '200':
+          description: Очередь назначенных вопросов
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/KnowledgeGap'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /mentor/questions/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    get:
+      tags:
+      - Mentor
+      operationId: getMentorQuestion
+      responses:
+        '200':
+          description: Вопрос назначенного стажёра
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeGap'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+    patch:
+      tags:
+      - Mentor
+      operationId: updateMentorQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/KnowledgeGapUpdate'
+      responses:
+        '200':
+          description: Вопрос назначенного стажёра
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/KnowledgeGap'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /mentor/interns:
     get:
       tags:
@@ -946,6 +1145,127 @@ components:
       description: User всегда completed, имеет client_message_id и null in_reply_to_message_id. Assistant имеет
         null client_message_id и ссылку на user. failed/interrupted обязаны содержать error; остальные error не
         содержат. Порядок GET детерминирован серверной последовательностью, а не только временем.
+    InternKnowledgeGap:
+      type: object
+      required:
+      - id
+      - message_id
+      - status
+      - revision
+      - resolution
+      - document_ids
+      - created_at
+      - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        message_id:
+          type: string
+        status:
+          type: string
+          enum:
+          - new
+          - in_progress
+          - resolved
+        revision:
+          type: integer
+          minimum: 1
+        resolution:
+          type: string
+          nullable: true
+        document_ids:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    KnowledgeGap:
+      type: object
+      required:
+      - id
+      - message_id
+      - status
+      - revision
+      - resolution
+      - document_ids
+      - created_at
+      - updated_at
+      - student
+      - step_id
+      - question
+      - context_excerpt
+      properties:
+        id:
+          type: string
+          format: uuid
+        message_id:
+          type: string
+        status:
+          type: string
+          enum:
+          - new
+          - in_progress
+          - resolved
+        revision:
+          type: integer
+          minimum: 1
+        resolution:
+          type: string
+          nullable: true
+        document_ids:
+          type: array
+          items:
+            type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        student:
+          type: object
+          required:
+          - id
+          - name
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        step_id:
+          type: string
+          nullable: true
+        question:
+          type: string
+        context_excerpt:
+          type: string
+    KnowledgeGapUpdate:
+      type: object
+      additionalProperties: false
+      required:
+      - status
+      - revision
+      properties:
+        status:
+          type: string
+          enum:
+          - new
+          - in_progress
+          - resolved
+        revision:
+          type: integer
+          minimum: 1
+        resolution:
+          type: string
+        document_ids:
+          type: array
+          items:
+            type: string
     InternSummary:
       type: object
       required: [id, name, team, progress_percent, next_step_id, completed_steps, total_steps, blocked_steps, open_questions]

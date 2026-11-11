@@ -61,7 +61,7 @@ INSERT INTO onboarding_steps(id,plan_id,position,title,description,status,blocke
 	}
 	got := list.Items[0]
 	if got.ID != testkit.UserID || got.ProgressPercent != 50 || got.CompletedSteps != 1 ||
-		got.BlockedSteps != 1 || got.TotalSteps != 2 || got.NextStepID != nil || got.OpenQuestions != nil {
+		got.BlockedSteps != 1 || got.TotalSteps != 2 || got.NextStepID != nil || got.OpenQuestions == nil || *got.OpenQuestions != 0 {
 		t.Fatal(got)
 	}
 
