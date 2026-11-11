@@ -33,9 +33,10 @@ export function useLogin() {
   const navigate = useNavigate();
   return useMutation({
     mutationFn: (accountId: string) => sessionApi.createDemoSession(accountId),
-    onSuccess: (user) => {
+    onSuccess: async (user) => {
+      await resetSessionState(queryClient);
       queryClient.setQueryData(queryKeys.me(), user);
-      navigate('/onboarding', { replace: true });
+      navigate(user.role === 'mentor' ? '/mentor/questions' : '/onboarding', { replace: true });
     },
   });
 }

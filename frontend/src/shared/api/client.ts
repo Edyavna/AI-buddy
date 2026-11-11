@@ -6,6 +6,7 @@ export type RequestOptions = {
   method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
   body?: unknown;
   signal?: AbortSignal;
+  search?: Record<string, string | undefined>;
 };
 export type ApiResponse<T> = { status: number; data: T | undefined };
 
@@ -61,7 +62,10 @@ async function send(path: string, options: RequestOptions, accept: string) {
     throw new ClientError('protocol', 'Некорректный путь API');
   }
   try {
-    const response = await fetch(`${API_BASE}${path}`, {
+    const search = new URLSearchParams();
+    for (const [key, value] of Object.entries(options.search ?? {})) if (value !== undefined) search.set(key, value);
+    const query = search.size ? `?${search}` : '';
+    const response = await fetch(`${API_BASE}${path}${query}`, {
       method: options.method ?? 'GET', credentials: 'same-origin',
       headers: { Accept: accept, ...(options.body !== undefined && { 'Content-Type': 'application/json' }) },
       ...(options.body !== undefined && { body: JSON.stringify(options.body) }),
