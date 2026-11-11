@@ -73,7 +73,8 @@ export function createMentorMock(scenario: MentorScenario = 'normal') {
       const signature = JSON.stringify([title, file.name, content, questionId]);
       const previous = uploads.get(String(uploadId));
       if (previous) return previous.signature === signature ? HttpResponse.json(documents.find(d => d.id === previous.documentId)) : error(409, 'IDEMPOTENCY_CONFLICT', 'Изменены параметры прежней загрузки');
-      const doc = { ...f.documents[0]!, id: `doc_${uploadId}`, title: title.trim(), content, status: 'processing' as const, error: null };
+      const doc = { ...f.documents[0]!, id: `doc_${uploadId}`, title: title.trim(), content, status: 'processing' as const, error: null,
+        question_id: typeof questionId === 'string' ? questionId : null };
       documents.push(doc); uploads.set(String(uploadId), { signature, documentId: doc.id });
       const question = questions.find(q => q.id === questionId);
       if (question) { question.document_ids = [...new Set([...question.document_ids, doc.id])]; question.revision++; }
@@ -83,7 +84,7 @@ export function createMentorMock(scenario: MentorScenario = 'normal') {
     http.post('*/api/v1/mentor/documents/:id/retry', ({ params }) => {
       const denial = denied(); if (denial) return denial;
       const doc = documents.find(d => d.id === params.id); if (!doc) return missing();
-      if (doc.status === 'ready') return error(409, 'DOCUMENT_NOT_READY', 'Документ уже готов');
+      if (doc.status === 'ready') return error(409, 'DOCUMENT_ALREADY_READY', 'Документ уже готов');
       doc.status = 'processing'; doc.error = null; reads.set(doc.id, 0); return HttpResponse.json(doc, { status: 202 });
     }),
     http.get('*/api/v1/mentor/interns', () => { const denial = denied(); if (denial) return denial; return HttpResponse.json({ items: scenario === 'empty' ? [] : f.interns.map(i => ({ ...i, open_questions: questions.filter(q => q.student.id === i.id && q.status !== 'resolved').length })) }); }),

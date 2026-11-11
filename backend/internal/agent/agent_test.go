@@ -38,13 +38,13 @@ func TestTwoAdaptersAndActiveRequest(t *testing.T) {
 		a.Tasks = taskAdapter{ports.Resource{ID: id, Name: "Trusted catalog", Permission: "read"}}
 		a.Access = accessAdapter{}
 		a.Requests = requestAdapter{}
-		a.Model = &Script{Replies: []Message{call("prepare_access_request", `{"resource_id":"`+id+`","permission":"read","reason":"Задача"}`), {Content: "Подтвердите в карточке"}}}
+		a.Model = &Script{Replies: []Message{call("prepare_access_request", `{"resource_id":"`+id+`","permission":"read","reason":"Задача"}`), {Content: `{"answer":"Подтвердите в карточке","outcome":"answered"}`}}}
 		out, e := a.Run(testkit.Context(context.Background()), in, func(context.Context, ports.AgentEvent) error { return nil })
 		if e != nil || len(out.RequestIDs) != 1 {
 			t.Fatal(out, e)
 		}
 		a.Requests = requestAdapter{found: true, state: ports.RequestState{Draft: ports.Draft{DraftInput: ports.DraftInput{RequestID: "existing", Resource: ports.Resource{ID: id, Permission: "read"}}}, Status: "pending"}}
-		a.Model = &Script{Replies: []Message{call("prepare_access_request", `{"resource_id":"`+id+`","permission":"read","reason":"Задача"}`), call("get_request_status", `{"request_id":"existing"}`), {Content: "Заявка ожидает решения"}}}
+		a.Model = &Script{Replies: []Message{call("prepare_access_request", `{"resource_id":"`+id+`","permission":"read","reason":"Задача"}`), call("get_request_status", `{"request_id":"existing"}`), {Content: `{"answer":"Заявка ожидает решения","outcome":"answered"}`}}}
 		out, e = a.Run(testkit.Context(context.Background()), in, func(_ context.Context, event ports.AgentEvent) error {
 			if event.Kind == "draft.saved" {
 				t.Fatal("pending must not propose draft")
@@ -84,7 +84,7 @@ func fixture() (*Agent, ports.AgentInput) {
 }
 func TestOnboarding(t *testing.T) {
 	a, in := fixture()
-	a.Model = &Script{Replies: []Message{call("get_my_tasks", `{}`), call("search_knowledge", `{"query":"как поднять проект"}`), call("read_document", `{"document_id":"doc_local_setup"}`), call("get_access_status", `{"resource_id":"repo_demo_backend","permission":"read"}`), call("prepare_access_request", `{"resource_id":"repo_demo_backend","permission":"read","reason":"Первая задача"}`), {Content: "Черновик готов. Проверьте карточку и нажмите кнопку."}}}
+	a.Model = &Script{Replies: []Message{call("get_my_tasks", `{}`), call("search_knowledge", `{"query":"как поднять проект"}`), call("read_document", `{"document_id":"doc_local_setup"}`), call("get_access_status", `{"resource_id":"repo_demo_backend","permission":"read"}`), call("prepare_access_request", `{"resource_id":"repo_demo_backend","permission":"read","reason":"Первая задача"}`), {Content: `{"answer":"Черновик готов. Проверьте карточку и нажмите кнопку.","outcome":"answered"}`}}}
 	var events []string
 	out, e := a.Run(testkit.Context(context.Background()), in, func(_ context.Context, e ports.AgentEvent) error { events = append(events, e.Kind); return nil })
 	if e != nil || len(out.Sources) != 1 || len(out.RequestIDs) != 1 {
@@ -145,7 +145,7 @@ func TestRepeatAndNoKnowledge(t *testing.T) {
 	if !errors.Is(e, ports.ErrInvalid) {
 		t.Fatal(e)
 	}
-	a.Model = &Script{Replies: []Message{{Content: "В доступных материалах ответа нет."}}}
+	a.Model = &Script{Replies: []Message{{Content: `{"answer":"Уточните, пожалуйста, вопрос.","outcome":"needs_clarification"}`}}}
 	out, e := a.Run(testkit.Context(context.Background()), in, func(context.Context, ports.AgentEvent) error { return nil })
 	if e != nil || len(out.Sources) != 0 {
 		t.Fatal(out, e)

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { apiRequest, ClientError } from '@/shared/api';
 import type { RequestOptions } from '@/shared/api';
+import type { components } from '@/shared/api/generated/schema';
 import { planSchema } from '@/features/onboarding';
 import { questionSchema, mentorDocumentSchema, mentorDocumentDetailSchema, internSchema } from './models';
 
@@ -19,7 +20,7 @@ async function request<T>(path: string, schema: z.ZodType<T>, options: RequestOp
   return result.data;
 }
 const segment = encodeURIComponent;
-export type QuestionUpdate = { status: 'new' | 'in_progress' | 'resolved'; revision: number; resolution?: string; document_ids?: string[] };
+export type QuestionUpdate = components['schemas']['KnowledgeGapUpdate'];
 export const mentorApi = {
   updateQuestion: (id: string, body: QuestionUpdate, signal: AbortSignal) => request(`/mentor/questions/${segment(id)}`, questionSchema, { method: 'PATCH', body, signal }),
   upload: (body: FormData, signal: AbortSignal) => request('/mentor/documents', mentorDocumentSchema, { method: 'POST', body, signal }),

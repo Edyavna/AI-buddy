@@ -3,9 +3,11 @@ import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, InlineError, Spinner } from '@/shared/ui';
 import { ClientError, queryKeys } from '@/shared/api';
+import { abortSessionRequests } from '@/shared/api/session-signal';
 import { getConversation, getData, listConversations, listMessages } from './api';
 import { planSchema, userSchema } from './schemas';
 import { ChatController } from './controller';
+import { MentorQuestionPanel } from '@/features/mentor-questions/MentorQuestionPanel';
 import { AccessRequestPanel } from '@/features/access-requests';
 import { DocumentDrawer, MarkdownContent } from '@/features/documents';
 import styles from './ChatPage.module.css';
@@ -67,7 +69,7 @@ export function ChatPage() {
   const error = me.error ?? conversations.error ?? conversation.error ?? history.error ?? plan.error;
   useEffect(() => {
     if (error instanceof ClientError && error.status === 401) {
-      controller.stop(); client.clear(); navigate('/login', { replace: true });
+      controller.stop(); abortSessionRequests(client); client.clear(); navigate('/login', { replace: true });
     }
   }, [error, controller, client, navigate]);
   useEffect(() => {
@@ -106,23 +108,35 @@ export function ChatPage() {
       }}>
         <div ref={messageContent} className={styles.messageContent}>
         {!state.messages.length && !busy && <div className={styles.welcome}><h2>С чего начнём?</h2><p>Задайте вопрос о настройке окружения или выберите шаг в плане.</p><Link to="/onboarding">Открыть мой план</Link></div>}
-        {state.messages.map(message => <article key={message.id} className={message.role === 'user' ? styles.user : styles.assistant}>
-          <strong>{message.role === 'user' ? 'Вы' : 'AI-buddy'}</strong>
-          {message.role === 'assistant'
-            ? <MarkdownContent content={message.text || (message.status === 'generating' ? 'Готовлю ответ…' : 'Ответ без текста')} />
-            : <p>{message.text}</p>}
-          {message.sources.length > 0 && <ul className={styles.sources} aria-label="Источники ответа">
-            {message.sources.map(source => <li key={source.id}>
-              <button type="button" className={styles.source} onClick={() => setDocumentId(source.document_id)}>
-                <strong>{source.title}</strong><span>{source.excerpt}</span>
-              </button>
-            </li>)}
-          </ul>}
-          {[...new Set(message.request_ids)].map(requestId => <div className={styles.request} key={requestId}>
-            <AccessRequestPanel requestId={requestId} onDiscuss={focusComposer} />
-          </div>)}
-          {['failed', 'interrupted'].includes(message.status) && <InlineError message={message.error?.error.message ?? 'Ответ прерван. Можно задать вопрос заново.'} />}
-        </article>)}
+        {state.messages.map(message => {
+          const canEscalate = message.role === 'assistant' && message.status === 'completed' && message.outcome === 'knowledge_gap';
+          const original = canEscalate ? state.messages.find(m => m.id === message.in_reply_to_message_id && m.role === 'user') : undefined;
+          return <article key={message.id} className={message.role === 'user' ? styles.user : styles.assistant}>
+            <strong>{message.role === 'user' ? 'Вы' : 'AI-buddy'}</strong>
+            {message.role === 'assistant'
+              ? <MarkdownContent content={message.text || (message.status === 'generating' ? 'Готовлю ответ…' : 'Ответ без текста')} />
+              : <p>{message.text}</p>}
+            {message.sources.length > 0 && <ul className={styles.sources} aria-label="Источники ответа">
+              {message.sources.map(source => <li key={source.id}>
+                <button type="button" className={styles.source} onClick={() => setDocumentId(source.document_id)}>
+                  <strong>{source.title}</strong><span>{source.excerpt}</span>
+                </button>
+              </li>)}
+            </ul>}
+            {[...new Set(message.request_ids)].map(requestId => <div className={styles.request} key={requestId}>
+              <AccessRequestPanel requestId={requestId} onDiscuss={focusComposer} />
+            </div>)}
+            {canEscalate && me.data &&
+              <MentorQuestionPanel key={me.data.id} messageId={message.id} onOpenDocument={setDocumentId}
+                repeatDisabled={busy || !original || !contextReady || contextInvalid || !!error}
+                onRepeatQuestion={() => {
+                  if (!original || busy || !contextReady || contextInvalid || error) return;
+                  void controller.send(original.text, me.data.id, contextId ?? null,
+                    id => navigate(`/chat/${encodeURIComponent(id)}`, { replace: true }), { newMessage: true });
+                }} />}
+            {['failed', 'interrupted'].includes(message.status) && <InlineError message={message.error?.error.message ?? 'Ответ прерван. Можно задать вопрос заново.'} />}
+          </article>;
+        })}
         </div>
       </div>
       {newMessages && <Button variant="secondary" onClick={() => { nearBottom.current = true; setNewMessages(false); if (list.current) list.current.scrollTop = list.current.scrollHeight; }}>Новые сообщения</Button>}

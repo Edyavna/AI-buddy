@@ -21,7 +21,7 @@ func main() {
 			tool("get_my_tasks", `{}`), tool("search_knowledge", `{"query":"как поднять проект"}`), tool("read_document", `{"document_id":"doc_local_setup"}`),
 			tool("get_access_status", `{"resource_id":"repo_demo_backend","permission":"read"}`),
 			tool("prepare_access_request", `{"resource_id":"repo_demo_backend","permission":"read","reason":"Для первой учебной задачи нужен доступ к репозиторию"}`),
-			{Content: "Для запуска нужен доступ к учебному репозиторию. Источник: doc_local_setup. Черновик подготовлен. Проверьте его и нажмите кнопку подтверждения в приложении."},
+			{Content: `{"answer":"Для запуска нужен доступ к учебному репозиторию. Источник: doc_local_setup. Черновик подготовлен. Проверьте его и нажмите кнопку подтверждения в приложении.","outcome":"answered"}`},
 		}},
 		Knowledge: testkit.Knowledge{}, Tasks: testkit.Tasks{}, Access: &testkit.Access{}, Requests: testkit.Requests{},
 		Drafts: testkit.Drafts(func(_ context.Context, in ports.DraftInput) (ports.Draft, error) {

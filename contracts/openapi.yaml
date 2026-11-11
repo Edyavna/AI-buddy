@@ -668,6 +668,142 @@ paths:
           $ref: '#/components/responses/Error'
         default:
           $ref: '#/components/responses/Error'
+  /mentor/documents:
+    get:
+      tags: [Mentor]
+      operationId: listMentorDocuments
+      responses:
+        '200':
+          description: Документы текущего наставника в его команде
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [items]
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MentorDocument'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [Mentor]
+      operationId: uploadMentorDocument
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [title, upload_id, file]
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                upload_id:
+                  type: string
+                  format: uuid
+                question_id:
+                  type: string
+                  format: uuid
+                file:
+                  type: string
+                  format: binary
+                  description: Один непустой файл .md в UTF-8, не больше 1 MiB
+      responses:
+        '200':
+          description: Тот же документ при повторе неизменной загрузки
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MentorDocument'
+        '202':
+          description: Документ принят и поставлен в очередь
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MentorDocument'
+        '422':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /mentor/documents/{id}:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    get:
+      tags: [Mentor]
+      operationId: getMentorDocument
+      responses:
+        '200':
+          description: Оригинал и статус документа наставника
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MentorDocumentDetail'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /mentor/documents/{id}/retry:
+    parameters:
+    - name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    post:
+      tags: [Mentor]
+      operationId: retryMentorDocument
+      responses:
+        '202':
+          description: Индексация поставлена в очередь или уже выполняется
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MentorDocument'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /mentor/interns:
     get:
       tags:
@@ -1265,6 +1401,47 @@ components:
         document_ids:
           type: array
           items:
+            type: string
+    MentorDocument:
+      type: object
+      required: [id, title, author, question_id, status, error, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        author:
+          type: object
+          required: [id, name]
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        question_id:
+          type: string
+          format: uuid
+          nullable: true
+        status:
+          type: string
+          enum: [processing, ready, failed]
+        error:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    MentorDocumentDetail:
+      allOf:
+      - $ref: '#/components/schemas/MentorDocument'
+      - type: object
+        required: [content]
+        properties:
+          content:
             type: string
     InternSummary:
       type: object

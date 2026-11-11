@@ -43,6 +43,7 @@ jobs:
         shell: bash
         run: |
           go test ../scripts/go_line_coverage.go ../scripts/go_line_coverage_test.go
+          set -o pipefail
           go run ../scripts/go_line_coverage.go coverage.out | tee -a line-coverage.txt "$GITHUB_STEP_SUMMARY"
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4

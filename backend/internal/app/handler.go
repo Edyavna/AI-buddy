@@ -51,6 +51,10 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 		session := auth.Handler{Service: &auth.Service{Store: auth.SQLStore{DB: db}, TTL: cfg.SessionTTL}, DemoMode: cfg.DemoMode, CookieSecure: cfg.SessionCookieSecure}
 		plans := onboarding.Handler{Service: onboarding.Service{Store: onboarding.SQLStore{DB: db}, Access: deps.Access}}
 		conversations := chat.Handler{Service: chat.Service{Store: chat.SQLStore{DB: db}, Agent: deps.Agent, Requests: deps.Requests}, Logger: logger}
+		uploads := knowledge.Uploads{DB: db}
+		if deps.QuestionDocuments == nil {
+			deps.QuestionDocuments = uploads
+		}
 		questions := knowledgegaps.Store{DB: db, Documents: deps.QuestionDocuments}
 		if deps.Questions == nil {
 			deps.Questions = questions
@@ -60,6 +64,7 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 			plans.Register(mux, session)
 			mentor.Handler{Store: mentor.Store{DB: db}, Questions: deps.Questions}.Register(mux, session)
 			knowledgegaps.Handler{Store: questions}.Register(mux, session)
+			uploads.Register(mux, session)
 			requests.Register(mux, session)
 			mux.Handle("GET /api/v1/documents/{document_id}", session.Require(knowledge.Handler(deps.Knowledge), true))
 			conversations.Register(mux, session)

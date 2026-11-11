@@ -44,6 +44,46 @@ func TestJinaProtocol(t *testing.T) {
 		})
 	}
 }
+func TestJinaBatchPreservesInputOrder(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		indices []int
+		valid   bool
+	}{
+		{"out of order", []int{1, 0}, true},
+		{"duplicate", []int{0, 0}, false},
+		{"out of range", []int{1, 2}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var req struct{ Input []string }
+				if err := json.NewDecoder(r.Body).Decode(&req); err != nil || len(req.Input) != 2 || req.Input[0] != "Первый" || req.Input[1] != "Второй" {
+					t.Errorf("incorrect input: %v, %v", req.Input, err)
+				}
+				data := make([]map[string]any, 0, len(tc.indices))
+				for _, i := range tc.indices {
+					v := make([]float64, 1024)
+					v[0] = float64(i + 1)
+					data = append(data, map[string]any{"index": i, "embedding": v})
+				}
+				_ = json.NewEncoder(w).Encode(map[string]any{"data": data})
+			}))
+			defer s.Close()
+			j := Jina{Client: providerhttp.Client{BaseURL: s.URL, Key: "fake"}}
+			v, err := j.EmbedBatch(context.Background(), "retrieval.passage", []string{"Первый", "Второй"})
+			if !tc.valid {
+				if !errors.Is(err, ports.ErrUnavailable) {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err != nil || len(v) != 2 || v[0][0] != 1 || v[1][0] != 2 {
+				t.Fatalf("batch did not preserve input order: %v", err)
+			}
+		})
+	}
+}
+
 func TestJinaInvalidResponses(t *testing.T) {
 	for _, body := range []string{`{"data":[]}`, `{"data":[{"embedding":[1]}]}`, `broken`} {
 		t.Run(body, func(t *testing.T) {

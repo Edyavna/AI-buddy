@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClientError, queryKeys } from '@/shared/api';
 import { InlineError, Spinner } from '@/shared/ui';
 import { accessRequestsApi } from './api';
@@ -10,6 +10,7 @@ import { confirmAccessRequestShared } from './confirm';
 import styles from './AccessRequestPanel.module.css';
 
 const POLL_INTERVAL_MS = 5000;
+const accessDenied = (error: unknown) => error instanceof ClientError && [401, 403, 404].includes(error.status ?? 0);
 const ACTIVE_STATUSES: ReadonlyArray<AccessRequest['status']> = ['submitting', 'pending'];
 const RETRYABLE_STATUSES: ReadonlyArray<AccessRequest['status']> = ['draft', 'failed'];
 
@@ -26,11 +27,6 @@ function confirmErrorMessage(error: unknown): string | null {
       // нужно только явное новое нажатие (behavior.md: 409 DRAFT_CHANGED).
       return 'Параметры заявки изменились. Проверьте новую версию и подтвердите отправку.';
     }
-    if (error.kind === 'network') {
-      // Исход отправки неизвестен: фактическое состояние запрошено через GET,
-      // локально статус не меняется на failed (integration.md §5).
-      return 'Исход отправки неизвестен: соединение прервалось. Статус заявки обновлён — проверьте его и повторите подтверждение.';
-    }
   }
   return error.message;
 }
@@ -40,6 +36,8 @@ function confirmErrorMessage(error: unknown): string | null {
 export function AccessRequestPanel({ requestId, onDiscuss }: AccessRequestPanelProps) {
   const queryClient = useQueryClient();
   const [isInView, setIsInView] = useState(true);
+  const mutationKey = ['access-requests', 'confirm', requestId] as const;
+  const isConfirming = useIsMutating({ mutationKey, exact: true }) > 0;
   const rootRef = useRef<HTMLDivElement>(null);
   const refetchRef = useRef<() => Promise<unknown>>(async () => {});
 
@@ -88,8 +86,7 @@ export function AccessRequestPanel({ requestId, onDiscuss }: AccessRequestPanelP
 
   // A refetch error does not discard cached data. Access denial must hide the
   // resource, reason and actions; temporary network/5xx errors keep last state.
-  const unavailable = query.isError && query.error instanceof ClientError &&
-    [401, 403, 404].includes(query.error.status ?? 0);
+  const unavailable = accessDenied(query.error);
   const request = unavailable ? undefined : query.data;
 
   // Смена статуса (polling/confirm): подтянуть список заявок и план (integration.md §3).
@@ -102,15 +99,12 @@ export function AccessRequestPanel({ requestId, onDiscuss }: AccessRequestPanelP
   }, [request, queryClient]);
 
   const confirm = useMutation({
-    mutationKey: ['access-requests', 'confirm', requestId],
+    mutationKey,
     // Отображённая версия черновика — единственное, что отправляется на сервер.
     mutationFn: (draftVersion: number) =>
       confirmAccessRequestShared(queryClient, requestId, draftVersion),
-    onError: () => {
-      // DRAFT_CHANGED — подтянуть свежий черновик для нового нажатия; сетевой сбой —
-      // исход неизвестен, сначала GET фактического состояния (integration.md §5).
-      void queryClient.invalidateQueries({ queryKey: queryKeys.request(requestId) });
-      void queryClient.invalidateQueries({ queryKey: queryKeys.requests() });
+    onError: error => {
+      if (accessDenied(error)) void query.refetch();
     },
   });
 
@@ -123,7 +117,7 @@ export function AccessRequestPanel({ requestId, onDiscuss }: AccessRequestPanelP
     );
   }
 
-  if (!request) {
+  if (!request || accessDenied(confirm.error)) {
     const notFound = query.isError && query.error instanceof ClientError && query.error.status === 404;
     return (
       <div className={styles.state}>
@@ -132,7 +126,7 @@ export function AccessRequestPanel({ requestId, onDiscuss }: AccessRequestPanelP
         ) : (
           <InlineError
             message={query.error instanceof Error ? query.error.message : 'Не удалось загрузить заявку'}
-            onRetry={() => void query.refetch()}
+            onRetry={() => { confirm.reset(); void query.refetch(); }}
             isRetrying={query.isRefetching}
           />
         )}
@@ -149,7 +143,7 @@ export function AccessRequestPanel({ requestId, onDiscuss }: AccessRequestPanelP
     <div ref={rootRef}>
       <AccessRequestCard
         request={request}
-        isConfirming={confirm.isPending}
+        isConfirming={isConfirming}
         {...(confirmError ? { error: confirmError } : {})}
         refreshFailed={query.isError}
         onConfirm={() => confirm.mutate(request.draft_version)}

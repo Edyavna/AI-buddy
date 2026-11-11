@@ -165,7 +165,7 @@ func agentProviderFixture(w http.ResponseWriter, r *http.Request) {
 				round++
 			}
 		}
-		reply := agent.Message{Role: "assistant", Content: "Откройте инструкцию и подтвердите заявку."}
+		reply := agent.Message{Role: "assistant", Content: `{"answer":"Откройте инструкцию и подтвердите заявку.","outcome":"answered"}`}
 		finish := "stop"
 		if round < len(calls) {
 			reply.Content = ""

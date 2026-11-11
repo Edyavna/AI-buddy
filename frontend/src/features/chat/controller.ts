@@ -2,6 +2,7 @@ import type { QueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { ClientError, openApiStream, queryKeys } from '@/shared/api';
 import { acceptAccessRequest } from '@/features/access-requests';
+import { abortSessionRequests } from '@/shared/api/session-signal';
 import { createConversation, listMessages } from './api';
 import { applyEvent, protocolError, readSse, type StreamState } from './stream';
 
@@ -29,9 +30,12 @@ export class ChatController {
   }
   private fail(error: unknown) {
     if (error instanceof ClientError && error.status === 401) {
-      this.stop(); this.client.clear();
+      this.stop();
+      abortSessionRequests(this.client);
+      this.client.clear();
       Object.keys(sessionStorage).filter(key => key.startsWith('chat:create:')).forEach(key => sessionStorage.removeItem(key));
-      this.unauthorized(); return;
+      this.unauthorized();
+      return;
     }
     this.update({ phase: 'failed', error: error instanceof Error ? error.message : 'Не удалось получить ответ' });
   }
@@ -75,11 +79,11 @@ export class ChatController {
   private invalidate() {
     for (const key of [queryKeys.conversations(), queryKeys.plan(), queryKeys.requests()]) void this.client.invalidateQueries({ queryKey: key });
   }
-  async send(text: string, userId: string, stepId: string | null, navigate: (id: string) => void) {
+  async send(text: string, userId: string, stepId: string | null, navigate: (id: string) => void, options?: { newMessage: boolean }) {
     if (!text.trim() || text.length > 8000 || ['sending', 'streaming', 'recovering'].includes(this.state.phase)) return;
     const signal = this.abort.signal;
     if (signal.aborted) return;
-    const pending = this.pending?.text === text ? this.pending : {
+    const pending = !options?.newMessage && this.pending?.text === text ? this.pending : {
       text, stepId, conversationId: crypto.randomUUID(), messageId: crypto.randomUUID(),
     };
     this.pending = pending;

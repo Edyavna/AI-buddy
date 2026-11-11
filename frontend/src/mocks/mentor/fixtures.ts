@@ -8,7 +8,7 @@ export function createMentorFixtures() {
   const question = questionSchema.parse({ id: 'gap_demo_1', student: base.user, step_id: 'step_local_setup', message_id: 'msg_gap_1',
     question: 'Как запустить сервис локально?', context_excerpt: 'Стажёр готовит окружение, подтверждённой инструкции пока нет.',
     status: 'new', revision: 1, document_ids: [], resolution: null, created_at: date, updated_at: date });
-  const document = mentorDocumentDetailSchema.parse({ id: 'mentor_doc_1', title: 'Тестовая инструкция команды', status: 'ready', author: mentor,
+  const document = mentorDocumentDetailSchema.parse({ id: 'mentor_doc_1', title: 'Тестовая инструкция команды', status: 'ready', author: mentor, question_id: null,
     created_at: date, updated_at: date, error: null, content: '# Локальный запуск\n\nСинтетический пример, не регламент Авито.\n\n```sh\nnpm ci\n```' });
   const intern = internSchema.parse({ ...base.user, progress_percent: 0, next_step_id: 'step_local_setup', completed_steps: 0, total_steps: 1, blocked_steps: 0, open_questions: 1 });
   return { mentor, internUser: { ...base.user, role: 'intern' as const }, questions: [question], documents: [document], interns: [intern], plan: planSchema.parse(base.plan) };

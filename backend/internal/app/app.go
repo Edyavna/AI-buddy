@@ -12,6 +12,7 @@ import (
 	"github.com/Edyavna/AI-buddy/backend/internal/accessrequests"
 	"github.com/Edyavna/AI-buddy/backend/internal/chat"
 	"github.com/Edyavna/AI-buddy/backend/internal/integrations"
+	"github.com/Edyavna/AI-buddy/backend/internal/knowledge"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/config"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/migrations"
@@ -74,6 +75,29 @@ func Run(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		defer func() {
 			stopWorker()
 			<-workerDone
+		}()
+	}
+	if db != nil {
+		index, ok := deps.Knowledge.(*knowledge.Service)
+		if !ok {
+			index = &knowledge.Service{DB: db}
+		}
+		worker := knowledge.UploadWorker{Knowledge: index}
+		recoveryCtx, cancel := context.WithTimeout(ctx, cfg.StartupTimeout)
+		err := worker.Recover(recoveryCtx)
+		cancel()
+		if err != nil {
+			return errors.New("Markdown index recovery failed; check database availability")
+		}
+		workerCtx, stopWorker := context.WithCancel(ctx)
+		done := make(chan struct{})
+		go func() {
+			defer close(done)
+			worker.Run(workerCtx, logger)
+		}()
+		defer func() {
+			stopWorker()
+			<-done
 		}()
 	}
 	server := &http.Server{

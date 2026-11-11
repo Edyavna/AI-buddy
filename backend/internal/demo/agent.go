@@ -39,5 +39,6 @@ func (a Agent) Run(ctx context.Context, in ports.AgentInput, emit ports.Emit) (p
 			return result, err
 		}
 	}
+	result.Outcome = ports.OutcomeAnswered
 	return result, nil
 }

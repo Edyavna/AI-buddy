@@ -56,38 +56,22 @@ func (s *Service) Import(ctx context.Context, d Document) error {
 	if d.ID == "" || d.Source == "" || d.SourceID == "" || d.Title == "" || d.TeamID == "" || d.UpdatedAt.IsZero() || len([]rune(d.Content)) == 0 || len([]rune(d.Content)) > 16000 {
 		return ports.ErrInvalid
 	}
-	hash := sha256.Sum256([]byte(d.Title + "\n" + d.Content))
-	digest := hex.EncodeToString(hash[:])
+	digest := contentDigest(d)
 	var old string
 	err := s.DB.QueryRowContext(ctx, `SELECT hash FROM knowledge_documents WHERE id=$1`, d.ID).Scan(&old)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return ports.ErrUnavailable
 	}
-	chunks := []string{}
-	vectors := []string{}
+	var chunks []string
+	var vectors []string
 	if old != digest {
-		r := []rune(d.Content)
-		for start := 0; start < len(r); start += 1000 {
-			chunk := string(r[start:min(start+1200, len(r))])
-			v, e := s.Embedder.Embed(ctx, "retrieval.passage", d.Title+"\n"+chunk)
-			if e != nil {
-				return ports.ErrUnavailable
-			}
-			encoded, e := vector(v)
-			if e != nil {
-				return e
-			}
-			chunks = append(chunks, chunk)
-			vectors = append(vectors, encoded)
+		chunks, vectors, err = s.prepareIndex(ctx, d)
+		if err != nil {
+			return err
 		}
 	}
-	users := d.Users
-	if users == nil {
-		users = []string{}
-	}
-	acl, _ := json.Marshal(users)
-	tx, e := s.DB.BeginTx(ctx, nil)
-	if e != nil {
+	tx, err := s.DB.BeginTx(ctx, nil)
+	if err != nil {
 		return ports.ErrUnavailable
 	}
 	defer tx.Rollback()
@@ -99,23 +83,83 @@ func (s *Service) Import(ctx context.Context, d Document) error {
 	if current != old {
 		return ports.ErrConflict
 	}
-	// ACL is always replaced even when the content hash did not change.
-	_, e = tx.ExecContext(ctx, `INSERT INTO knowledge_documents(id,source,source_id,title,content,updated_at,team_id,users,hash) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(id) DO UPDATE SET source=EXCLUDED.source,source_id=EXCLUDED.source_id,title=EXCLUDED.title,content=EXCLUDED.content,updated_at=EXCLUDED.updated_at,team_id=EXCLUDED.team_id,users=EXCLUDED.users,hash=EXCLUDED.hash`, d.ID, d.Source, d.SourceID, d.Title, d.Content, d.UpdatedAt, d.TeamID, string(acl), digest)
-	if e != nil {
-		return ports.ErrUnavailable
-	}
-	if old != digest {
-		if _, e = tx.ExecContext(ctx, `DELETE FROM knowledge_chunks WHERE document_id=$1`, d.ID); e != nil {
-			return ports.ErrUnavailable
-		}
-		for i, chunk := range chunks {
-			if _, e = tx.ExecContext(ctx, `INSERT INTO knowledge_chunks VALUES($1,$2,$3,$4::vector)`, fmt.Sprintf("%s:%d", d.ID, i), d.ID, chunk, vectors[i]); e != nil {
-				return ports.ErrUnavailable
-			}
-		}
+	if err := writeIndex(ctx, tx, d, digest, chunks, vectors); err != nil {
+		return err
 	}
 	if tx.Commit() != nil {
 		return ports.ErrUnavailable
+	}
+	return nil
+}
+
+func contentDigest(d Document) string {
+	hash := sha256.Sum256([]byte(d.Title + "\n" + d.Content))
+	return hex.EncodeToString(hash[:])
+}
+
+func (s *Service) prepareIndex(ctx context.Context, d Document) ([]string, []string, error) {
+	if s.Embedder == nil {
+		return nil, nil, ports.ErrUnavailable
+	}
+	runes := []rune(d.Content)
+	var chunks, inputs, vectors []string
+	for start := 0; start < len(runes); start += 1000 {
+		chunk := string(runes[start:min(start+1200, len(runes))])
+		chunks = append(chunks, chunk)
+		inputs = append(inputs, d.Title+"\n"+chunk)
+	}
+	batch, canBatch := s.Embedder.(interface {
+		EmbedBatch(context.Context, string, []string) ([][]float64, error)
+	})
+	for start := 0; start < len(inputs); {
+		var result [][]float64
+		var err error
+		if canBatch {
+			end := min(start+16, len(inputs))
+			result, err = batch.EmbedBatch(ctx, "retrieval.passage", inputs[start:end])
+			if len(result) != end-start {
+				return nil, nil, ports.ErrUnavailable
+			}
+		} else {
+			var single []float64
+			single, err = s.Embedder.Embed(ctx, "retrieval.passage", inputs[start])
+			result = [][]float64{single}
+		}
+		if err != nil {
+			return nil, nil, ports.ErrUnavailable
+		}
+		for _, item := range result {
+			encoded, err := vector(item)
+			if err != nil {
+				return nil, nil, err
+			}
+			vectors = append(vectors, encoded)
+		}
+		start += len(result)
+	}
+	return chunks, vectors, nil
+}
+
+func writeIndex(ctx context.Context, tx *sql.Tx, d Document, digest string, chunks, vectors []string) error {
+	users := d.Users
+	if users == nil {
+		users = []string{}
+	}
+	acl, _ := json.Marshal(users)
+	// ACL is always replaced even when the content hash did not change.
+	_, err := tx.ExecContext(ctx, `INSERT INTO knowledge_documents(id,source,source_id,title,content,updated_at,team_id,users,hash) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(id) DO UPDATE SET source=EXCLUDED.source,source_id=EXCLUDED.source_id,title=EXCLUDED.title,content=EXCLUDED.content,updated_at=EXCLUDED.updated_at,team_id=EXCLUDED.team_id,users=EXCLUDED.users,hash=EXCLUDED.hash`, d.ID, d.Source, d.SourceID, d.Title, d.Content, d.UpdatedAt, d.TeamID, string(acl), digest)
+	if err != nil {
+		return ports.ErrUnavailable
+	}
+	if len(chunks) > 0 {
+		if _, err := tx.ExecContext(ctx, `DELETE FROM knowledge_chunks WHERE document_id=$1`, d.ID); err != nil {
+			return ports.ErrUnavailable
+		}
+		for i, chunk := range chunks {
+			if _, err := tx.ExecContext(ctx, `INSERT INTO knowledge_chunks VALUES($1,$2,$3,$4::vector)`, fmt.Sprintf("%s:%d", d.ID, i), d.ID, chunk, vectors[i]); err != nil {
+				return ports.ErrUnavailable
+			}
+		}
 	}
 	return nil
 }
@@ -215,6 +259,6 @@ func Handler(k ports.Knowledge) http.HandlerFunc {
 			Title     string    `json:"title"`
 			Content   string    `json:"content"`
 			UpdatedAt time.Time `json:"updated_at"`
-		}{d.ID, d.Title, d.Content, d.UpdatedAt})
+		}{d.ID, d.Title, d.Content, d.UpdatedAt.UTC()})
 	}
 }
