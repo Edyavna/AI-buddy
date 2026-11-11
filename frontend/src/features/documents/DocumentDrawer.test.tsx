@@ -66,6 +66,34 @@ it.each([401, 403, 404])('hides cached document title and content after reopenin
   expect(screen.getByRole('dialog')).toHaveAccessibleName(cachedDocument.title);
 });
 
+it('does not confuse a temporary 503 with revoked document access', async () => {
+  const cachedDocument = { id: 'doc_local_setup', title: 'Последняя инструкция', content: 'Сохранённый текст', updated_at: '2026-11-09T12:00:00Z' };
+  server.use(http.get('*/api/v1/documents/:id', () => HttpResponse.json({ error: {
+    code: 'SERVICE_UNAVAILABLE', message: 'Временно недоступно', trace_id: 't',
+  } }, { status: 503 })));
+  const { queryClient } = renderWithQuery(<Harness />);
+  queryClient.setQueryData(['documents', cachedDocument.id], cachedDocument);
+  fireEvent.click(screen.getByRole('button', { name: 'Открыть источник' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Временно недоступно');
+  expect(screen.getByText(cachedDocument.content)).toBeInTheDocument();
+  expect(screen.getByRole('dialog')).toHaveAccessibleName(cachedDocument.title);
+});
+
+it('never shows a cached first source when the second source returns 404', async () => {
+  function SwitchSourceHarness() {
+    const [id, setId] = useState<string | null>('doc_local_setup');
+    const onClose = useCallback(() => setId(null), []);
+    return <><button onClick={() => setId('missing')}>Другой источник</button>
+      <DocumentDrawer documentId={id} onClose={onClose} /></>;
+  }
+  renderWithQuery(<SwitchSourceHarness />);
+  await screen.findByText(/Синтетическая инструкция/);
+  fireEvent.click(screen.getByRole('button', { name: 'Другой источник' }));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Документ недоступен или удалён');
+  expect(screen.queryByText(/Синтетическая инструкция/)).not.toBeInTheDocument();
+  expect(screen.getByRole('dialog')).toHaveAccessibleName('Источник ответа');
+});
+
 it('wraps keyboard focus between the close control and the final document link', async () => {
   server.use(http.get('*/api/v1/documents/:id', () => HttpResponse.json({
     id: 'doc_local_setup', title: 'Инструкция', content: '```sh\necho test\n```\n\n[Открыть справку](https://example.org)', updated_at: '2026-11-09T12:00:00Z',

@@ -86,7 +86,11 @@ export function AccessRequestPanel({ requestId, onDiscuss }: AccessRequestPanelP
     return () => document.removeEventListener('visibilitychange', onVisibilityChange);
   }, [queryClient, requestId]);
 
-  const request = query.data;
+  // A refetch error does not discard cached data. Access denial must hide the
+  // resource, reason and actions; temporary network/5xx errors keep last state.
+  const unavailable = query.isError && query.error instanceof ClientError &&
+    [401, 403, 404].includes(query.error.status ?? 0);
+  const request = unavailable ? undefined : query.data;
 
   // Смена статуса (polling/confirm): подтянуть список заявок и план (integration.md §3).
   const prevStatusRef = useRef(request?.status);
