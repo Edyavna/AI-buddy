@@ -260,7 +260,7 @@
   }
 }
 .mentorHeader { min-height: var(--header-height); }
-@media (max-width: 960px) {
+@media (max-width: 1023px) {
   .mentorHeader .switchAccountButton { display: inline-flex; }
 }
 @media (max-width: 767px) {
