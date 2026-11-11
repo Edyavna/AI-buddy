@@ -125,3 +125,19 @@ it.each([
 
 
 
+
+it('aborts a pending question mutation on logout and prevents a late cache write', async () => {
+  const { queryClient, mock } = start('/mentor/questions/gap_demo_1');
+  let finish: (() => void) | undefined, receivedSignal: AbortSignal | undefined;
+  vi.spyOn(mentorApi, 'updateQuestion').mockImplementation((_id, _body, signal) => {
+    receivedSignal = signal;
+    return new Promise(resolve => { finish = () => resolve({ ...mock.control.questions[0]!, status: 'in_progress' }); });
+  });
+  fireEvent.click(await screen.findByRole('button', { name: 'Взять в работу' }));
+  await waitFor(() => expect(receivedSignal).toBeDefined());
+  fireEvent.click(screen.getByRole('button', { name: 'Выйти' }));
+  await screen.findByRole('heading', { name: 'Тестовый вход в демо-режиме' });
+  expect(receivedSignal?.aborted).toBe(true);
+  finish?.();
+  await waitFor(() => expect(queryClient.getQueryData(mentorKeys.question('gap_demo_1'))).toBeUndefined());
+});
