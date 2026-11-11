@@ -141,6 +141,42 @@ describe('MentorQuestionPanel — escalation', () => {
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
+  it('shows an error and enables retry when a timed-out POST has no saved question', async () => {
+    const deadline = new AbortController();
+    const timeout = vi.spyOn(AbortSignal, 'timeout');
+    let gets = 0;
+    let notifyPost!: () => void;
+    const started = new Promise<void>(resolve => { notifyPost = resolve; });
+    server.use(
+      http.get(URL, () => {
+        gets += 1;
+        return HttpResponse.json({ question: null });
+      }),
+      http.post(URL, async ({ request }) => {
+        notifyPost();
+        await new Promise<void>(resolve => {
+          request.signal.addEventListener('abort', () => resolve(), { once: true });
+        });
+        return HttpResponse.error();
+      }),
+    );
+
+    try {
+      renderWithQuery(<Panel />);
+      const button = await screen.findByRole('button', { name: 'Передать наставнику' });
+      timeout.mockReturnValueOnce(deadline.signal);
+      fireEvent.click(button);
+      await started;
+      deadline.abort(new DOMException('Request timed out', 'TimeoutError'));
+
+      expect(await screen.findByRole('alert')).toHaveTextContent('Не удалось подтвердить передачу. Повторите попытку');
+      expect(button).toBeEnabled();
+      expect(gets).toBe(2);
+    } finally {
+      timeout.mockRestore();
+    }
+  });
+
   it('keeps a retryable error when neither POST nor reconciliation confirms creation', async () => {
     server.use(
       http.get(URL, () => HttpResponse.json({ question: null })),

@@ -38,7 +38,12 @@ export function escalateMentorQuestionShared(
       const restored = await mentorQuestionsApi.get(messageId, AbortSignal.any([session, AbortSignal.timeout(10_000)]));
       session.throwIfAborted();
       acceptMentorQuestion(queryClient, messageId, restored.question);
-      if (!restored.question) throw error;
+      if (!restored.question) {
+        if (timeout.aborted) {
+          throw new Error('Не удалось подтвердить передачу. Повторите попытку', { cause: error });
+        }
+        throw error;
+      }
       question = restored.question;
     }
 
