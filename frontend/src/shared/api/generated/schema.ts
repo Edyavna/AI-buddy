@@ -190,6 +190,58 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/messages/{id}/knowledge-gap": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["getInternKnowledgeGap"];
+        put?: never;
+        post: operations["createInternKnowledgeGap"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/questions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["listMentorQuestions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/questions/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["getMentorQuestion"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch: operations["updateMentorQuestion"];
+        trace?: never;
+    };
     "/mentor/interns": {
         parameters: {
             query?: never;
@@ -407,6 +459,48 @@ export interface components {
             created_at: string;
             /** @description Для assistant — ID исходного user-сообщения; для user — null. */
             in_reply_to_message_id: string | null;
+        };
+        InternKnowledgeGap: {
+            /** Format: uuid */
+            id: string;
+            message_id: string;
+            /** @enum {string} */
+            status: "new" | "in_progress" | "resolved";
+            revision: number;
+            resolution: string | null;
+            document_ids: string[];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        KnowledgeGap: {
+            /** Format: uuid */
+            id: string;
+            message_id: string;
+            /** @enum {string} */
+            status: "new" | "in_progress" | "resolved";
+            revision: number;
+            resolution: string | null;
+            document_ids: string[];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            student: {
+                id: string;
+                name: string;
+            };
+            step_id: string | null;
+            question: string;
+            context_excerpt: string;
+        };
+        KnowledgeGapUpdate: {
+            /** @enum {string} */
+            status: "new" | "in_progress" | "resolved";
+            revision: number;
+            resolution?: string;
+            document_ids?: string[];
         };
         InternSummary: {
             id: string;
@@ -927,6 +1021,175 @@ export interface operations {
             404: components["responses"]["Error"];
             429: components["responses"]["Error"];
             500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getInternKnowledgeGap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Вопрос стажёра или null, если передачи ещё не было */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        question: {
+                            /** Format: uuid */
+                            id: string;
+                            message_id: string;
+                            /** @enum {string} */
+                            status: "new" | "in_progress" | "resolved";
+                            revision: number;
+                            resolution: string | null;
+                            document_ids: string[];
+                            /** Format: date-time */
+                            created_at: string;
+                            /** Format: date-time */
+                            updated_at: string;
+                        } | null;
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    createInternKnowledgeGap: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Состояние передачи вопроса */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternKnowledgeGap"];
+                };
+            };
+            /** @description Состояние передачи вопроса */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InternKnowledgeGap"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listMentorQuestions: {
+        parameters: {
+            query?: {
+                status?: "new" | "in_progress" | "resolved";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Очередь назначенных вопросов */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["KnowledgeGap"][];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getMentorQuestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Вопрос назначенного стажёра */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeGap"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    updateMentorQuestion: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["KnowledgeGapUpdate"];
+            };
+        };
+        responses: {
+            /** @description Вопрос назначенного стажёра */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["KnowledgeGap"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
             503: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
