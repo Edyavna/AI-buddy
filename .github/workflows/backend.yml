@@ -39,6 +39,15 @@ jobs:
       - run: go vet ./...
       - run: go test -race -v -count=1 -timeout=2m -coverpkg=./... -coverprofile=coverage.out ./...
       - run: go tool cover -func=coverage.out
+      - name: Go line coverage
+        run: |
+          go test ../scripts/go_line_coverage.go ../scripts/go_line_coverage_test.go
+          go run ../scripts/go_line_coverage.go coverage.out | tee line-coverage.txt
+          cat line-coverage.txt >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: go-line-coverage
+          path: backend/line-coverage.txt
       - run: go build ./...
       - uses: actions/upload-artifact@v4
         with:

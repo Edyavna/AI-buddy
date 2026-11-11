@@ -200,3 +200,14 @@ fake Agent/AccessProvider через один handler с реальной рег
 В каталоге `backend` запустите `go test -race ./internal/app -run TestPostgresAccessRequest`
 с `TEST_DATABASE_URL`. Тесты используют настоящий PostgreSQL и постоянную
 имитацию внешнего сервиса, включая потерю ответа после создания заявки.
+
+Покрытие строк для того же прогона из каталога backend:
+
+```sh
+go run ../scripts/go_line_coverage.go ../tmp/coverage.out
+```
+
+В знаменатель входят физические строки исходников с токенами внутри блоков
+инструментации Go. Строка считается покрытой, если выполнен хотя бы один её блок.
+Строки только с комментариями или разделителями, тестовые файлы, internal/testkit
+и зависимости исключены. CI публикует go-line-coverage отдельно от go-statement-coverage.
