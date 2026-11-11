@@ -1,58 +1,229 @@
-import { useIsMutating, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Button, InlineError } from '@/shared/ui';
-import { accessDenied, getQuestionOptions, sendQuestion } from './mentor-question';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useMutation, useMutationState, useQuery, useQueryClient } from '@tanstack/react-query';
+import { ClientError } from '@/shared/api';
+import { sessionSignal } from '@/shared/api/session-signal';
+import { Button, InlineError, Spinner, StatusBadge } from '@/shared/ui';
+import { mentorQuestionsApi } from './api';
+import { acceptMentorQuestion, isAccessError, mentorQuestionKeys, revokeMentorQuestion } from './cache';
+import { escalateMentorQuestionShared } from './escalate';
+import type { MentorQuestion, MentorQuestionLookup } from './schemas';
 import styles from './MentorQuestionPanel.module.css';
 
-const labels = { new: 'Передан наставнику', in_progress: 'В работе', resolved: 'Решён' };
+const POLL_INTERVAL_MS = 5000;
+const ACTIVE_STATUSES: ReadonlyArray<MentorQuestion['status']> = ['new', 'in_progress'];
 
-interface Props {
+export interface MentorQuestionPanelProps {
   messageId: string;
-  onOpenDocument: (id: string) => void;
+  canEscalate: boolean;
+  onOpenDocument: (documentId: string) => void;
   onRepeatQuestion: () => void;
-  repeatDisabled: boolean;
+  isChatBusy?: boolean;
+  canRepeatQuestion?: boolean;
 }
 
-export function MentorQuestionPanel({ messageId, onOpenDocument, onRepeatQuestion, repeatDisabled }: Props) {
-  const client = useQueryClient();
-  const mutationKey = ['chat', 'escalate', messageId] as const;
-  const busy = useIsMutating({ mutationKey, exact: true }) > 0;
-  const query = useQuery({
-    ...getQuestionOptions(client, messageId),
-    refetchInterval: q => {
-      if (accessDenied(q.state.error) || !q.state.data) return false;
-      // Resolved cards still need to notice that the question was reopened.
-      return q.state.data.status === 'resolved' ? 15_000 : 5000;
-    },
-    refetchIntervalInBackground: false,
-  });
-  const transfer = useMutation({ mutationKey, mutationFn: () => sendQuestion(client, messageId) });
-  const denied = accessDenied(query.error) || accessDenied(transfer.error);
-  const question = denied ? undefined : query.data;
-  const error = query.error ?? transfer.error;
+function escalationErrorMessage(error: unknown): string | null {
+  if (isAccessError(error)) return null; // Access state lives in the shared cache until a successful refresh.
+  if (!(error instanceof Error) || (error instanceof ClientError && error.kind === 'aborted')) return null;
+  if (error instanceof ClientError && error.kind === 'network') {
+    return 'Не удалось подтвердить передачу. Проверьте соединение и повторите: сервер не создаст дубль вопроса.';
+  }
+  return error.message;
+}
 
-  return <section className={styles.panel} aria-label="Передача вопроса наставнику">
-    {query.isPending && <p role="status">Проверяем статус передачи…</p>}
-    {error && <InlineError
-      message={denied ? 'Вопрос недоступен' : error.message}
-      {...(query.isError || denied ? { onRetry: () => { transfer.reset(); void query.refetch(); } } : {})}
-      isRetrying={query.isFetching}
-    />}
-    {!denied && question === null && !query.isError && (
-      <Button variant="secondary" isLoading={busy} onClick={() => transfer.mutate()}>
-        Передать наставнику
-      </Button>
-    )}
-    {question && <p role="status">{labels[question.status]}</p>}
-    {question?.status === 'resolved' && <>
-      {question.resolution && <p>{question.resolution}</p>}
-      <div className={styles.actions}>
-        {question.document_ids.map((id, index) => (
-          <Button key={id} variant="secondary" onClick={() => onOpenDocument(id)}>
-            {question.document_ids.length === 1 ? 'Открыть документ' : `Открыть документ ${index + 1}`}
-          </Button>
-        ))}
-        <Button variant="secondary" disabled={repeatDisabled} onClick={onRepeatQuestion}>Повторить вопрос</Button>
+export function MentorQuestionPanel({
+  messageId,
+  canEscalate,
+  onOpenDocument,
+  onRepeatQuestion,
+  isChatBusy = false,
+  canRepeatQuestion = true,
+}: MentorQuestionPanelProps) {
+  const queryClient = useQueryClient();
+  const [isInView, setIsInView] = useState(true);
+  const rootRef = useRef<HTMLElement>(null);
+  const inViewRef = useRef(true);
+  const refetchRef = useRef<() => Promise<unknown>>(async () => {});
+  const titleId = useId();
+  const key = useMemo(() => mentorQuestionKeys.byMessage(messageId), [messageId]);
+
+  const query = useQuery({
+    queryKey: key,
+    enabled: canEscalate && isInView,
+    refetchOnWindowFocus: false,
+    retry: false,
+    queryFn: async ({ signal }) => {
+      const requestSignal = AbortSignal.any([signal, sessionSignal(queryClient)]);
+      try {
+        const result = await mentorQuestionsApi.get(messageId, AbortSignal.any([requestSignal, AbortSignal.timeout(10_000)]));
+        requestSignal.throwIfAborted();
+        return acceptMentorQuestion(queryClient, messageId, result.question);
+      } catch (error) {
+        if (!requestSignal.aborted && isAccessError(error)) revokeMentorQuestion(queryClient, messageId);
+        throw error;
+      }
+    },
+  });
+  refetchRef.current = () => query.refetch({ cancelRefetch: false });
+
+  useEffect(() => {
+    const node = rootRef.current;
+    if (!node || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(([entry]) => {
+      const visible = entry?.isIntersecting ?? true;
+      inViewRef.current = visible;
+      setIsInView(visible);
+    });
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [canEscalate, query.isPending, query.isError, query.data?.accessDenied]);
+
+  const statusToPoll = query.data?.question?.status;
+  useEffect(() => {
+    if (!canEscalate || !isInView || !statusToPoll || !ACTIVE_STATUSES.includes(statusToPoll)) return;
+    const timer = window.setInterval(() => {
+      if (document.visibilityState !== 'visible' || !inViewRef.current) return;
+      if (isAccessError(queryClient.getQueryState(key)?.error)) return;
+      const status = queryClient.getQueryData<MentorQuestionLookup>(key)?.question?.status;
+      if (status && ACTIVE_STATUSES.includes(status)) void refetchRef.current();
+    }, POLL_INTERVAL_MS);
+    return () => window.clearInterval(timer);
+  }, [canEscalate, isInView, key, queryClient, statusToPoll]);
+
+  useEffect(() => {
+    if (!canEscalate) return;
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible' || !inViewRef.current) return;
+      void refetchRef.current();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [canEscalate]);
+
+  const escalation = useMutation({
+    mutationKey: mentorQuestionKeys.mutation(messageId),
+    mutationFn: () => escalateMentorQuestionShared(queryClient, messageId),
+  });
+  const pendingMutations = useMutationState({
+    filters: { mutationKey: mentorQuestionKeys.mutation(messageId), status: 'pending' },
+  });
+  const isEscalating = escalation.isPending || pendingMutations.length > 0;
+
+  if (!canEscalate) return null;
+
+  const accessError = isAccessError(query.error);
+  if (accessError || query.data?.accessDenied) {
+    return <div ref={node => { rootRef.current = node; }} className={styles.state} role="status">Вопрос наставнику недоступен</div>;
+  }
+
+  if (query.isPending) {
+    return (
+      <div ref={node => { rootRef.current = node; }} className={styles.state} role="status" aria-label="Загрузка вопроса наставнику">
+        <Spinner size="sm" />
+        <span>Загружаем состояние вопроса…</span>
       </div>
-    </>}
-  </section>;
+    );
+  }
+
+  const question = query.data?.question;
+  if (!question && query.isError) {
+    return (
+      <div ref={node => { rootRef.current = node; }} className={styles.state}>
+        <InlineError
+          message={query.error instanceof Error ? query.error.message : 'Не удалось загрузить состояние вопроса'}
+          onRetry={() => void query.refetch()}
+          isRetrying={query.isRefetching}
+        />
+      </div>
+    );
+  }
+
+  const escalationError = escalationErrorMessage(escalation.error);
+  const refreshFailed = query.isError && Boolean(question);
+
+  if (!question) {
+    return (
+      <section ref={rootRef} className={styles.panel} aria-labelledby={titleId}>
+        <div className={styles.header}>
+          <h3 id={titleId} className={styles.title}>Помощь наставника</h3>
+        </div>
+        <p className={styles.description}>
+          Подтверждённого ответа в базе знаний нет. Передайте вопрос наставнику — решение появится здесь.
+        </p>
+        {escalationError && <p className={styles.error} role="alert">{escalationError}</p>}
+        <div className={styles.actions}>
+          <Button
+            className={styles.action}
+            size="sm"
+            onClick={() => escalation.mutate()}
+            isLoading={isEscalating}
+            disabled={isEscalating}
+          >
+            Передать наставнику
+          </Button>
+        </div>
+      </section>
+    );
+  }
+
+  const status = question.status === 'new'
+    ? { value: 'pending' as const, label: 'Передан наставнику' }
+    : question.status === 'resolved'
+      ? { value: 'completed' as const, label: 'Решён' }
+      : { value: 'in_progress' as const, label: 'В работе' };
+
+  return (
+    <section ref={rootRef} className={styles.panel} aria-labelledby={titleId}>
+      <div className={styles.header}>
+        <h3 id={titleId} className={styles.title}>Вопрос наставнику</h3>
+        <StatusBadge status={status.value} label={status.label} size="sm" />
+      </div>
+      {question.status === 'new' && (
+        <p className={styles.description}>Вопрос передан. Здесь появится решение наставника.</p>
+      )}
+      {question.status === 'in_progress' && (
+        <p className={styles.description}>Наставник уже разбирается с вопросом.</p>
+      )}
+      {question.status === 'resolved' && (
+        <>
+          {question.resolution && <p className={styles.resolution}>{question.resolution}</p>}
+          {question.document_ids.length > 0 && (
+            <div className={styles.documents}>
+              <p className={styles.hint}>Документы к решению</p>
+              <ul className={styles.documentList}>
+                {question.document_ids.map((documentId, index) => (
+                  <li key={documentId}>
+                    <button
+                      type="button"
+                      className={styles.document}
+                      aria-label={`Открыть источник ${index + 1}`}
+                      onClick={() => onOpenDocument(documentId)}
+                    >
+                      Источник {index + 1}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          <div className={styles.actions}>
+            <Button
+              className={styles.action}
+              variant="secondary"
+              size="sm"
+              disabled={isChatBusy || !canRepeatQuestion}
+              onClick={onRepeatQuestion}
+            >
+              Повторить вопрос
+            </Button>
+          </div>
+          {isChatBusy && <p className={styles.hint}>Дождитесь завершения текущего ответа.</p>}
+        </>
+      )}
+      {refreshFailed && (
+        <p className={styles.refresh} role="status">
+          Не удалось обновить статус. Показано последнее известное состояние.
+        </p>
+      )}
+    </section>
+  );
 }

@@ -7,4 +7,5 @@ export const queryKeys = {
   document: (id: string) => ['documents', id] as const,
   requests: () => ['access-requests', 'list'] as const,
   request: (id: string) => ['access-requests', 'detail', id] as const,
+  mentorQuestion: (messageId: string) => ['mentor-questions', 'message', messageId] as const,
 };

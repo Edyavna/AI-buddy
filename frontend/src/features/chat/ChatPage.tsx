@@ -7,7 +7,7 @@ import { abortSessionRequests } from '@/shared/api/session-signal';
 import { getConversation, getData, listConversations, listMessages } from './api';
 import { planSchema, userSchema } from './schemas';
 import { ChatController } from './controller';
-import { MentorQuestionPanel } from '@/features/mentor-questions/MentorQuestionPanel';
+import { canEscalateMessage, MentorQuestionPanel } from '@/features/mentor-questions';
 import { AccessRequestPanel } from '@/features/access-requests';
 import { DocumentDrawer, MarkdownContent } from '@/features/documents';
 import styles from './ChatPage.module.css';
@@ -109,7 +109,7 @@ export function ChatPage() {
         <div ref={messageContent} className={styles.messageContent}>
         {!state.messages.length && !busy && <div className={styles.welcome}><h2>С чего начнём?</h2><p>Задайте вопрос о настройке окружения или выберите шаг в плане.</p><Link to="/onboarding">Открыть мой план</Link></div>}
         {state.messages.map(message => {
-          const canEscalate = message.role === 'assistant' && message.status === 'completed' && message.outcome === 'knowledge_gap';
+          const canEscalate = canEscalateMessage(message);
           const original = canEscalate ? state.messages.find(m => m.id === message.in_reply_to_message_id && m.role === 'user') : undefined;
           return <article key={message.id} className={message.role === 'user' ? styles.user : styles.assistant}>
             <strong>{message.role === 'user' ? 'Вы' : 'AI-buddy'}</strong>
@@ -128,7 +128,7 @@ export function ChatPage() {
             </div>)}
             {canEscalate && me.data &&
               <MentorQuestionPanel key={me.data.id} messageId={message.id} onOpenDocument={setDocumentId}
-                repeatDisabled={busy || !original || !contextReady || contextInvalid || !!error}
+                canEscalate={canEscalate} isChatBusy={busy} canRepeatQuestion={!!original && contextReady && !contextInvalid && !error}
                 onRepeatQuestion={() => {
                   if (!original || busy || !contextReady || contextInvalid || error) return;
                   void controller.send(original.text, me.data.id, contextId ?? null,

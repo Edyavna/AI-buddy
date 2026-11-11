@@ -72,7 +72,7 @@ it('offers escalation only for a completed knowledge gap and repeats with a fres
   fireEvent.click(await screen.findByRole('button', { name: 'Повторить вопрос' }));
   expect(await screen.findByText('Нашёл инструкцию')).toBeInTheDocument();
   expect(status.mock.calls.length).toBeGreaterThan(0);
-  expect(screen.getAllByRole('region', { name: 'Передача вопроса наставнику' })).toHaveLength(1);
+  expect(screen.getAllByRole('region', { name: 'Вопрос наставнику' })).toHaveLength(1);
   expect(repeated?.text).toBe(original.text);
   expect(repeated?.client_message_id).toMatch(/^[0-9a-f-]{36}$/);
   expect(repeated?.client_message_id).not.toBe(original.client_message_id);
