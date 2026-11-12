@@ -20,7 +20,7 @@ export interface AccessRequestPanelProps {
 }
 
 function confirmErrorMessage(error: unknown): string | null {
-  if (!(error instanceof Error)) return null;
+  if (accessDenied(error) || !(error instanceof Error)) return null;
   if (error instanceof ClientError) {
     if (error.code === 'DRAFT_CHANGED') {
       // Сервер отклонил подтверждение устаревшей версии: GET уже подтянул свежий черновик,
@@ -36,22 +36,30 @@ function confirmErrorMessage(error: unknown): string | null {
 export function AccessRequestPanel({ requestId, onDiscuss }: AccessRequestPanelProps) {
   const queryClient = useQueryClient();
   const [isInView, setIsInView] = useState(true);
+  const [rootNode, setRootNode] = useState<HTMLDivElement | null>(null);
   const mutationKey = ['access-requests', 'confirm', requestId] as const;
   const isConfirming = useIsMutating({ mutationKey, exact: true }) > 0;
-  const rootRef = useRef<HTMLDivElement>(null);
+  const inViewRef = useRef(true);
   const refetchRef = useRef<() => Promise<unknown>>(async () => {});
+  const queryKey = queryKeys.request(requestId);
 
   const query = useQuery({
-    queryKey: queryKeys.request(requestId),
+    queryKey,
     queryFn: async ({ signal }): Promise<AccessRequest> => {
-      const { data } = await accessRequestsApi.getAccessRequest(requestId, signal);
-      if (!data) throw new ClientError('protocol', 'Сервер вернул пустой ответ');
-      const parsed = accessRequestSchema.parse(data);
-      // Устаревший GET (начался до более свежего confirm/события) не откатывает карточку.
-      const cached = queryClient.getQueryData<AccessRequest>(queryKeys.request(requestId));
-      if (cached && parsed.revision < cached.revision) return cached;
-      return parsed;
+      try {
+        const { data } = await accessRequestsApi.getAccessRequest(requestId, signal);
+        if (!data) throw new ClientError('protocol', 'Сервер вернул пустой ответ');
+        const parsed = accessRequestSchema.parse(data);
+        // Устаревший GET (начался до более свежего confirm/события) не откатывает карточку.
+        const cached = queryClient.getQueryData<AccessRequest | null>(queryKey);
+        if (cached && parsed.revision < cached.revision) return cached;
+        return parsed;
+      } catch (error) {
+        if (accessDenied(error)) queryClient.setQueryData<AccessRequest | null>(queryKey, null);
+        throw error;
+      }
     },
+    refetchOnWindowFocus: false,
     // submitting/pending — опрос раз в 5 с. Пока вкладка не активна, тики интервала
     // не выполняют запрос (focusManager в react-query); не видна карточка — интервал выключен.
     refetchInterval: (q) => {
@@ -64,20 +72,21 @@ export function AccessRequestPanel({ requestId, onDiscuss }: AccessRequestPanelP
 
   // Карточка вне вьюпорта не опрашивает сервер.
   useEffect(() => {
-    const node = rootRef.current;
-    if (!node || typeof IntersectionObserver === 'undefined') return;
+    if (!rootNode || typeof IntersectionObserver === 'undefined') return;
     const observer = new IntersectionObserver(([entry]) => {
-      if (entry) setIsInView(entry.isIntersecting);
+      const visible = entry?.isIntersecting ?? true;
+      inViewRef.current = visible;
+      setIsInView(visible);
     });
-    observer.observe(node);
+    observer.observe(rootNode);
     return () => observer.disconnect();
-  }, []);
+  }, [rootNode]);
 
-  // Возвращение на вкладку: сразу сверить активную заявку, не дожидаясь интервала.
+  // Возвращение на вкладку: сразу сверить видимую активную заявку, не дожидаясь интервала.
   useEffect(() => {
     const onVisibilityChange = () => {
-      if (document.visibilityState !== 'visible') return;
-      const status = queryClient.getQueryData<AccessRequest>(queryKeys.request(requestId))?.status;
+      if (document.visibilityState !== 'visible' || !inViewRef.current) return;
+      const status = queryClient.getQueryData<AccessRequest | null>(queryKeys.request(requestId))?.status;
       if (status && ACTIVE_STATUSES.includes(status)) void refetchRef.current();
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -86,7 +95,7 @@ export function AccessRequestPanel({ requestId, onDiscuss }: AccessRequestPanelP
 
   // A refetch error does not discard cached data. Access denial must hide the
   // resource, reason and actions; temporary network/5xx errors keep last state.
-  const unavailable = accessDenied(query.error);
+  const unavailable = accessDenied(query.error) || query.data === null;
   const request = unavailable ? undefined : query.data;
 
   // Смена статуса (polling/confirm): подтянуть список заявок и план (integration.md §3).
@@ -104,7 +113,9 @@ export function AccessRequestPanel({ requestId, onDiscuss }: AccessRequestPanelP
     mutationFn: (draftVersion: number) =>
       confirmAccessRequestShared(queryClient, requestId, draftVersion),
     onError: error => {
-      if (accessDenied(error)) void query.refetch();
+      if (!accessDenied(error)) return;
+      queryClient.setQueryData<AccessRequest | null>(queryKey, null);
+      void query.refetch();
     },
   });
 
@@ -117,7 +128,7 @@ export function AccessRequestPanel({ requestId, onDiscuss }: AccessRequestPanelP
     );
   }
 
-  if (!request || accessDenied(confirm.error)) {
+  if (!request) {
     const notFound = query.isError && query.error instanceof ClientError && query.error.status === 404;
     return (
       <div className={styles.state}>
@@ -140,7 +151,7 @@ export function AccessRequestPanel({ requestId, onDiscuss }: AccessRequestPanelP
       : null;
 
   return (
-    <div ref={rootRef}>
+    <div ref={setRootNode}>
       <AccessRequestCard
         request={request}
         isConfirming={isConfirming}
