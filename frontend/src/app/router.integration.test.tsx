@@ -13,7 +13,7 @@ afterEach(() => queryClient.clear());
 it('opens the FE1 chat from the real FE2 plan, preserving step context', async () => {
   const router = createMemoryRouter(routes, { initialEntries: ['/onboarding'] });
   render(<App routerOverride={router} />);
-  fireEvent.click(await screen.findByRole('link', { name: /Спросить помощника о шаге/ }));
+  fireEvent.click(await screen.findByRole('link', { name: 'Спросить помощника о шаге: Запустить проект' }));
   expect(await screen.findByRole('heading', { name: 'Помощник стажёра' })).toBeInTheDocument();
   expect(router.state.location.search).toContain('stepId=step_local_setup');
   expect(screen.getByLabelText('Ваш вопрос')).toHaveValue('Помоги выполнить шаг: Запустить проект');
