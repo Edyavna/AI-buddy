@@ -3,7 +3,7 @@ import { apiErrorSchema, ClientError } from './errors';
 
 export const API_BASE = '/api/v1';
 export type RequestOptions = {
-  method?: 'GET' | 'POST' | 'PATCH' | 'DELETE';
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   body?: unknown;
   signal?: AbortSignal;
   search?: Record<string, string | undefined>;

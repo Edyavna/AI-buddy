@@ -3,7 +3,7 @@ import { apiRequest, ClientError } from '@/shared/api';
 import type { RequestOptions } from '@/shared/api';
 import type { components } from '@/shared/api/generated/schema';
 import { planSchema } from '@/features/onboarding';
-import { questionSchema, mentorDocumentSchema, mentorDocumentDetailSchema, internSchema } from './models';
+import { questionSchema, mentorDocumentSchema, mentorDocumentDetailSchema, internSchema, availableInternSchema, assignmentSchema } from './models';
 
 export const mentorKeys = {
   all: ['mentor'] as const,
@@ -12,6 +12,7 @@ export const mentorKeys = {
   documents: ['mentor', 'documents'] as const,
   document: (id: string) => ['mentor', 'document', id] as const,
   interns: ['mentor', 'interns'] as const,
+  availableInterns: ['mentor', 'available-interns'] as const,
   plan: (id: string) => ['mentor', 'plan', id] as const,
 };
 async function request<T>(path: string, schema: z.ZodType<T>, options: RequestOptions = {}) {
@@ -22,6 +23,12 @@ async function request<T>(path: string, schema: z.ZodType<T>, options: RequestOp
 const segment = encodeURIComponent;
 export type QuestionUpdate = components['schemas']['KnowledgeGapUpdate'];
 export const mentorApi = {
+  availableInterns: (signal: AbortSignal) => request('/mentor/available-interns', z.object({ items: z.array(availableInternSchema) }), { signal }),
+  assignIntern: async (id: string, signal: AbortSignal) => {
+    const assignment = await request(`/mentor/interns/${segment(id)}/assignment`, assignmentSchema, { method: 'PUT', signal });
+    if (assignment.intern_id !== id) throw new ClientError('protocol', 'Сервер вернул назначение другого стажёра');
+    return assignment;
+  },
   updateQuestion: (id: string, body: QuestionUpdate, signal: AbortSignal) => request(`/mentor/questions/${segment(id)}`, questionSchema, { method: 'PATCH', body, signal }),
   upload: (body: FormData, signal: AbortSignal) => request('/mentor/documents', mentorDocumentSchema, { method: 'POST', body, signal }),
   retryDocument: (id: string, signal: AbortSignal) => request(`/mentor/documents/${segment(id)}/retry`, mentorDocumentSchema, { method: 'POST', signal }),

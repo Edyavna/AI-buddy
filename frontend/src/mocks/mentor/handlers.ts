@@ -3,7 +3,7 @@ import { z } from 'zod';
 import { createMentorFixtures } from './fixtures';
 import { questionStatusSchema, mentorDocumentSchema } from '@/features/mentor/models';
 
-export type MentorScenario = 'normal' | 'empty' | 'failed' | 'processing' | 'question_changed' | 'lost_upload';
+export type MentorScenario = 'normal' | 'empty' | 'failed' | 'processing' | 'question_changed' | 'lost_upload' | 'assignment_conflict' | 'assignment_lost' | 'assignment_unconfirmed';
 const error = (status: number, code: string, message: string) => HttpResponse.json({ error: { code, message, trace_id: 'mentor_mock' } }, { status });
 
 // Fully isolated session + workspace. Installed only explicitly, never a Go fallback.
@@ -12,6 +12,9 @@ export function createMentorMock(scenario: MentorScenario = 'normal') {
   let principal: typeof f.mentor | typeof f.internUser | null = null;
   const questions = structuredClone(scenario === 'empty' ? [] : f.questions);
   const documents = structuredClone(scenario === 'empty' ? [] : f.documents);
+  const interns = structuredClone(scenario === 'empty' ? [] : f.interns);
+  const available = structuredClone(scenario === 'empty' ? [] : f.available);
+  let assignmentLost = false;
   const uploads = new Map<string, { signature: string; documentId: string }>();
   const reads = new Map<string, number>();
   let conflictSent = false, uploadLost = false;
@@ -87,8 +90,26 @@ export function createMentorMock(scenario: MentorScenario = 'normal') {
       if (doc.status === 'ready') return error(409, 'DOCUMENT_ALREADY_READY', 'Документ уже готов');
       doc.status = 'processing'; doc.error = null; reads.set(doc.id, 0); return HttpResponse.json(doc, { status: 202 });
     }),
-    http.get('*/api/v1/mentor/interns', () => { const denial = denied(); if (denial) return denial; return HttpResponse.json({ items: scenario === 'empty' ? [] : f.interns.map(i => ({ ...i, open_questions: questions.filter(q => q.student.id === i.id && q.status !== 'resolved').length })) }); }),
+    http.get('*/api/v1/mentor/available-interns', () => { const denial = denied(); return denial ?? HttpResponse.json({ items: available }); }),
+    http.put('*/api/v1/mentor/interns/:id/assignment', async ({ params, request }) => {
+      const denial = denied(); if (denial) return denial;
+      if ((await request.text()).length) return error(422, 'VALIDATION_ERROR', 'Тело запроса должно отсутствовать');
+      const candidate = available.find(i => i.id === params.id);
+      if (!candidate && !interns.some(i => i.id === params.id)) return missing();
+      if (candidate && scenario === 'assignment_conflict') {
+        available.splice(available.indexOf(candidate), 1);
+        return error(409, 'INTERN_ALREADY_ASSIGNED', 'Стажёра уже назначили');
+      }
+      if (scenario === 'assignment_unconfirmed') return HttpResponse.error();
+      if (candidate) {
+        available.splice(available.indexOf(candidate), 1);
+        interns.push({ ...candidate, progress_percent: 0, completed_steps: 0, total_steps: 0, blocked_steps: 0, open_questions: 0, next_step_id: null });
+      }
+      if (scenario === 'assignment_lost' && !assignmentLost) { assignmentLost = true; return HttpResponse.error(); }
+      return HttpResponse.json({ intern_id: params.id, mentor_id: f.mentor.id, team_id: f.mentor.team.id });
+    }),
+    http.get('*/api/v1/mentor/interns', () => { const denial = denied(); if (denial) return denial; return HttpResponse.json({ items: interns.map(i => ({ ...i, open_questions: questions.filter(q => q.student.id === i.id && q.status !== 'resolved').length })) }); }),
     http.get('*/api/v1/mentor/interns/:id/plan', ({ params }) => { const denial = denied(); if (denial) return denial; return params.id === f.internUser.id ? HttpResponse.json(f.plan) : missing(); }),
   ];
-  return { handlers, control: { setRole: (role: 'mentor' | 'intern' | null) => { principal = role === 'mentor' ? f.mentor : role === 'intern' ? f.internUser : null; }, questions, documents } };
+  return { handlers, control: { setRole: (role: 'mentor' | 'intern' | null) => { principal = role === 'mentor' ? f.mentor : role === 'intern' ? f.internUser : null; }, questions, documents, interns, available } };
 }
