@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { ClientError } from '@/shared/api';
 import { sessionSignal } from '@/shared/api/session-signal';
+import { queryRequestSignal, revokeQueryAccess } from '@/shared/api/query-access';
 import { InlineError, Spinner } from '@/shared/ui';
 
 export const accessDenied = (error: unknown) => error instanceof ClientError && [401, 403, 404].includes(error.status ?? 0);
@@ -10,7 +11,7 @@ export function useMentorQuery<T>(key: QueryKey, load: (signal: AbortSignal) => 
   const query = useQuery<T | null>({
     queryKey: key,
     queryFn: async ({ signal }) => {
-      const requestSignal = AbortSignal.any([signal, sessionSignal(queryClient), AbortSignal.timeout(10_000)]);
+      const requestSignal = AbortSignal.any([queryRequestSignal(queryClient, key, signal), AbortSignal.timeout(10_000)]);
       try {
         const data = await load(requestSignal);
         requestSignal.throwIfAborted();
@@ -19,7 +20,10 @@ export function useMentorQuery<T>(key: QueryKey, load: (signal: AbortSignal) => 
       catch (error) {
         // Remove revoked content from the shared cache. The null marker survives
         // transient errors and remounts; only a successful response replaces it.
-        if (!requestSignal.aborted && accessDenied(error)) queryClient.setQueryData<T | null>(key, null);
+        if (!requestSignal.aborted && accessDenied(error)) {
+          revokeQueryAccess(queryClient, key);
+          queryClient.setQueryData<T | null>(key, null);
+        }
         throw error;
       }
     },

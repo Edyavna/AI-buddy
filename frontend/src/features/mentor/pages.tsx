@@ -1,13 +1,11 @@
 import { useCallback, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
-import { Button, EmptyState, InlineError } from '@/shared/ui';
+import { Link } from 'react-router-dom';
+import { Button, EmptyState } from '@/shared/ui';
 import { AssignInternDialog } from './AssignInternDialog';
-import { ClientError } from '@/shared/api';
 import { mentorApi, mentorKeys } from './api';
 import { useMentorQuery, QueryFeedback } from './common';
 import styles from './Mentor.module.css';
 
-const stepLabels = { not_started: 'Не начат', in_progress: 'В работе', blocked: 'Заблокирован', completed: 'Завершён' };
 export function MentorInternsPage() {
   const query = useMentorQuery(mentorKeys.interns, mentorApi.interns);
   const [adding, setAdding] = useState(false), [notice, setNotice] = useState('');
@@ -21,14 +19,4 @@ export function MentorInternsPage() {
     {adding && <AssignInternDialog onClose={close} onAssigned={assigned} />}
   </section>;
 }
-export function MentorInternPlanPage() {
-  const { id = '' } = useParams();
-  const query = useMentorQuery(mentorKeys.plan(id), signal => mentorApi.plan(id, signal));
-  const plan = query.data;
-  const missing = query.error instanceof ClientError && query.error.status === 404;
-  return <section className={styles.page}><Link to="/mentor/interns">← Назначенные стажёры</Link><h1>План стажёра</h1>
-    {missing ? <InlineError message="План недоступен или ещё не подготовлен. Попробуйте загрузить план позже." onRetry={() => void query.refetch()} isRetrying={query.isFetching} /> : <QueryFeedback query={query} />}
-    {plan && <><header className={styles.card}><h2>{plan.title}</h2><p>Прогресс: {plan.progress_percent}%</p><progress className={styles.progress} max={100} value={plan.progress_percent} aria-label="Прогресс плана" /><p className={styles.muted}>План доступен только для просмотра. Стажёр сам отмечает выполнение шагов.</p><p>Следующий шаг: {plan.steps.find(step => step.id === plan.next_step_id)?.title ?? 'Нет следующего шага'}</p></header>
-      {plan.steps.length ? <ol className={styles.list}>{plan.steps.map(step => <li key={step.id} className={styles.card}><span className={styles.tag}>{stepLabels[step.status]}</span><h2>{step.title}</h2><p>{step.description}</p>{step.blocked_reason && <p>Причина блокировки: {step.blocked_reason}</p>}</li>)}</ol> : <EmptyState title="В плане пока нет шагов" description="План ещё не заполнен." />}</>}
-  </section>;
-}
+export { MentorInternPlanPage } from './MentorPlanPage';

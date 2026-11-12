@@ -2,7 +2,7 @@ import { z } from 'zod';
 import { apiRequest, ClientError } from '@/shared/api';
 import type { RequestOptions } from '@/shared/api';
 import type { components } from '@/shared/api/generated/schema';
-import { planSchema } from '@/features/onboarding';
+import { planSchema, setCheckpointConfirmationSchema } from '@/features/onboarding';
 import { questionSchema, mentorDocumentSchema, mentorDocumentDetailSchema, internSchema, availableInternSchema, assignmentSchema } from './models';
 
 export const mentorKeys = {
@@ -23,6 +23,9 @@ async function request<T>(path: string, schema: z.ZodType<T>, options: RequestOp
 const segment = encodeURIComponent;
 export type QuestionUpdate = components['schemas']['KnowledgeGapUpdate'];
 export const mentorApi = {
+  setConfirmation: (internId: string, stepId: string, confirmed: boolean, revision: number, signal: AbortSignal) => request(`/mentor/interns/${segment(internId)}/steps/${segment(stepId)}/confirmation`, planSchema, {
+    method: 'PUT', body: setCheckpointConfirmationSchema.parse({ confirmed, revision }), signal,
+  }),
   availableInterns: (signal: AbortSignal) => request('/mentor/available-interns', z.object({ items: z.array(availableInternSchema) }), { signal }),
   assignIntern: async (id: string, signal: AbortSignal) => {
     const assignment = await request(`/mentor/interns/${segment(id)}/assignment`, assignmentSchema, { method: 'PUT', signal });

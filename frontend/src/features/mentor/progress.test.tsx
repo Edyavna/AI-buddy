@@ -23,7 +23,7 @@ it('uses server progress counts and opens a read-only plan without mutation cont
   expect(screen.getByText('Блокировки: 0 · Открытые вопросы: 1')).toBeInTheDocument();
   const link = screen.getByRole('link', { name: 'Тестовый стажер' }); fireEvent.click(link);
   expect(await screen.findByText('Подготовка к первой задаче')).toBeInTheDocument();
-  expect(screen.getByText('План доступен только для просмотра. Стажёр сам отмечает выполнение шагов.')).toBeInTheDocument();
+  expect(screen.getByText('Подтверждайте свою часть там, где это разрешено. Отметка стажёра сохраняется независимо.')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /выполн|начать|спросить/i })).not.toBeInTheDocument();
 });
 it('opens a direct assigned plan URL and displays blocked checkpoints', async () => {
