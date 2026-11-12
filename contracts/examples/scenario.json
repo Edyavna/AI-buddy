@@ -41,7 +41,16 @@
         "allowed_statuses": [
           "not_started"
         ],
-        "blocked_reason": null
+        "blocked_reason": null,
+        "template_key": "step_local_setup",
+        "period": null,
+        "completion_policy": "intern",
+        "confirmations": [],
+        "revision": 1,
+        "allowed_actions": [],
+        "awaiting_role": null,
+        "instructions": "Тестовый шаг настройки окружения",
+        "resources": []
       }
     ]
   },
@@ -249,7 +258,16 @@
           "request_demo_1"
         ],
         "allowed_statuses": [],
-        "blocked_reason": "Ожидается доступ к репозиторию"
+        "blocked_reason": "Ожидается доступ к репозиторию",
+        "template_key": "step_local_setup",
+        "period": null,
+        "completion_policy": "intern",
+        "confirmations": [],
+        "revision": 2,
+        "allowed_actions": [],
+        "awaiting_role": null,
+        "instructions": "Тестовый шаг настройки окружения",
+        "resources": []
       }
     ]
   },
@@ -271,7 +289,18 @@
           "not_started",
           "completed"
         ],
-        "blocked_reason": null
+        "blocked_reason": null,
+        "template_key": "step_local_setup",
+        "period": null,
+        "completion_policy": "intern",
+        "confirmations": [],
+        "revision": 3,
+        "allowed_actions": [
+          "confirm"
+        ],
+        "awaiting_role": null,
+        "instructions": "Тестовый шаг настройки окружения",
+        "resources": []
       }
     ]
   },
@@ -292,7 +321,24 @@
         "allowed_statuses": [
           "in_progress"
         ],
-        "blocked_reason": null
+        "blocked_reason": null,
+        "template_key": "step_local_setup",
+        "period": null,
+        "completion_policy": "intern",
+        "confirmations": [
+          {
+            "role": "intern",
+            "user_id": "intern_demo_1",
+            "confirmed_at": "2026-11-12T12:00:00Z"
+          }
+        ],
+        "revision": 4,
+        "allowed_actions": [
+          "revoke"
+        ],
+        "awaiting_role": null,
+        "instructions": "Тестовый шаг настройки окружения",
+        "resources": []
       }
     ]
   },

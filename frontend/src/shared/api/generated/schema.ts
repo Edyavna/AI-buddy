@@ -107,13 +107,30 @@ export interface paths {
         options?: never;
         head?: never;
         /**
-         * @description Пользователь отмечает свой шаг. blocked выставляет сервер по состоянию заявки.
+         * @description Стажёр меняет статус. Завершение через PATCH доступно для intern; blocked выставляет сервер.
          *     Пока доступ не подтвержден сервисом, зависимый шаг нельзя завершить (409).
          *     Сервер возвращает весь обновленный план, включая прогресс и следующий шаг.
          *
          *     Разрешенные цели указаны в Step.allowed_statuses; повтор текущего пользовательского статуса возвращает 200. См. behavior.md.
          */
         patch: operations["updateStep"];
+        trace?: never;
+    };
+    "/onboarding/steps/{step_id}/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Устанавливает или отзывает собственное подтверждение. Правила revision и повторов описаны в behavior.md. */
+        put: operations["setMyCheckpointConfirmation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/conversations": {
@@ -352,9 +369,26 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description План назначенного стажёра только для чтения. Чужой ID возвращает 404. */
+        /** @description План назначенного стажёра. Чужой ID возвращает 404. */
         get: operations["getAssignedInternPlan"];
         put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/interns/{id}/steps/{step_id}/confirmation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Устанавливает или отзывает собственное подтверждение. Правила revision и повторов описаны в behavior.md. */
+        put: operations["setAssignedCheckpointConfirmation"];
         post?: never;
         delete?: never;
         options?: never;
@@ -500,6 +534,45 @@ export interface components {
             allowed_statuses: ("not_started" | "in_progress" | "completed")[];
             /** @description Понятная причина блокировки; null если блокировки нет. */
             blocked_reason: string | null;
+            /** @description Стабильный ключ внутри плана; у старых шагов совпадает с id. */
+            template_key: string;
+            /** @description Период адаптации из каталога. */
+            period: string | null;
+            completion_policy: components["schemas"]["CheckpointCompletionPolicy"];
+            /** @description Активные отметки в порядке intern, mentor. Не больше одной на роль. */
+            confirmations: components["schemas"]["CheckpointConfirmation"][];
+            revision: components["schemas"]["CheckpointRevision"];
+            /** @description Действия с собственной отметкой для текущей сессии. */
+            allowed_actions: ("confirm" | "revoke")[];
+            /**
+             * @description Оставшаяся роль для частично подтверждённого both.
+             * @enum {string|null}
+             */
+            awaiting_role: "intern" | "mentor" | null;
+            /** @description Инструкции в Markdown. */
+            instructions: string;
+            resources: components["schemas"]["CheckpointResource"][];
+        };
+        /** @enum {string} */
+        CheckpointCompletionPolicy: "intern" | "mentor" | "both";
+        /** @description Версия снимка плана. Использовать значение из последнего ответа. */
+        CheckpointRevision: number;
+        CheckpointConfirmation: {
+            /** @enum {string} */
+            role: "intern" | "mentor";
+            user_id: string;
+            /** Format: date-time */
+            confirmed_at: string;
+        };
+        CheckpointResource: {
+            title: string;
+            /** Format: uri */
+            url: string | null;
+            note: string | null;
+        };
+        SetCheckpointConfirmation: {
+            confirmed: boolean;
+            revision: components["schemas"]["CheckpointRevision"];
         };
         Conversation: {
             id: string;
@@ -971,6 +1044,40 @@ export interface operations {
             422: components["responses"]["Error"];
             429: components["responses"]["Error"];
             500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    setMyCheckpointConfirmation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                step_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCheckpointConfirmation"];
+            };
+        };
+        responses: {
+            /** @description Актуальный план с действиями текущего пользователя */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
             503: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
@@ -1539,7 +1646,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description План с пустым allowed_statuses для каждого шага */
+            /** @description План с пустым allowed_statuses и действиями наставника в allowed_actions */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -1551,6 +1658,41 @@ export interface operations {
             401: components["responses"]["Error"];
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    setAssignedCheckpointConfirmation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                step_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCheckpointConfirmation"];
+            };
+        };
+        responses: {
+            /** @description Актуальный план с действиями текущего пользователя */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Plan"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
             503: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
