@@ -9,7 +9,30 @@ PostgreSQL и внешний LLM API. Реализованы Go-каркас, п
 Основной сценарий: первая задача → инструкции команды → отсутствие доступа →
 подтверждение заявки → сохраненный номер и статус → следующий шаг.
 
-## Запуск первого этапа
+## Запуск через Docker Compose
+
+Нужен Docker с Compose v2, поддерживающим `up --wait`. Из корня репозитория
+запустите React, Go и PostgreSQL и заполните базу синтетическими данными.
+
+```sh
+docker compose up --build --wait frontend
+docker compose --profile demo run --rm seed
+```
+
+Откройте [http://localhost:5173](http://localhost:5173) и выберите тестового
+стажёра или наставника на экране входа. Docker собирает React и Go, применяет
+миграции и дожидается готовности API. По умолчанию используется `AI_MODE=demo`
+с синтетическим ответом. Ключи и отдельная установка Go или Node не требуются.
+
+Nginx выдаёт React и передаёт `/api` в Go с того же адреса. Буферизация ответов
+отключена, а таймаут ожидания данных от API составляет 150 секунд. Внешний
+адрес интерфейса должен входить в `ALLOWED_ORIGINS` на стороне Go.
+
+Для обновления повторите обе команды запуска. `docker compose down` останавливает
+стек и сохраняет том PostgreSQL. Для разработки с Vite запустите только сервис
+`api`, как описано ниже. Vite и контейнер React используют один порт.
+
+## Запуск для разработки
 
 Требуется **Go 1.26.5**. Команды ниже выполняются из корня репозитория `AI-buddy`,
 где находится этот README, а не из родительской папки `AvitoHackathon`.
@@ -33,7 +56,7 @@ Invoke-RestMethod http://localhost:8080/healthz
 БД отключена. В этом режиме бизнес-маршруты возвращают 404 ApiError. Этот режим проверяет
 только HTTP-каркас; данные приложения в нем не сохраняются. Остановка — Ctrl+C.
 
-### Полный запуск каркаса через Docker Compose
+### Запуск Go и PostgreSQL через Docker Compose
 
 Нужен Docker с Compose v2, поддерживающим `up --wait`.
 
@@ -102,7 +125,7 @@ race detector включен. Настоящий LLM-ключ для этих п
 в локальном .env выберите AI_MODE=live, заполните поля из .env.example и выполните:
 
 ```sh
-docker compose up --build --wait api
+docker compose up --build --wait frontend
 docker compose --profile demo run --rm seed
 docker compose --profile demo run --rm knowledge-import
 ```
