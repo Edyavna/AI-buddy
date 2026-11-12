@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"time"
 
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/identity"
 	"github.com/Edyavna/AI-buddy/backend/internal/ports"
@@ -16,13 +17,34 @@ var (
 )
 
 type Step struct {
-	ID              string   `json:"id"`
-	Title           string   `json:"title"`
-	Description     string   `json:"description"`
-	Status          string   `json:"status"`
-	RequestIDs      []string `json:"request_ids"`
-	AllowedStatuses []string `json:"allowed_statuses"`
-	BlockedReason   *string  `json:"blocked_reason"`
+	ID               string         `json:"id"`
+	Title            string         `json:"title"`
+	Description      string         `json:"description"`
+	Status           string         `json:"status"`
+	RequestIDs       []string       `json:"request_ids"`
+	AllowedStatuses  []string       `json:"allowed_statuses"`
+	BlockedReason    *string        `json:"blocked_reason"`
+	TemplateKey      string         `json:"template_key"`
+	Period           *string        `json:"period"`
+	CompletionPolicy string         `json:"completion_policy"`
+	Confirmations    []Confirmation `json:"confirmations"`
+	Revision         int64          `json:"revision"`
+	AllowedActions   []string       `json:"allowed_actions"`
+	AwaitingRole     *identity.Role `json:"awaiting_role"`
+	Instructions     string         `json:"instructions"`
+	Resources        []Resource     `json:"resources"`
+}
+
+type Confirmation struct {
+	Role        identity.Role `json:"role"`
+	UserID      string        `json:"user_id"`
+	ConfirmedAt time.Time     `json:"confirmed_at"`
+}
+
+type Resource struct {
+	Title string  `json:"title"`
+	URL   *string `json:"url"`
+	Note  *string `json:"note"`
 }
 type Plan struct {
 	ID              string  `json:"id"`
@@ -86,44 +108,77 @@ func (s Service) grants(ctx context.Context, snapshot Snapshot) (map[ports.Acces
 	return result, nil
 }
 
-// project is pure: one policy for progress, dependencies and allowed transitions.
-// A missing grant forbids completion but does not block asking for help. Explicit
-// request blocks and unfinished prerequisites prohibit every user transition.
-func project(snapshot Snapshot, grants map[ports.AccessCheck]bool) Plan {
-	p := Plan{ID: snapshot.ID, Title: snapshot.Title, Steps: make([]Step, 0, len(snapshot.Steps))}
+func (snapshot Snapshot) completedSteps() map[string]bool {
 	completed := make(map[string]bool)
 	for _, r := range snapshot.Steps {
 		completed[r.ID] = r.Status == "completed"
 	}
+	return completed
+}
+
+func (r Record) canConfirm(completed map[string]bool) bool {
+	return r.Status != "blocked" && prerequisitesMet(r.Prerequisites, completed)
+}
+
+func prerequisitesMet(ids []string, completed map[string]bool) bool {
+	for _, id := range ids {
+		if !completed[id] {
+			return false
+		}
+	}
+	return true
+}
+
+func (s Step) requires(role identity.Role) bool {
+	return s.CompletionPolicy == "both" || s.CompletionPolicy == string(role) ||
+		(s.CompletionPolicy == "" && role == identity.Intern)
+}
+
+func (s Step) confirmedBy(role identity.Role) string {
+	for _, confirmation := range s.Confirmations {
+		if confirmation.Role == role {
+			return confirmation.UserID
+		}
+	}
+	return ""
+}
+
+// project shares progress, dependencies and next-step rules across both roles.
+func project(snapshot Snapshot, grants map[ports.AccessCheck]bool, actor identity.Principal) Plan {
+	p := Plan{ID: snapshot.ID, Title: snapshot.Title, Steps: make([]Step, 0, len(snapshot.Steps))}
+	completed := snapshot.completedSteps()
 	for _, r := range snapshot.Steps {
 		step := r.Step
-		step.RequestIDs = slices.Clone(r.RequestIDs)
-		if step.RequestIDs == nil {
-			step.RequestIDs = []string{}
-		}
+		step.RequestIDs = append([]string{}, r.RequestIDs...)
+		step.Confirmations = append([]Confirmation{}, r.Confirmations...)
+		step.Resources = append([]Resource{}, r.Resources...)
+		step.Revision = snapshot.Revision
 		step.AllowedStatuses = []string{}
-		if step.Status != "completed" && step.Status != "blocked" {
-			for _, id := range r.Prerequisites {
-				if !completed[id] {
-					reason := "Сначала завершите предыдущий шаг"
-					step.Status, step.BlockedReason = "blocked", &reason
-					break
-				}
+		step.AllowedActions = []string{}
+		if step.CompletionPolicy == "both" && len(step.Confirmations) == 1 {
+			waiting := identity.Intern
+			if step.Confirmations[0].Role == identity.Intern {
+				waiting = identity.Mentor
+			}
+			step.AwaitingRole = &waiting
+		}
+		canConfirm := r.canConfirm(completed) && (r.Requirement == nil || grants[*r.Requirement])
+		if step.Status != "completed" && step.Status != "blocked" && !prerequisitesMet(r.Prerequisites, completed) {
+			reason := "Сначала завершите предыдущий шаг"
+			step.Status, step.BlockedReason = "blocked", &reason
+		}
+		if (actor.Role == identity.Intern || actor.Role == identity.Mentor) && step.requires(actor.Role) {
+			switch author := step.confirmedBy(actor.Role); {
+			case author != "" && author == actor.UserID:
+				step.AllowedActions = append(step.AllowedActions, "revoke")
+			case author == "" && canConfirm:
+				step.AllowedActions = append(step.AllowedActions, "confirm")
 			}
 		}
 		if step.Status != "blocked" {
 			step.BlockedReason = nil
-			// Any user status can be revised; completion additionally needs access.
-			for _, status := range []string{"not_started", "in_progress", "completed"} {
-				if status == step.Status {
-					continue
-				}
-				if status == "completed" && r.Requirement != nil && !grants[*r.Requirement] {
-					continue
-				}
-				step.AllowedStatuses = append(step.AllowedStatuses, status)
-			}
 		}
+		step.AllowedStatuses = legacyStatuses(step, actor, canConfirm)
 		if step.Status == "completed" {
 			p.ProgressPercent++
 		}
@@ -138,6 +193,27 @@ func project(snapshot Snapshot, grants map[ports.AccessCheck]bool) Plan {
 	}
 	return p
 }
+
+func legacyStatuses(step Step, actor identity.Principal, canConfirm bool) []string {
+	statuses := []string{}
+	if actor.Role != identity.Intern || step.Status == "blocked" {
+		return statuses
+	}
+	internOnly := step.CompletionPolicy == "intern" || step.CompletionPolicy == ""
+	if author := step.confirmedBy(identity.Intern); author != "" && author != actor.UserID {
+		return statuses
+	}
+	if !internOnly && len(step.Confirmations) != 0 {
+		return statuses
+	}
+	for _, status := range []string{"not_started", "in_progress", "completed"} {
+		if status != step.Status && (status != "completed" || (internOnly && canConfirm)) {
+			statuses = append(statuses, status)
+		}
+	}
+	return statuses
+}
+
 func (s Service) Get(ctx context.Context) (Plan, error) {
 	p, err := principal(ctx)
 	if err != nil {
@@ -151,7 +227,7 @@ func (s Service) Get(ctx context.Context) (Plan, error) {
 	if err != nil {
 		return Plan{}, err
 	}
-	return project(snapshot, grants), nil
+	return project(snapshot, grants, p), nil
 }
 func (s Service) Update(ctx context.Context, id, status string) (Plan, error) {
 	p, err := principal(ctx)
@@ -180,7 +256,7 @@ func (s Service) Update(ctx context.Context, id, status string) (Plan, error) {
 		if err != nil {
 			return Plan{}, err
 		}
-		plan := project(snapshot, grants)
+		plan := project(snapshot, grants, p)
 		for _, step := range plan.Steps {
 			if step.ID != id {
 				continue
@@ -196,7 +272,7 @@ func (s Service) Update(ctx context.Context, id, status string) (Plan, error) {
 		if err != nil {
 			return Plan{}, err
 		}
-		return project(updated, grants), nil
+		return project(updated, grants, p), nil
 	}
 	// Contention must not be reported as a successful update.
 	return Plan{}, ports.ErrUnavailable

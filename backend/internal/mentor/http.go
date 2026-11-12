@@ -12,6 +12,7 @@ import (
 type Handler struct {
 	Store     Store
 	Questions ports.OpenQuestionCounter
+	Access    ports.AccessChecker
 }
 
 func (h Handler) Register(mux *http.ServeMux, session auth.Handler) {
@@ -33,7 +34,7 @@ func (h Handler) list(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h Handler) plan(w http.ResponseWriter, r *http.Request) {
-	plan, err := h.Store.Plan(r.Context(), r.PathValue("id"))
+	plan, err := h.Store.Plan(r.Context(), r.PathValue("id"), h.Access)
 	if err != nil {
 		writeError(w, r, err)
 		return

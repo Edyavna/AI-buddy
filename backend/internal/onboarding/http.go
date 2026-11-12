@@ -37,7 +37,7 @@ func (h Handler) patch(w http.ResponseWriter, r *http.Request) {
 	}
 	plan, err := h.Service.Update(r.Context(), r.PathValue("step_id"), *body.Status)
 	if errors.Is(err, ErrTransition) {
-		httpapi.WriteError(w, r, &httpapi.Error{Status: 409, Code: "STEP_TRANSITION_FORBIDDEN", Message: "Обновите план: переход сейчас недоступен"})
+		writeTransitionError(w, r)
 		return
 	}
 	if errors.Is(err, ports.ErrInvalid) {
@@ -49,4 +49,8 @@ func (h Handler) patch(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpapi.WriteJSON(w, 200, plan)
+}
+
+func writeTransitionError(w http.ResponseWriter, r *http.Request) {
+	httpapi.WriteError(w, r, &httpapi.Error{Status: 409, Code: "STEP_TRANSITION_FORBIDDEN", Message: "Обновите план: переход сейчас недоступен"})
 }
