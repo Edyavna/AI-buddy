@@ -55,6 +55,14 @@ for error in checkpoints['errors'].values():
     check('ApiError', error)
 assert checkpoints['errors']['revision_conflict']['error']['code'] == 'CHECKPOINT_REVISION_CONFLICT'
 
+full_demo = json.loads((ROOT / 'contracts/examples/full-demo-plan.json').read_text(encoding='utf-8'))
+check('Plan', full_demo)
+demo_steps = full_demo['steps']
+assert len(demo_steps) == len({s['template_key'] for s in demo_steps}) == 16
+assert len({s['title'] for s in demo_steps}) == 14
+assert {s['completion_policy'] for s in demo_steps} == {'intern', 'mentor', 'both'}
+assert any(r['url'] is None and r['note'] for s in demo_steps for r in s['resources'])
+
 assert f['messages'][1]['in_reply_to_message_id'] == f['messages'][0]['id']
 assert f['messages'][0]['client_message_id'] == f['send_message']['client_message_id']
 assert f['conversation']['client_conversation_id'] == f['create_conversation']['client_conversation_id']

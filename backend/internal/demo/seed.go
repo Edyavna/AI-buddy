@@ -6,6 +6,7 @@ import (
 	"database/sql"
 	"errors"
 
+	"github.com/Edyavna/AI-buddy/backend/internal/checklist"
 	"github.com/Edyavna/AI-buddy/backend/internal/integrations"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/identity"
@@ -24,6 +25,7 @@ func Seed(ctx context.Context, db *sql.DB, enabled bool) error {
 			`INSERT INTO users(id,team_id,name,role,demo_account) VALUES
     ('intern_demo_1','team_demo_backend','Тестовый стажер','intern',true),
     ('intern_demo_2','team_demo_backend','Второй стажер','intern',true),
+    ('intern_demo_unassigned','team_demo_backend','Свободный стажёр','intern',true),
     ('intern_demo_other','team_demo_frontend','Стажер другой команды','intern',true),
     ('mentor_demo_1','team_demo_backend','Тестовый наставник','mentor',true),
     ('mentor_demo_2','team_demo_backend','Второй наставник','mentor',true) ON CONFLICT DO NOTHING`,
@@ -33,6 +35,7 @@ func Seed(ctx context.Context, db *sql.DB, enabled bool) error {
 			`INSERT INTO onboarding_plans(id,user_id,team_id,title) VALUES
     ('plan_demo_1','intern_demo_1','team_demo_backend','Подготовка к первой задаче'),
     ('plan_demo_2','intern_demo_2','team_demo_backend','Подготовка к первой задаче'),
+    ('plan_demo_unassigned','intern_demo_unassigned','team_demo_backend','План адаптации'),
     ('plan_demo_other','intern_demo_other','team_demo_frontend','Подготовка к первой задаче') ON CONFLICT DO NOTHING`,
 			`INSERT INTO onboarding_steps(id,plan_id,position,title,description,status,resource_id,permission) VALUES
     ('step_local_setup','plan_demo_1',0,'Запустить проект','Тестовый шаг настройки окружения','in_progress','repo_demo_backend','read'),
@@ -44,7 +47,7 @@ func Seed(ctx context.Context, db *sql.DB, enabled bool) error {
 				return err
 			}
 		}
-		return nil
+		return checklist.SyncDemoPlansTx(ctx, tx)
 	})
 	if err != nil {
 		return err

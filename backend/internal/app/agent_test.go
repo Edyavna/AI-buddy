@@ -121,7 +121,7 @@ func TestPostgresAgentThroughHTTPProviders(t *testing.T) {
 	}
 	runDue(t, ctx, worker)
 	plan := decodePlan(t, apiRequest(t, h, "PATCH", "/api/v1/onboarding/steps/step_local_setup", `{"status":"completed"}`, cookie, 200))
-	if plan.ProgressPercent != 100 {
+	if plan.ProgressPercent != 5 || plan.Steps[0].Status != "completed" {
 		t.Fatal(plan)
 	}
 	assertExternalCount(t, control, 1)

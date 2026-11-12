@@ -54,21 +54,21 @@ func TestPostgresPlanPrerequisitesAndEmptyPlan(t *testing.T) {
 	h := NewHandler(cfg, db, logger, nil, Dependencies{Access: grantedAccess{}})
 	cookie := loginCookie(t, h, "intern_demo_1", nil)
 	if _, err := db.Exec(`INSERT INTO onboarding_steps(id,plan_id,position,title,description,status)
- VALUES('step_next','plan_demo_1',1,'Первая задача','Тестовый второй шаг','not_started');
+ VALUES('step_next','plan_demo_1',100,'Первая задача','Тестовый второй шаг','not_started');
  INSERT INTO onboarding_step_dependencies(plan_id,step_id,prerequisite_id) VALUES('plan_demo_1','step_next','step_local_setup')`); err != nil {
 		t.Fatal(err)
 	}
 	plan := decodePlan(t, apiRequest(t, h, "GET", "/api/v1/onboarding/plan", "", cookie, 200))
-	if len(plan.Steps) != 2 || plan.Steps[1].Status != "blocked" || plan.Steps[1].BlockedReason == nil {
+	if next := checkpointStep(t, plan, "step_next"); len(plan.Steps) != 18 || next.Status != "blocked" || next.BlockedReason == nil {
 		t.Fatal(plan)
 	}
 	apiRequest(t, h, "PATCH", "/api/v1/onboarding/steps/step_next", `{"status":"not_started"}`, cookie, 409)
 	plan = decodePlan(t, apiRequest(t, h, "PATCH", "/api/v1/onboarding/steps/step_local_setup", `{"status":"completed"}`, cookie, 200))
-	if plan.ProgressPercent != 50 || plan.NextStepID == nil || *plan.NextStepID != "step_next" || plan.Steps[1].Status != "not_started" {
+	if plan.ProgressPercent != 5 || checkpointStep(t, plan, "step_next").Status != "not_started" {
 		t.Fatal(plan)
 	}
 	plan = decodePlan(t, apiRequest(t, h, "PATCH", "/api/v1/onboarding/steps/step_next", `{"status":"completed"}`, cookie, 200))
-	if plan.ProgressPercent != 100 || plan.NextStepID != nil {
+	if plan.ProgressPercent != 11 || checkpointStep(t, plan, "step_next").Status != "completed" {
 		t.Fatal(plan)
 	}
 	other := loginCookie(t, h, "intern_demo_other", nil)
@@ -120,7 +120,7 @@ func TestPostgresSessionPlanLifecycle(t *testing.T) {
 	h := NewHandler(cfg, db, logger, nil, Dependencies{})
 	accounts := apiRequest(t, h, "GET", "/api/v1/demo/accounts", "", nil, 200)
 	var users []auth.User
-	if err := json.Unmarshal(accounts.Body.Bytes(), &users); err != nil || len(users) != 5 {
+	if err := json.Unmarshal(accounts.Body.Bytes(), &users); err != nil || len(users) != 6 {
 		t.Fatal(err, users)
 	}
 	for _, path := range []string{"/api/v1/me", "/api/v1/onboarding/plan"} {
@@ -133,7 +133,7 @@ func TestPostgresSessionPlanLifecycle(t *testing.T) {
 		t.Fatal(err, hashes)
 	}
 	p := decodePlan(t, apiRequest(t, h, "GET", "/api/v1/onboarding/plan", "", cookie, 200))
-	if p.ID != "plan_demo_1" || len(p.Steps) != 1 || len(p.Steps[0].RequestIDs) != 0 || p.NextStepID == nil || *p.NextStepID != "step_local_setup" {
+	if p.ID != "plan_demo_1" || len(p.Steps) != 17 || len(p.Steps[0].RequestIDs) != 0 || p.NextStepID == nil || *p.NextStepID != "step_local_setup" {
 		t.Fatal(p)
 	}
 	apiRequest(t, h, "PATCH", "/api/v1/onboarding/steps/step_local_setup", `{"status":"completed"}`, cookie, 409)
