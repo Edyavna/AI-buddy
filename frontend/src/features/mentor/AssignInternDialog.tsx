@@ -1,6 +1,7 @@
 import { useRef, useState, type KeyboardEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { ClientError } from '@/shared/api';
+import { revokeQueryAccess } from '@/shared/api/query-access';
 import { Button, Dialog, EmptyState, InlineError, TextField } from '@/shared/ui';
 import { mentorApi, mentorKeys } from './api';
 import { accessDenied, QueryFeedback, useAction, useMentorQuery } from './common';
@@ -21,8 +22,11 @@ export function AssignInternDialog({ onClose, onAssigned }: { onClose: () => voi
     await Promise.all([mentorKeys.interns, mentorKeys.availableInterns].map(queryKey => client.invalidateQueries({ queryKey, exact: true })));
   }
   function revoke() {
-    client.setQueryData(mentorKeys.availableInterns, null);
-    client.setQueryData(mentorKeys.interns, null);
+    for (const key of [mentorKeys.availableInterns, mentorKeys.interns]) {
+      void client.cancelQueries({ queryKey: key, exact: true });
+      revokeQueryAccess(client, key);
+      client.setQueryData(key, null);
+    }
     setSelected(null); setSearch(''); setUnknown(false);
   }
   function assign() {

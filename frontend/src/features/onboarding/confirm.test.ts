@@ -58,6 +58,26 @@ describe('checkpoint cache lifecycle', () => {
     expect(queryClient.getQueryData(queryKeys.plan())).toEqual(current);
   });
 
+  it('does not confirm an uncertain revoke when the refreshed plan omits the step', async () => {
+    const queryClient = client();
+    vi.spyOn(onboardingApi, 'setCheckpointConfirmation').mockRejectedValue(new ClientError('network', 'Сеть недоступна'));
+    vi.spyOn(onboardingApi, 'getMyPlan').mockResolvedValue({ status: 200, data: { ...planAt(2), steps: [] } });
+
+    await expect(setCheckpointConfirmationShared(queryClient, 'step_checkpoint', false, 2))
+      .rejects.toThrow('Исход действия не подтверждён');
+  });
+
+  it.each([
+    [new ClientError('network', 'Сеть недоступна'), 'Исход действия не подтверждён'],
+    [new ClientError('http', 'Конфликт', { status: 409, code: 'CHECKPOINT_REVISION_CONFLICT' }), 'План изменился'],
+  ])('explains the mutation outcome when the follow-up read fails', async (error, message) => {
+    vi.spyOn(onboardingApi, 'setCheckpointConfirmation').mockRejectedValue(error);
+    vi.spyOn(onboardingApi, 'getMyPlan').mockRejectedValue(new ClientError('http', 'Недоступен', { status: 503 }));
+
+    await expect(setCheckpointConfirmationShared(client(), 'step_checkpoint', false, 2))
+      .rejects.toThrow(message);
+  });
+
   it('deduplicates concurrent operations for the same checkpoint', async () => {
     const queryClient = client();
     let release!: (plan: Plan) => void;

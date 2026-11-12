@@ -1,5 +1,5 @@
 import { expect, it, vi, afterEach } from 'vitest';
-import { screen, fireEvent, waitFor, within } from '@testing-library/react';
+import { act, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { createMemoryRouter, RouterProvider } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { renderWithQuery } from '@/test/render';
@@ -98,6 +98,45 @@ it.each([401, 403, 404])('clears assignment data on PUT %s and keeps it hidden a
   expect(within(dialog).queryByRole('radio')).not.toBeInTheDocument();
   expect(screen.queryByText('Свободный стажёр')).not.toBeInTheDocument();
 });
+it('ignores list responses that started before assignment access was denied', async () => {
+  const { queryClient, mock } = start();
+  const dialog = await open();
+  await within(dialog).findByRole('radio', { name: /Свободный стажёр/ });
+
+  let release!: () => void;
+  const pending = new Promise<void>(resolve => { release = resolve; });
+  const available = vi.fn(async () => {
+    await pending;
+    return HttpResponse.json({ items: mock.control.available });
+  });
+  const assigned = vi.fn(async () => {
+    await pending;
+    return HttpResponse.json({ items: mock.control.interns });
+  });
+  server.use(
+    http.get('*/api/v1/mentor/available-interns', available),
+    http.get('*/api/v1/mentor/interns', assigned),
+  );
+  const refresh = Promise.all([
+    queryClient.refetchQueries({ queryKey: mentorKeys.availableInterns }),
+    queryClient.refetchQueries({ queryKey: mentorKeys.interns }),
+  ]);
+  await waitFor(() => {
+    expect(available).toHaveBeenCalled();
+    expect(assigned).toHaveBeenCalled();
+  });
+
+  server.use(http.put('*/api/v1/mentor/interns/:id/assignment', () => new HttpResponse(null, { status: 403 })));
+  await choose(dialog);
+  expect(await within(dialog).findByRole('alert')).toHaveTextContent('Назначение недоступно');
+  await act(async () => {
+    release();
+    await refresh;
+  });
+  expect(queryClient.getQueryData(mentorKeys.availableInterns)).toBeNull();
+  expect(queryClient.getQueryData(mentorKeys.interns)).toBeNull();
+});
+
 it('cancels an assignment on session reset and ignores a late response before unmount', async () => {
   const { queryClient, mock } = start(); let finish: (() => void) | undefined, received: AbortSignal | undefined;
   const spy = vi.spyOn(mentorApi, 'assignIntern').mockImplementation((id, signal) => {

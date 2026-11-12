@@ -104,6 +104,20 @@ describe('checkpoint catalog and policies (#46)', () => {
     });
   });
 
+  it('renders seeded instructions as a list when description contains the same text', async () => {
+    const instructions = '1. Согласуйте цели\n 2. Зафиксируйте критерии успеха';
+    const step = checkpointStep({ description: instructions, instructions });
+    server.use(usePlanHandler(() => checkpointPlan(step)));
+    renderPlan();
+
+    const heading = await screen.findByRole('heading', { name: step.title });
+    const instructionsSection = within(heading.closest('article')!).getByRole('region', { name: `Инструкция: ${step.title}` });
+    expect(within(instructionsSection).getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'Согласуйте цели',
+      'Зафиксируйте критерии успеха',
+    ]);
+  });
+
   it('normalizes a legacy cached plan before rendering it', async () => {
     renderPlan(createScenario().plan as unknown as Plan);
 

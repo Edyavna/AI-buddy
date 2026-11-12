@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { apiErrorSchema } from '../../shared/api';
 
-// Boundary schemas used by chat while FE2 public session/plan exports are pending.
+// Boundary schemas for chat and its session lookup.
 const date = z.iso.datetime();
 export const userSchema = z.object({
   id: z.string(), name: z.string(), role: z.enum(['intern', 'mentor']),
@@ -27,12 +27,3 @@ export const messageSchema = z.object({
   if (['failed', 'interrupted'].includes(m.status) !== Boolean(m.error))
     ctx.addIssue({ code: 'custom', message: 'Invalid error state' });
 });
-export const planSchema = z.object({
-  id: z.string(), title: z.string(), progress_percent: z.number().int().min(0).max(100), next_step_id: z.string().nullable(),
-  steps: z.array(z.object({
-    id: z.string(), title: z.string(), description: z.string(),
-    status: z.enum(['not_started', 'in_progress', 'blocked', 'completed']), request_ids: z.array(z.string()),
-    allowed_statuses: z.array(z.enum(['not_started', 'in_progress', 'completed'])), blocked_reason: z.string().nullable(),
-  })),
-});
-

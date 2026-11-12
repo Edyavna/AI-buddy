@@ -23,7 +23,7 @@ function safeUrl(value: string | null | undefined): string | null {
   if (!value) return null;
   try {
     const url = new URL(value);
-    return url.protocol === 'https:' || url.protocol === 'http:' ? url.href : null;
+    return ['https:', 'http:'].includes(url.protocol) && !url.username && !url.password ? url.href : null;
   } catch {
     return null;
   }
@@ -97,15 +97,18 @@ export const StepCard: React.FC<StepCardProps> = ({
         <StatusBadge status={step.status} size="sm" />
       </div>
 
-      <p className={styles.stepDescription}>{step.description}</p>
+      {step.description && step.description !== step.instructions && step.description !== step.title && (
+        <p className={styles.stepDescription}>{step.description}</p>
+      )}
 
-      {step.instructions && step.instructions !== step.description && (
+      {step.instructions && step.instructions !== step.title && (
         <section className={styles.instructions} aria-label={`Инструкция: ${step.title}`}>
           <h4 className={styles.detailsTitle}>Инструкция</h4>
           <div className={styles.markdown}>
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
+                img: ({ alt }) => <span>{alt || 'Изображение'}</span>,
                 a: ({ href, children }) => {
                   const url = safeUrl(href);
                   return url

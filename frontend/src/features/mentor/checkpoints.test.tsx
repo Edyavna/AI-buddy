@@ -23,7 +23,9 @@ function start(plan = fixture(), scenario: MentorScenario = 'normal') {
 }
 afterEach(() => { vi.restoreAllMocks(); vi.useRealTimers(); });
 it.each(['intern', 'mentor', 'both'] as const)('renders full instructions and server permissions for %s', async policy => {
-  start(fixture(policy));
+  const plan = fixture(policy);
+  plan.steps[0]!.description = plan.steps[0]!.instructions;
+  start(plan);
   await screen.findByText('Контрольный шаг');
   expect(screen.getByText('Период: 2 неделя')).toBeInTheDocument();
   expect(screen.getByText('Первый подпункт')).toBeInTheDocument(); expect(screen.getByText('Второй подпункт')).toBeInTheDocument();

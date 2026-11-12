@@ -9,10 +9,11 @@ import { setCheckpointConfirmationShared } from './confirm';
 
 const ACTIVE_PLAN_POLL_MS = 5000;
 
-export function usePlan() {
+export function usePlan(enabled = true) {
   const queryClient = useQueryClient();
   return useQuery({
     queryKey: queryKeys.plan(),
+    enabled,
     queryFn: async ({ signal }) => {
       const request = queryRequestSignal(queryClient, queryKeys.plan(), signal);
       try {

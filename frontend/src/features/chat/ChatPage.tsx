@@ -5,7 +5,8 @@ import { Button, InlineError, Spinner } from '@/shared/ui';
 import { ClientError, queryKeys } from '@/shared/api';
 import { abortSessionRequests } from '@/shared/api/session-signal';
 import { getConversation, getData, listConversations, listMessages } from './api';
-import { planSchema, userSchema } from './schemas';
+import { userSchema } from './schemas';
+import { usePlan } from '@/features/onboarding';
 import { ChatController } from './controller';
 import { canEscalateMessage, MentorQuestionPanel } from '@/features/mentor-questions';
 import { AccessRequestPanel } from '@/features/access-requests';
@@ -34,7 +35,7 @@ export function ChatPage() {
   const conversation = useQuery({ queryKey: queryKeys.conversation(conversationId ?? ''), queryFn: ({ signal }) => getConversation(conversationId!, signal), enabled: !!conversationId && !!me.data });
   const history = useQuery({ queryKey: queryKeys.messages(conversationId ?? ''), queryFn: ({ signal }) => listMessages(conversationId!, signal), enabled: !!conversation.data && !busy });
   const contextId = conversationId ? conversation.data?.step_id : stepId;
-  const plan = useQuery({ queryKey: queryKeys.plan(), queryFn: ({ signal }) => getData('/onboarding/plan', planSchema, signal), enabled: !!contextId && !!me.data });
+  const plan = usePlan(Boolean(contextId && me.data));
   const step = plan.data?.steps.find(item => item.id === contextId);
   const contextInvalid = !!contextId && !!plan.data && !step;
   const contextReady = !contextId || !!step;

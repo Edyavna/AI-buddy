@@ -52,13 +52,23 @@ export function setCheckpointConfirmationShared(
           throw error;
         }
 
-        const { data } = await onboardingApi.getMyPlan(
-          AbortSignal.any([request, AbortSignal.timeout(CONFIRMATION_TIMEOUT_MS)]),
-        );
-        if (!data) throw new ClientError('protocol', 'Сервер вернул пустой план');
-        const current = acceptPlan(queryClient, data, request);
+        let current: Plan;
+        try {
+          const { data } = await onboardingApi.getMyPlan(
+            AbortSignal.any([request, AbortSignal.timeout(CONFIRMATION_TIMEOUT_MS)]),
+          );
+          if (!data) throw new ClientError('protocol', 'Сервер вернул пустой план');
+          current = acceptPlan(queryClient, data, request);
+        } catch (refreshError) {
+          request.throwIfAborted();
+          if (isPlanAccessError(refreshError)) throw refreshError;
+          throw new ClientError('network', revisionConflict
+            ? 'План изменился, но обновить его не удалось. Проверьте состояние перед повтором.'
+            : 'Исход действия не подтверждён: не удалось сверить план. Проверьте состояние и повторите действие.',
+          { cause: refreshError });
+        }
         const step = current.steps.find((item) => item.id === stepId);
-        const isConfirmed = step?.confirmations.some((item) => item.role === 'intern') ?? false;
+        const isConfirmed = step?.confirmations.some((item) => item.role === 'intern');
 
         if (uncertain && isConfirmed === confirmed) return current;
         if (revisionConflict) {

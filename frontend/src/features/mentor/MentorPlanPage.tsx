@@ -21,8 +21,9 @@ export function safeResourceUrl(value: string | null): string | null {
 function Checkpoint({ step, busy, pending, onChange }: { step: Step; busy: boolean; pending: boolean; onChange: (confirmed: boolean) => void }) {
   return <li className={styles.card} data-step-id={step.id}>
     <div className={styles.row}><span className={styles.tag}>{statuses[step.status]}</span>{step.period && <span className={styles.muted}>Период: {step.period}</span>}</div>
-    <h2>{step.title}</h2><p>{step.description}</p>
-    {step.instructions && step.instructions !== step.description && <section aria-label={`Инструкция: ${step.title}`}><h3>Инструкция</h3><MarkdownContent content={step.instructions} /></section>}
+    <h2>{step.title}</h2>
+    {step.description && step.description !== step.instructions && step.description !== step.title && <p>{step.description}</p>}
+    {step.instructions && step.instructions !== step.title && <section aria-label={`Инструкция: ${step.title}`}><h3>Инструкция</h3><MarkdownContent content={step.instructions} /></section>}
     {step.resources.length > 0 && <section aria-label={`Материалы: ${step.title}`}><h3>Материалы</h3><ul>{step.resources.map((resource, index) => {
       const url = safeResourceUrl(resource.url);
       return <li key={`${resource.title}-${index}`}>{url ? <a href={url} target="_blank" rel="noopener noreferrer">{resource.title}</a> : <span>{resource.title}</span>}<p className={styles.muted}>{resource.note ?? (!url ? 'Уточнить у наставника' : '')}</p></li>;

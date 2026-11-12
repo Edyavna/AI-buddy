@@ -6,11 +6,12 @@ import { renderWithQuery } from '@/test/render';
 import { server } from '@/test/server';
 import { createScenario } from '@/mocks/fixtures/scenario';
 import { eventText } from '@/test/chat-stream';
+import { queryKeys } from '@/shared/api';
 import { ChatPage } from './ChatPage';
 
 const f = createScenario();
-function mount(url = '/chat') {
-  server.use(http.get('*/api/v1/me', () => HttpResponse.json(f.user)), http.get('*/api/v1/onboarding/plan', () => HttpResponse.json(f.plan)));
+function mount(url = '/chat', plan = f.plan) {
+  server.use(http.get('*/api/v1/me', () => HttpResponse.json(f.user)), http.get('*/api/v1/onboarding/plan', () => HttpResponse.json(plan)));
   return renderWithQuery(<MemoryRouter initialEntries={[url]}><Routes><Route path="/chat" element={<ChatPage />} /><Route path="/chat/:conversationId" element={<ChatPage />} /><Route path="/login" element={<p>Вход</p>} /></Routes></MemoryRouter>);
 }
 it('prefills verified step without creating anything and rejects unknown step', async () => {
@@ -23,6 +24,16 @@ it('prefills verified step without creating anything and rejects unknown step', 
   expect(await screen.findByText(/Шаг не найден/)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Отправить' })).toBeDisabled();
 });
+it('keeps checkpoint fields in the shared plan cache', async () => {
+  const steps = f.plan.steps.map((step) => ({ ...step, revision: 7, allowed_actions: ['revoke'] }));
+  const { queryClient } = mount('/chat?stepId=step_local_setup', { ...f.plan, steps });
+
+  await screen.findByText(`Шаг: ${steps[0]?.title}`);
+  expect(queryClient.getQueryData(queryKeys.plan())).toMatchObject({
+    steps: [{ revision: 7, allowed_actions: ['revoke'] }],
+  });
+});
+
 it('restores direct URL history and context', async () => {
   mount('/chat/conversation_demo_1');
   expect(await screen.findByText(f.messages[1]!.text)).toBeInTheDocument();
