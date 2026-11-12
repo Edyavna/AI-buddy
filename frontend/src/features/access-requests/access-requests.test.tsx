@@ -321,6 +321,7 @@ describe('AccessRequestPanel (#5 — confirm flow)', () => {
 describe('AccessRequestPanel (#5 — polling)', () => {
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it('polls submitting/pending every 5s and stops on a terminal status', async () => {
@@ -419,5 +420,53 @@ describe('AccessRequestPanel (#5 — polling)', () => {
     expect(screen.getByText('Номер: ACCESS-1001')).toBeInTheDocument();
     expect(screen.getByText(/Не удалось обновить статус/)).toBeInTheDocument();
     expect(screen.queryByText('Ошибка')).not.toBeInTheDocument();
+  });
+
+  it('attaches the observer after cold loading and pauses off-screen polling', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    let observerCallback: IntersectionObserverCallback | undefined;
+    const observe = vi.fn();
+    const disconnect = vi.fn();
+    vi.stubGlobal('IntersectionObserver', class {
+      constructor(callback: IntersectionObserverCallback) { observerCallback = callback; }
+      observe(node: Element) { observe(node); }
+      disconnect() { disconnect(); }
+    });
+    const f = createScenario();
+    let releaseFirstGet!: () => void;
+    const firstGet = new Promise<void>((resolve) => { releaseFirstGet = resolve; });
+    let gets = 0;
+    server.use(http.get(REQUEST_URL, async () => {
+      gets += 1;
+      if (gets === 1) await firstGet;
+      return HttpResponse.json(f.submitting);
+    }));
+
+    const view = renderWithQuery(<AccessRequestPanel requestId="request_demo_1" />);
+    expect(screen.getByRole('status', { name: 'Загрузка заявки' })).toBeInTheDocument();
+    expect(observe).not.toHaveBeenCalled();
+    releaseFirstGet();
+    expect(await screen.findByText('Отправляем заявку / уточняем результат')).toBeInTheDocument();
+    expect(observe).toHaveBeenCalledTimes(1);
+    expect(observerCallback).toBeDefined();
+
+    await act(async () => {
+      observerCallback?.([{ isIntersecting: false } as IntersectionObserverEntry], {} as IntersectionObserver);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(15000);
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+    expect(gets).toBe(1);
+
+    await act(async () => {
+      observerCallback?.([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+    });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(5000);
+    });
+    expect(gets).toBe(2);
+    view.unmount();
+    expect(disconnect).toHaveBeenCalled();
   });
 });
