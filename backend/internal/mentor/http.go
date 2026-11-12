@@ -15,6 +15,8 @@ type Handler struct {
 }
 
 func (h Handler) Register(mux *http.ServeMux, session auth.Handler) {
+	mux.Handle("GET /api/v1/mentor/available-interns", session.Require(http.HandlerFunc(h.available), false))
+	mux.Handle("PUT /api/v1/mentor/interns/{id}/assignment", session.Require(http.HandlerFunc(h.assign), false))
 	mux.Handle("GET /api/v1/mentor/interns", session.Require(http.HandlerFunc(h.list), false))
 	mux.Handle("GET /api/v1/mentor/interns/{id}/plan", session.Require(http.HandlerFunc(h.plan), false))
 }
@@ -40,6 +42,10 @@ func (h Handler) plan(w http.ResponseWriter, r *http.Request) {
 }
 
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
+	if errors.Is(err, ErrAlreadyAssigned) {
+		httpapi.WriteError(w, r, &httpapi.Error{Status: 409, Code: "INTERN_ALREADY_ASSIGNED", Message: "Стажёра уже назначили другому наставнику"})
+		return
+	}
 	if errors.Is(err, ports.ErrForbidden) {
 		httpapi.WriteError(w, r, &httpapi.Error{Status: 403, Code: "ROLE_FORBIDDEN", Message: "Операция доступна только наставнику"})
 		return

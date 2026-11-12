@@ -35,7 +35,7 @@ func storeError(err error) error {
 	switch {
 	case errors.Is(err, sql.ErrNoRows):
 		return ports.ErrNotFound
-	case err == nil, errors.Is(err, ports.ErrNotFound), errors.Is(err, ports.ErrUnavailable):
+	case err == nil, errors.Is(err, ports.ErrNotFound), errors.Is(err, ports.ErrUnavailable), errors.Is(err, ErrAlreadyAssigned):
 		return err
 	default:
 		return fmt.Errorf("%w: %w", ports.ErrUnavailable, err)

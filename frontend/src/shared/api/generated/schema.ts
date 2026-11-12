@@ -294,6 +294,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mentor/available-interns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Свободные стажёры команды текущего наставника, name/id по возрастанию. В demo без пагинации; список не резервирует назначение. */
+        get: operations["listAvailableInterns"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/interns/{id}/assignment": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Назначить себе свободного стажёра своей команды. Наставник/команда из сессии. Тело отсутствует; любое непустое тело возвращает 422 VALIDATION_ERROR. Новый успех и повтор своего назначения возвращают одинаковый 200 после commit. Чужой/несуществующий ID или не intern — 404; занятый другим в своей команде — 409 INTERN_ALREADY_ASSIGNED. Наличие плана не требуется; план не создаётся. При потере ответа сверить GET /mentor/interns, затем допускается явный повтор того же PUT. Cookie и Origin проверяются как у остальных мутаций. */
+        put: operations["assignInternToMe"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mentor/interns": {
         parameters: {
             query?: never;
@@ -574,6 +608,22 @@ export interface components {
         };
         MentorDocumentDetail: components["schemas"]["MentorDocument"] & {
             content: string;
+        };
+        AvailableIntern: {
+            id: string;
+            name: string;
+            team: {
+                id: string;
+                name: string;
+            };
+        };
+        AvailableInternList: {
+            items: components["schemas"]["AvailableIntern"][];
+        };
+        MentorAssignment: {
+            intern_id: string;
+            mentor_id: string;
+            team_id: string;
         };
         InternSummary: {
             id: string;
@@ -1395,6 +1445,59 @@ export interface operations {
             403: components["responses"]["Error"];
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listAvailableInterns: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Свободные стажёры; items пустой массив, если кандидатов нет */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailableInternList"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    assignInternToMe: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Сохранённое назначение; план и прогресс читать отдельно */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MentorAssignment"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
             503: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };

@@ -28,6 +28,16 @@ for key,schema in mapping.items(): check(schema,f[key])
 for message in f['messages']: check('Message',message)
 for event in f['events']: check('ChatEvent',event)
 
+assignment = json.loads((ROOT / 'contracts/examples/mentor-assignment.json').read_text(encoding='utf-8'))
+check('AvailableInternList', assignment['available'])
+check('AvailableInternList', assignment['empty'])
+check('MentorAssignment', assignment['assigned'])
+check('ApiError', assignment['conflict'])
+assert assignment['assigned']['intern_id'] == assignment['available']['items'][0]['id']
+assert assignment['assigned']['team_id'] == assignment['available']['items'][0]['team']['id']
+assert assignment['conflict']['error']['code'] == 'INTERN_ALREADY_ASSIGNED'
+assert 'requestBody' not in spec['paths']['/mentor/interns/{id}/assignment']['put']
+
 assert f['messages'][1]['in_reply_to_message_id'] == f['messages'][0]['id']
 assert f['messages'][0]['client_message_id'] == f['send_message']['client_message_id']
 assert f['conversation']['client_conversation_id'] == f['create_conversation']['client_conversation_id']
@@ -76,7 +86,7 @@ for schema,bad in [
 ids=[]
 for path,item in spec['paths'].items():
     for method,op in item.items():
-        if method not in ('get','post','patch','delete'): continue
+        if method not in ('get','post','put','patch','delete'): continue
         ids.append(op['operationId'])
         assert 'default' in op['responses'],path
 assert len(ids)==len(set(ids))

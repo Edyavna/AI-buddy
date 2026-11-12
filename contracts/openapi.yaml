@@ -804,6 +804,65 @@ paths:
           $ref: '#/components/responses/Error'
         default:
           $ref: '#/components/responses/Error'
+  /mentor/available-interns:
+    get:
+      tags: [Mentor]
+      operationId: listAvailableInterns
+      description: Свободные стажёры команды текущего наставника, name/id по возрастанию. В demo без пагинации; список не резервирует назначение.
+      responses:
+        '200':
+          description: Свободные стажёры; items пустой массив, если кандидатов нет
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailableInternList'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /mentor/interns/{id}/assignment:
+    put:
+      tags: [Mentor]
+      operationId: assignInternToMe
+      description: >-
+        Назначить себе свободного стажёра своей команды. Наставник/команда из сессии.
+        Тело отсутствует; любое непустое тело возвращает 422 VALIDATION_ERROR.
+        Новый успех и повтор своего назначения возвращают одинаковый 200 после commit.
+        Чужой/несуществующий ID или не intern — 404; занятый другим в своей команде — 409 INTERN_ALREADY_ASSIGNED.
+        Наличие плана не требуется; план не создаётся. При потере ответа сверить GET /mentor/interns,
+        затем допускается явный повтор того же PUT. Cookie и Origin проверяются как у остальных мутаций.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+          minLength: 1
+      responses:
+        '200':
+          description: Сохранённое назначение; план и прогресс читать отдельно
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MentorAssignment'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /mentor/interns:
     get:
       tags:
@@ -1443,6 +1502,51 @@ components:
         properties:
           content:
             type: string
+    AvailableIntern:
+      type: object
+      additionalProperties: false
+      required: [id, name, team]
+      properties:
+        id:
+          type: string
+          minLength: 1
+        name:
+          type: string
+          minLength: 1
+        team:
+          type: object
+          additionalProperties: false
+          required: [id, name]
+          properties:
+            id:
+              type: string
+              minLength: 1
+            name:
+              type: string
+              minLength: 1
+    AvailableInternList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailableIntern'
+    MentorAssignment:
+      type: object
+      additionalProperties: false
+      required: [intern_id, mentor_id, team_id]
+      properties:
+        intern_id:
+          type: string
+          minLength: 1
+        mentor_id:
+          type: string
+          minLength: 1
+        team_id:
+          type: string
+          minLength: 1
     InternSummary:
       type: object
       required: [id, name, team, progress_percent, next_step_id, completed_steps, total_steps, blocked_steps, open_questions]

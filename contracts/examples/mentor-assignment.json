@@ -1,0 +1,6 @@
+{
+  "available": {"items": [{"id": "intern_demo_unassigned", "name": "Свободный стажёр", "team": {"id": "team_demo_backend", "name": "Тестовая backend-команда"}}]},
+  "empty": {"items": []},
+  "assigned": {"intern_id": "intern_demo_unassigned", "mentor_id": "mentor_demo_1", "team_id": "team_demo_backend"},
+  "conflict": {"error": {"code": "INTERN_ALREADY_ASSIGNED", "message": "Стажёра уже назначили другому наставнику", "trace_id": "assignment-fixture-trace"}}
+}
