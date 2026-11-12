@@ -48,7 +48,8 @@ for plan in checkpoints['plans'].values():
     assert len(marks) == len(step['confirmations'])
     required = {'intern', 'mentor'} if step['completion_policy'] == 'both' else {step['completion_policy']}
     assert marks <= required
-    assert (step['status'] == 'completed') == (marks == required)
+    if step['status'] != 'blocked':
+        assert (step['status'] == 'completed') == (marks == required)
     assert step['awaiting_role'] == (next(iter(required - marks)) if marks and marks < required else None)
     assert plan['progress_percent'] == (100 if step['status'] == 'completed' else 0)
 for error in checkpoints['errors'].values():

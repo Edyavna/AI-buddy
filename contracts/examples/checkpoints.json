@@ -265,8 +265,55 @@
             }
           ],
           "revision": 4,
-          "allowed_actions": [],
+          "allowed_actions": [
+            "revoke"
+          ],
           "awaiting_role": "mentor",
+          "instructions": "Согласуйте цели на встрече.",
+          "resources": [
+            {
+              "title": "Шаблон целей",
+              "url": null,
+              "note": "Запросите у наставника"
+            }
+          ]
+        }
+      ]
+    },
+    "blocked_with_both_confirmations": {
+      "id": "plan_demo_checkpoint",
+      "title": "План стажировки",
+      "progress_percent": 0,
+      "next_step_id": null,
+      "steps": [
+        {
+          "id": "step_demo_checkpoint",
+          "title": "Обсудить цели",
+          "description": "Встреча с наставником",
+          "status": "blocked",
+          "request_ids": [],
+          "allowed_statuses": [],
+          "blocked_reason": "Ожидается получение доступа",
+          "template_key": "discuss_goals",
+          "period": "2 неделя",
+          "completion_policy": "both",
+          "confirmations": [
+            {
+              "role": "intern",
+              "user_id": "intern_demo_1",
+              "confirmed_at": "2026-11-12T12:00:00Z"
+            },
+            {
+              "role": "mentor",
+              "user_id": "mentor_demo_1",
+              "confirmed_at": "2026-11-12T12:00:00Z"
+            }
+          ],
+          "revision": 4,
+          "allowed_actions": [
+            "revoke"
+          ],
+          "awaiting_role": null,
           "instructions": "Согласуйте цели на встрече.",
           "resources": [
             {
