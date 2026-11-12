@@ -83,10 +83,11 @@ func SyncDemoPlansTx(ctx context.Context, tx *sql.Tx) error {
 	if err != nil {
 		return err
 	}
+	// The mentor summary takes its plan locks in intern ID order too.
 	rows, err := tx.QueryContext(ctx, `
 SELECT p.id, p.user_id, p.team_id FROM onboarding_plans p
 JOIN users u ON u.id=p.user_id AND u.team_id=p.team_id
-WHERE u.demo_account AND u.role='intern' ORDER BY p.id`)
+WHERE u.demo_account AND u.role='intern' ORDER BY p.user_id`)
 	if err != nil {
 		return err
 	}

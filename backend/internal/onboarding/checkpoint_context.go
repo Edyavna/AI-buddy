@@ -42,10 +42,12 @@ func (s SQLStore) Checkpoint(ctx context.Context, id string) (CheckpointContext,
 		if err != nil {
 			return err
 		}
+		completed := snapshot.completedSteps()
+		status, blockedReason := step.effectiveStatus(completed)
 		result = CheckpointContext{
 			Title: step.Title, Instructions: step.Instructions, Period: step.Period,
-			Resources: step.Resources, Policy: step.CompletionPolicy, Status: step.Status,
-			BlockedReason: step.BlockedReason, ManagedAccess: step.Requirement,
+			Resources: step.Resources, Policy: step.CompletionPolicy, Status: status,
+			BlockedReason: blockedReason, ManagedAccess: step.Requirement,
 			Missing: []identity.Role{}, Prerequisites: []string{},
 		}
 		for _, role := range []identity.Role{identity.Intern, identity.Mentor} {
@@ -54,7 +56,7 @@ func (s SQLStore) Checkpoint(ctx context.Context, id string) (CheckpointContext,
 			}
 		}
 		for _, candidate := range snapshot.Steps {
-			if candidate.Status != "completed" && slices.Contains(step.Prerequisites, candidate.ID) {
+			if !completed[candidate.ID] && slices.Contains(step.Prerequisites, candidate.ID) {
 				result.Prerequisites = append(result.Prerequisites, candidate.Title)
 			}
 		}

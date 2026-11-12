@@ -104,6 +104,11 @@ func TestPostgresAgentUsesSelectedChecklistStep(t *testing.T) {
 	if err := demo.Seed(t.Context(), db, true); err != nil {
 		t.Fatal(err)
 	}
+	if _, err := db.ExecContext(t.Context(), `
+INSERT INTO onboarding_step_dependencies(plan_id, step_id, prerequisite_id)
+VALUES ('plan_demo_1', 'plan_demo_1:meet-team', 'step_local_setup')`); err != nil {
+		t.Fatal(err)
+	}
 	deps := demoDependencies(db, integrations.New(db), &config.AIConfig{})
 	a := deps.Agent.(*agent.Agent)
 	h := requestHandler(db, deps)
@@ -148,6 +153,9 @@ func TestPostgresAgentUsesSelectedChecklistStep(t *testing.T) {
 					Title, Instructions string
 					Period              *string
 					Resources           []onboarding.Resource
+					Status              string
+					BlockedReason       *string  `json:"blocked_reason"`
+					Prerequisites       []string `json:"unfinished_prerequisites"`
 					Policy              string   `json:"completion_policy"`
 					Missing             []string `json:"missing_confirmations"`
 				}
@@ -155,6 +163,10 @@ func TestPostgresAgentUsesSelectedChecklistStep(t *testing.T) {
 					!strings.HasPrefix(c.Title, tc.title) || !strings.Contains(c.Instructions, tc.instructions) ||
 					c.Policy != tc.policy || c.Period == nil || !reflect.DeepEqual(c.Missing, tc.missing) {
 					return agent.Message{}, fmt.Errorf("unexpected checkpoint tool data: %s", last.Content)
+				}
+				if tc.key == "meet-team" && (c.Status != "blocked" || c.BlockedReason == nil ||
+					!reflect.DeepEqual(c.Prerequisites, []string{"Запустить проект"})) {
+					return agent.Message{}, fmt.Errorf("checkpoint context missed an unfinished prerequisite: %s", last.Content)
 				}
 				if tc.closedChat && (len(c.Resources) < 1 || c.Resources[0].URL != nil ||
 					c.Resources[0].Note == nil || !strings.Contains(*c.Resources[0].Note, "администратора чата")) {
