@@ -165,9 +165,10 @@ export function createFe2Handlers(options: { plan?: Plan } = {}) {
         request = accessRequestSchema.parse(fixture.pending);
       } else if (request.status === 'pending') {
         request = accessRequestSchema.parse(fixture.granted);
-      }
-      if (request.status === 'granted') {
-        const grantedStep = planSchema.parse(fixture.granted_plan).steps[0]!;
+        const grantedStep: Step = {
+          ...planSchema.parse(fixture.granted_plan).steps[0]!,
+          allowed_actions: ['confirm'],
+        };
         plan = withNextRevision(withServerProgress({
           ...plan,
           steps: plan.steps.map((step) => step.id === grantedStep.id ? grantedStep : step),

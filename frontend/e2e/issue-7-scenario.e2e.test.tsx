@@ -12,6 +12,7 @@ import { accessRequestSchema } from '@/features/access-requests/schemas';
 import { createHandlers } from '@/mocks/handlers';
 import { createFe2Handlers } from '@/mocks/handlers/fe2';
 import { planSchema } from '@/features/onboarding';
+import { queryKeys } from '@/shared/api';
 
 // Сквозной сценарий приемки (docs/frontend/acceptance.md §«Сквозной тест»):
 // вход → план → чат → черновик ИЗ НОВОГО ВОПРОСА → подтверждение →
@@ -177,9 +178,16 @@ it('проходит полный путь от входа до завершен
 
     // 8. granted вернул шаг в работу: отметить выполненным, прогресс пересчитан сервером.
     await act(async () => { await reloadRouter.navigate('/onboarding'); });
-    expect(await screen.findByRole('button', { name: 'Отметить выполненным' })).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Отметить выполненным' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Подтвердить выполнение' }));
     expect(await screen.findByText(/Завершено 1 из 1 шагов\./)).toBeInTheDocument();
+    expect(screen.getByRole('progressbar', { name: 'Прогресс плана адаптации' })).toHaveAttribute('aria-valuenow', '100');
+
+    const getsAfterCompletion = requestGets;
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: queryKeys.request(f.granted.id) });
+      await queryClient.refetchQueries({ queryKey: queryKeys.plan() });
+    });
+    expect(requestGets).toBeGreaterThan(getsAfterCompletion);
     expect(screen.getByRole('progressbar', { name: 'Прогресс плана адаптации' })).toHaveAttribute('aria-valuenow', '100');
   } finally {
     await act(async () => { finishAnswer?.(); });
