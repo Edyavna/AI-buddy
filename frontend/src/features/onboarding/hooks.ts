@@ -1,35 +1,62 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClientError, queryKeys } from '@/shared/api';
+import { queryRequestSignal } from '@/shared/api/query-access';
 import { onboardingApi } from './api';
 import type { StepTarget } from './api';
-import type { Plan } from './schemas';
+import { planSchema } from './schemas';
+import { acceptPlan, handlePlanAccessError } from './cache';
+import { setCheckpointConfirmationShared } from './confirm';
+
+const ACTIVE_PLAN_POLL_MS = 5000;
 
 export function usePlan() {
+  const queryClient = useQueryClient();
   return useQuery({
     queryKey: queryKeys.plan(),
     queryFn: async ({ signal }) => {
-      const { data } = await onboardingApi.getMyPlan(signal);
-      if (!data) throw new ClientError('protocol', 'Сервер вернул пустой план');
-      return data;
+      const request = queryRequestSignal(queryClient, queryKeys.plan(), signal);
+      try {
+        const { data } = await onboardingApi.getMyPlan(request);
+        if (!data) throw new ClientError('protocol', 'Сервер вернул пустой план');
+        return acceptPlan(queryClient, data, request);
+      } catch (error) {
+        if (!request.aborted) handlePlanAccessError(queryClient, error);
+        throw error;
+      }
     },
+    select: (data) => data === null ? null : planSchema.parse(data),
+    refetchInterval: (query) => {
+      const plan = query.state.data;
+      return plan ? ACTIVE_PLAN_POLL_MS : false;
+    },
+    refetchOnWindowFocus: 'always',
   });
 }
 
 export function useUpdateStep() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ stepId, status }: { stepId: string; status: StepTarget }) =>
-      onboardingApi.updateStep(stepId, status),
-    // The server returns the whole updated plan: progress and next step are server-side facts.
-    onSuccess: (response) => {
-      if (response.data) {
-        queryClient.setQueryData<Plan>(queryKeys.plan(), response.data);
+    mutationFn: async ({ stepId, status }: { stepId: string; status: StepTarget }) => {
+      const request = queryRequestSignal(queryClient, queryKeys.plan());
+      try {
+        const response = await onboardingApi.updateStep(stepId, status, request);
+        request.throwIfAborted();
+        if (response.data) acceptPlan(queryClient, response.data, request);
+        return response;
+      } catch (error) {
+        if (!request.aborted && !handlePlanAccessError(queryClient, error)) {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.plan() });
+        }
+        throw error;
       }
     },
-    // 409 and friends: never a local success. Refresh the plan so the user sees
-    // the actual allowed transitions and the blocking reason from the server.
-    onError: () => {
-      void queryClient.invalidateQueries({ queryKey: queryKeys.plan() });
-    },
+  });
+}
+
+export function useCheckpointConfirmation() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ stepId, confirmed, revision }: { stepId: string; confirmed: boolean; revision: number }) =>
+      setCheckpointConfirmationShared(queryClient, stepId, confirmed, revision),
   });
 }

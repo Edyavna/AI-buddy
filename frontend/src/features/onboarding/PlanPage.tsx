@@ -1,6 +1,6 @@
 import React from 'react';
 import { EmptyState, InlineError, Spinner, StatusBadge } from '@/shared/ui';
-import { usePlan, useUpdateStep } from './hooks';
+import { useCheckpointConfirmation, usePlan, useUpdateStep } from './hooks';
 import { StepCard } from './StepCard';
 import type { StepTarget } from './schemas';
 import styles from './PlanPage.module.css';
@@ -8,6 +8,7 @@ import styles from './PlanPage.module.css';
 export const PlanPage: React.FC = () => {
   const plan = usePlan();
   const updateStep = useUpdateStep();
+  const updateConfirmation = useCheckpointConfirmation();
 
   if (plan.isPending) {
     return (
@@ -17,7 +18,7 @@ export const PlanPage: React.FC = () => {
     );
   }
 
-  if (plan.isError) {
+  if (!plan.data) {
     return (
       <InlineError
         className={styles.errorState ?? ''}
@@ -36,16 +37,27 @@ export const PlanPage: React.FC = () => {
   const dialPercent = Math.max(data.progress_percent, data.progress_percent > 0 ? 4 : 0);
 
   const mutationErrorFor = (stepId: string): string | null => {
-    if (!updateStep.isError || !updateStep.variables) return null;
-    return updateStep.variables.stepId === stepId
-      ? updateStep.error instanceof Error
-        ? updateStep.error.message
-        : 'Не удалось обновить шаг'
-      : null;
+    if (updateStep.isError && updateStep.variables?.stepId === stepId) {
+      return updateStep.error instanceof Error ? updateStep.error.message : 'Не удалось обновить шаг';
+    }
+    if (updateConfirmation.isError && updateConfirmation.variables?.stepId === stepId) {
+      return updateConfirmation.error instanceof Error
+        ? updateConfirmation.error.message
+        : 'Не удалось обновить подтверждение';
+    }
+    return null;
   };
 
   return (
     <div className={styles.container}>
+      {plan.isError && (
+        <InlineError
+          message={plan.error instanceof Error ? plan.error.message : 'Не удалось обновить план'}
+          onRetry={() => void plan.refetch()}
+          isRetrying={plan.isRefetching}
+        />
+      )}
+
       <section className={styles.heroBanner} data-enter>
         <div className={styles.heroInfo}>
           <h1 className={styles.heroTitle}>{data.title}</h1>
@@ -113,9 +125,13 @@ export const PlanPage: React.FC = () => {
                 index={index}
                 isNext={step.id === data.next_step_id}
                 isUpdating={updateStep.isPending && updateStep.variables?.stepId === step.id}
+                isCheckpointUpdating={updateConfirmation.isPending}
                 error={mutationErrorFor(step.id)}
                 onStatusChange={(stepId: string, target: StepTarget) =>
                   updateStep.mutate({ stepId, status: target })
+                }
+                onConfirmationChange={(stepId, confirmed, revision) =>
+                  updateConfirmation.mutate({ stepId, confirmed, revision })
                 }
               />
             ))}

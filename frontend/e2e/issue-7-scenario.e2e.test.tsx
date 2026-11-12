@@ -9,6 +9,9 @@ import { createScenario } from '@/mocks/fixtures/scenario';
 import { userSchema } from '@/features/session/schemas';
 import { messageSchema } from '@/features/chat/schemas';
 import { accessRequestSchema } from '@/features/access-requests/schemas';
+import { createHandlers } from '@/mocks/handlers';
+import { createFe2Handlers } from '@/mocks/handlers/fe2';
+import { planSchema } from '@/features/onboarding';
 
 // Сквозной сценарий приемки (docs/frontend/acceptance.md §«Сквозной тест»):
 // вход → план → чат → черновик ИЗ НОВОГО ВОПРОСА → подтверждение →
@@ -32,6 +35,9 @@ function countCalls() {
 }
 
 beforeEach(() => {
+  // This acceptance path completes its single access-dependent step. The full
+  // checklist has separate policy tests and must not silently change this fixture.
+  server.resetHandlers(...createHandlers(createFe2Handlers({ plan: planSchema.parse(f.plan) })));
   queryClient.clear();
   confirms = 0;
   sends = 0;

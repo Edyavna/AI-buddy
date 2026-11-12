@@ -29,7 +29,7 @@ describe('onboarding plan (#4)', () => {
 
   it('links "Спросить помощника" to /chat with the stepId query param', async () => {
     renderPlan();
-    const ask = await screen.findByRole('link', { name: /спросить помощника о шаге/i });
+    const ask = await screen.findByRole('link', { name: 'Спросить помощника о шаге: Запустить проект' });
     expect(ask).toHaveAttribute('href', '/chat?stepId=step_local_setup');
   });
 
