@@ -45,7 +45,7 @@ function allowedAfter(status: Step['status']): Step['allowed_statuses'] {
   }
 }
 
-export function createFe2Handlers() {
+export function createFe2Handlers(options: { plan?: Plan } = {}) {
   const fixture = createScenario();
   const intern = userSchema.parse(fixture.user);
   const mentor: User = {
@@ -57,7 +57,7 @@ export function createFe2Handlers() {
   const accounts: User[] = [intern, mentor];
 
   let currentUser: User | null = intern;
-  let plan: Plan = withServerProgress(createFullCheckpointPlan());
+  let plan: Plan = withServerProgress(planSchema.parse(options.plan ?? createFullCheckpointPlan()));
   let request: AccessRequest = accessRequestSchema.parse(fixture.draft);
 
   return [

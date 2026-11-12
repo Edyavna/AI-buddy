@@ -1,12 +1,13 @@
 import type { QueryClient } from '@tanstack/react-query';
 import { ClientError, queryKeys } from '@/shared/api';
 import { sessionSignal } from '@/shared/api/session-signal';
+import { queryAccessSignal } from '@/shared/api/query-access';
 import { onboardingApi } from './api';
-import { acceptPlan, handlePlanAccessError } from './cache';
+import { acceptPlan, handlePlanAccessError, isPlanAccessError } from './cache';
 import type { Plan } from './schemas';
 
 const CONFIRMATION_TIMEOUT_MS = 10_000;
-const inflight = new WeakMap<AbortSignal, Map<string, Promise<Plan>>>();
+const inflight = new WeakMap<AbortSignal, WeakMap<AbortSignal, Map<string, Promise<Plan>>>>();
 
 export function setCheckpointConfirmationShared(
   queryClient: QueryClient,
@@ -15,10 +16,14 @@ export function setCheckpointConfirmationShared(
   revision: number,
 ): Promise<Plan> {
   const session = sessionSignal(queryClient);
-  let operations = inflight.get(session);
+  const access = queryAccessSignal(queryClient, queryKeys.plan());
+  const request = AbortSignal.any([session, access]);
+  let scopes = inflight.get(session);
+  if (!scopes) { scopes = new WeakMap(); inflight.set(session, scopes); }
+  let operations = scopes.get(access);
   if (!operations) {
     operations = new Map();
-    inflight.set(session, operations);
+    scopes.set(access, operations);
   }
   const pending = operations.get(stepId);
   if (pending) return pending;
@@ -31,14 +36,13 @@ export function setCheckpointConfirmationShared(
           stepId,
           confirmed,
           revision,
-          AbortSignal.any([session, timeout]),
+          AbortSignal.any([request, timeout]),
         );
         if (!data) throw new ClientError('protocol', 'Сервер вернул пустой план');
-        session.throwIfAborted();
-        return acceptPlan(queryClient, data);
+        return acceptPlan(queryClient, data, request);
       } catch (error) {
-        session.throwIfAborted();
-        if (handlePlanAccessError(queryClient, error)) throw error;
+        request.throwIfAborted();
+        if (isPlanAccessError(error)) throw error;
 
         const revisionConflict = error instanceof ClientError && error.code === 'CHECKPOINT_REVISION_CONFLICT';
         const uncertain = timeout.aborted || error instanceof ClientError &&
@@ -49,11 +53,10 @@ export function setCheckpointConfirmationShared(
         }
 
         const { data } = await onboardingApi.getMyPlan(
-          AbortSignal.any([session, AbortSignal.timeout(CONFIRMATION_TIMEOUT_MS)]),
+          AbortSignal.any([request, AbortSignal.timeout(CONFIRMATION_TIMEOUT_MS)]),
         );
         if (!data) throw new ClientError('protocol', 'Сервер вернул пустой план');
-        session.throwIfAborted();
-        const current = acceptPlan(queryClient, data);
+        const current = acceptPlan(queryClient, data, request);
         const step = current.steps.find((item) => item.id === stepId);
         const isConfirmed = step?.confirmations.some((item) => item.role === 'intern') ?? false;
 
@@ -72,7 +75,7 @@ export function setCheckpointConfirmationShared(
         );
       }
     } catch (error) {
-      handlePlanAccessError(queryClient, error);
+      if (!request.aborted) handlePlanAccessError(queryClient, error);
       throw error;
     }
   })().finally(() => {

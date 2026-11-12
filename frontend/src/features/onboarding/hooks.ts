@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ClientError, queryKeys } from '@/shared/api';
-import { sessionSignal } from '@/shared/api/session-signal';
+import { queryRequestSignal } from '@/shared/api/query-access';
 import { onboardingApi } from './api';
 import type { StepTarget } from './api';
 import { planSchema } from './schemas';
@@ -14,21 +14,20 @@ export function usePlan() {
   return useQuery({
     queryKey: queryKeys.plan(),
     queryFn: async ({ signal }) => {
-      const session = sessionSignal(queryClient);
+      const request = queryRequestSignal(queryClient, queryKeys.plan(), signal);
       try {
-        const { data } = await onboardingApi.getMyPlan(AbortSignal.any([signal, session]));
+        const { data } = await onboardingApi.getMyPlan(request);
         if (!data) throw new ClientError('protocol', 'Сервер вернул пустой план');
-        session.throwIfAborted();
-        return acceptPlan(queryClient, data);
+        return acceptPlan(queryClient, data, request);
       } catch (error) {
-        handlePlanAccessError(queryClient, error);
+        if (!request.aborted) handlePlanAccessError(queryClient, error);
         throw error;
       }
     },
     select: (data) => data === null ? null : planSchema.parse(data),
     refetchInterval: (query) => {
       const plan = query.state.data;
-      return plan && plan.progress_percent < 100 ? ACTIVE_PLAN_POLL_MS : false;
+      return plan ? ACTIVE_PLAN_POLL_MS : false;
     },
     refetchOnWindowFocus: 'always',
   });
@@ -37,14 +36,18 @@ export function usePlan() {
 export function useUpdateStep() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ stepId, status }: { stepId: string; status: StepTarget }) =>
-      onboardingApi.updateStep(stepId, status, sessionSignal(queryClient)),
-    onSuccess: (response) => {
-      if (response.data) acceptPlan(queryClient, response.data);
-    },
-    onError: (error) => {
-      if (!handlePlanAccessError(queryClient, error)) {
-        void queryClient.invalidateQueries({ queryKey: queryKeys.plan() });
+    mutationFn: async ({ stepId, status }: { stepId: string; status: StepTarget }) => {
+      const request = queryRequestSignal(queryClient, queryKeys.plan());
+      try {
+        const response = await onboardingApi.updateStep(stepId, status, request);
+        request.throwIfAborted();
+        if (response.data) acceptPlan(queryClient, response.data, request);
+        return response;
+      } catch (error) {
+        if (!request.aborted && !handlePlanAccessError(queryClient, error)) {
+          void queryClient.invalidateQueries({ queryKey: queryKeys.plan() });
+        }
+        throw error;
       }
     },
   });

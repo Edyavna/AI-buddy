@@ -1,12 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
-import { acceptPlan } from './cache';
+import { acceptPlan, handlePlanAccessError } from './cache';
 import { setCheckpointConfirmationShared } from './confirm';
 import { onboardingApi } from './api';
 import { planSchema } from './schemas';
 import type { Plan } from './schemas';
-import { queryKeys } from '@/shared/api';
+import { ClientError, queryKeys } from '@/shared/api';
 import { resetSessionState } from '@/features/session/session-state';
+import { queryRequestSignal } from '@/shared/api/query-access';
 
 function planAt(revision: number): Plan {
   return planSchema.parse({
@@ -51,8 +52,9 @@ describe('checkpoint cache lifecycle', () => {
   it('does not let an older plan response replace a newer revision', () => {
     const queryClient = client();
     const current = planAt(2);
-    acceptPlan(queryClient, current);
-    expect(acceptPlan(queryClient, planAt(1))).toEqual(current);
+    const signal = queryRequestSignal(queryClient, queryKeys.plan());
+    acceptPlan(queryClient, current, signal);
+    expect(acceptPlan(queryClient, planAt(1), signal)).toEqual(current);
     expect(queryClient.getQueryData(queryKeys.plan())).toEqual(current);
   });
 
@@ -83,4 +85,33 @@ describe('checkpoint cache lifecycle', () => {
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
     expect(queryClient.getQueryData(queryKeys.plan())).toBeUndefined();
   });
+});
+
+
+it.each([403, 404])('does not accept a late successful PUT after access denial %s', async status => {
+  const queryClient = client();
+  let release!: (plan: Plan) => void;
+  const gate = new Promise<Plan>(resolve => { release = resolve; });
+  vi.spyOn(onboardingApi, 'setCheckpointConfirmation').mockImplementation(async () => ({ status: 200, data: await gate }));
+  queryClient.setQueryData(queryKeys.plan(), planAt(1));
+  const pending = setCheckpointConfirmationShared(queryClient, 'step_checkpoint', true, 1);
+  handlePlanAccessError(queryClient, new ClientError('http', 'Доступ отозван', { status }));
+  expect(queryClient.getQueryData(queryKeys.plan())).toBeNull();
+  release(planAt(2));
+  await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  expect(queryClient.getQueryData(queryKeys.plan())).toBeNull();
+});
+
+it('keeps newly revalidated data when an older access generation returns a higher revision', async () => {
+  const queryClient = client();
+  let release!: (plan: Plan) => void;
+  const gate = new Promise<Plan>(resolve => { release = resolve; });
+  vi.spyOn(onboardingApi, 'setCheckpointConfirmation').mockImplementation(async () => ({ status: 200, data: await gate }));
+  const pending = setCheckpointConfirmationShared(queryClient, 'step_checkpoint', true, 1);
+  handlePlanAccessError(queryClient, new ClientError('http', 'Доступ отозван', { status: 403 }));
+  const revalidated = { ...planAt(3), title: 'Проверенный заново план' };
+  acceptPlan(queryClient, revalidated, queryRequestSignal(queryClient, queryKeys.plan()));
+  release(planAt(99));
+  await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
+  expect(queryClient.getQueryData(queryKeys.plan())).toEqual(revalidated);
 });

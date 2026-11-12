@@ -420,3 +420,23 @@ describe('checkpoint synchronization (#46)', () => {
     expect(view.queryClient.getQueryData(queryKeys.plan())).toBeNull();
   });
 });
+
+it('keeps polling a completed plan and observes a mentor revocation without refocusing', async () => {
+  vi.useFakeTimers();
+  let current = checkpointPlan(checkpointStep({
+    completion_policy: 'both', status: 'completed', revision: 3,
+    confirmations: [internConfirmation, mentorConfirmation], allowed_actions: ['revoke'],
+  }));
+  let gets = 0;
+  server.resetHandlers(usePlanHandler(() => current, () => { gets += 1; }), ...createHandlers());
+  renderPlan();
+  await vi.waitFor(() => expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '100'));
+  current = checkpointPlan(checkpointStep({
+    completion_policy: 'both', status: 'in_progress', revision: 4,
+    confirmations: [internConfirmation], allowed_actions: ['revoke'], awaiting_role: 'mentor',
+  }));
+  await act(async () => { await vi.advanceTimersByTimeAsync(5000); });
+  await vi.waitFor(() => expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuenow', '0'));
+  expect(screen.getByText('Ожидаем наставника')).toBeInTheDocument();
+  expect(gets).toBeGreaterThanOrEqual(2);
+});
