@@ -1,0 +1,4 @@
+frontend/src/features/hr/Questions.tsx	93	uncovered=
+frontend/src/features/resolution-drafts/ResolutionDraftPage.tsx	14,15,18,19,20,21,22,23,27,32,33,34,35,36,37,38,39,40,41,42,43,44,45,46,47,48,50,51,54,55,56,57,59,60,61,63,64,68,70,71,72,75,76,78,80,81,82,83,84,86,90,92,94,95,96,97,98,100,101,105,106,107,108,109,110,113,115,116,117,118,120,121,122,126,127,129,131,132	uncovered=27
+frontend/src/features/resolution-drafts/api.ts	5,6,7,11,16,17,19,20,21,22,24,25,26,27,28,29	uncovered=
+frontend changed line coverage 98.95% (94/95)

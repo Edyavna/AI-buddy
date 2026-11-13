@@ -50,8 +50,8 @@ jobs:
           go test ../scripts/go_line_coverage.go ../scripts/go_line_coverage_test.go
           set -o pipefail
           go run ../scripts/go_line_coverage.go coverage.out | tee -a line-coverage.txt "$GITHUB_STEP_SUMMARY"
-      - name: Changed backend lines for issue 62
-        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/62-hr')
+      - name: Changed backend lines above 90 percent
+        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/62-hr') || startsWith(github.head_ref, 'feature/resolution-knowledge-drafts'))
         shell: bash
         env:
           COVERAGE_BASE: ${{ github.event.pull_request.base.sha }}
@@ -152,6 +152,39 @@ jobs:
         with:
           name: hr-browser
           path: tmp/hr-browser/*.png
+      - if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down
+
+  resolution-drafts-browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/resolution-knowledge-drafts')
+    env:
+      COMPOSE_FILE: compose.yaml:scripts/compose.hr-test.yaml
+      RESOLUTION_APP_URL: http://localhost:5173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.node-version
+      - run: npm install --no-save --package-lock=false playwright-core@1.60.0
+      - run: npx playwright-core install --with-deps chromium
+      - run: docker compose up --build --wait --wait-timeout 180 frontend hr-fixture
+      - run: docker compose --profile demo run --rm seed
+      - run: node scripts/resolution-drafts-browser.mjs
+      - name: Persist publications through restart and repeated seed
+        run: |
+          docker compose restart api hr-fixture
+          docker compose up -d --wait api hr-fixture
+          docker compose --profile demo run --rm seed
+          node scripts/resolution-drafts-browser.mjs --verify
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: resolution-drafts-browser
+          path: tmp/resolution-browser/
       - if: failure()
         run: docker compose logs
       - if: always()

@@ -22,7 +22,9 @@ createServer(async (request, response) => {
     const last = input.messages.at(-1).content;
     let result = { answer: 'Порядок работы можно уточнить у наставника.', outcome: 'answered' };
     if (input.response_format?.type === 'json_object') {
-      if (input.messages[0].content.startsWith('Определи тему')) {
+      if (input.messages[0].content.startsWith('Подготовь обезличенную')) {
+        result = { title: 'Инструкция команды', content: JSON.parse(last).answer };
+      } else if (input.messages[0].content.startsWith('Определи тему')) {
         const hr = /отпуск|кадров|трудов/i.test(last);
         result = { direction: hr ? 'hr' : 'mentor', reason: hr ? 'Вопрос об отпуске' : 'Рабочий вопрос', clarification: null, split: false };
       } else {
