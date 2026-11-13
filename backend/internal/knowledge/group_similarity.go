@@ -10,7 +10,7 @@ var groupStopWords = map[string]bool{"как": true, "где": true, "что": t
 
 func groupTokens(text string) map[string]bool {
 	out := map[string]bool{}
-	for _, word := range strings.FieldsFunc(strings.ToLower(strings.ReplaceAll(text, "ё", "е")), func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) }) {
+	for _, word := range strings.FieldsFunc(strings.ReplaceAll(strings.ToLower(text), "ё", "е"), func(r rune) bool { return !unicode.IsLetter(r) && !unicode.IsDigit(r) }) {
 		if len([]rune(word)) < 3 || groupStopWords[word] {
 			continue
 		}

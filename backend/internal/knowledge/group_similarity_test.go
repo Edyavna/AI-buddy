@@ -16,6 +16,7 @@ func TestGroupSimilarityRules(t *testing.T) {
 		checkpoint, want bool
 	}{
 		{"как где это", "что или почему", false, false}, {"настроить сервер", "настроить VPN", false, false}, {"настроить сервер", "настроить VPN", true, true}, {"доступ сервис команда пароль инструкция", "доступ сервис команда пароль инструкция", false, true}, {"ежегодный отпуск", "локальная сборка", true, false},
+		{"Ёлочный отпуск", "елочный отпуск", false, true},
 	} {
 		score, reason := SimilarQuestions(test.a, test.b, test.checkpoint)
 		if score < 0 || score > 1 || (reason != "") != test.want {
