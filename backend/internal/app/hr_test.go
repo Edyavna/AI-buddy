@@ -320,3 +320,63 @@ func TestPostgresHRRevokedSpecialistReleasesClaimAndRerouteKeepsPrivateHistory(t
 	}
 	hrResponse[any](t, h, "GET", hrPath, nil, hr2, 404)
 }
+
+func TestPostgresHRRejectsForbiddenTransitionsAndMalformedRequests(t *testing.T) {
+	db := testkit.Postgres(t)
+	_, student, conversation := prepareDraft(t, db)
+	h := requestHandler(db, Dependencies{})
+	hr := loginCookie(t, h, "hr_demo_1", nil)
+	mentor := loginCookie(t, h, "mentor_demo_1", nil)
+	var assistant string
+	if err := db.QueryRow("SELECT id FROM chat_messages WHERE conversation_id=$1 AND role='assistant'", conversation).Scan(&assistant); err != nil {
+		t.Fatal(err)
+	}
+	path := "/messages/" + assistant
+	for _, req := range []struct{ method, path, body string }{
+		{"PUT", path + "/question-drafts/hr", "[]"},
+		{"POST", "/questions/foreign/reroute", "[]"},
+		{"PATCH", "/hr/questions/foreign", "[]"},
+		{"POST", "/hr/documents/foreign/publish", "[]"},
+	} {
+		cookie := student
+		if strings.HasPrefix(req.path, "/hr/") {
+			cookie = hr
+		}
+		apiRequest(t, h, req.method, "/api/v1"+req.path, req.body, cookie, 422)
+	}
+	hrResponse[any](t, h, "GET", "/hr/questions?status=unknown", nil, hr, 422)
+	hrResponse[any](t, h, "GET", "/hr/questions/foreign", nil, mentor, 403)
+	hrResponse[any](t, h, "GET", "/questions/foreign", nil, student, 404)
+	hrResponse[any](t, h, "PUT", path+"/question-drafts/bad", map[string]string{"question": "x"}, student, 422)
+	hrResponse[any](t, h, "PUT", "/messages/foreign/question-drafts/hr", map[string]string{"question": "x"}, student, 404)
+	draft := knowledgegaps.Draft{Direction: "hr", Question: "Куда подать заявление?"}
+	q := hrResponse[knowledgegaps.Question](t, h, "POST", path+"/questions", knowledgegaps.Operation{ID: hrKey(1), Draft: draft}, student, 200)
+	qpath := "/hr/questions/" + q.ID
+	hrResponse[any](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(2), Action: "answer", Resolution: "Ответ", Revision: 1}, hr, 409)
+	hrResponse[any](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(3), Action: "fake", Revision: 1}, hr, 422)
+	hrResponse[any](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(4), Action: "claim", Revision: 0}, hr, 422)
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(5), Action: "claim", Revision: 1}, hr, 200)
+	hrResponse[any](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(6), Action: "claim", Revision: q.Revision}, hr, 409)
+	hrResponse[any](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(7), Action: "resolve", Revision: q.Revision, Resolution: "Ответ", Documents: []string{"foreign"}}, hr, 409)
+	hrResponse[any](t, h, "POST", "/questions/"+q.ID+"/reroute", knowledgegaps.Operation{ID: hrKey(8), Revision: q.Revision, Draft: draft}, student, 409)
+	hrResponse[any](t, h, "POST", "/questions/"+q.ID+"/reroute", knowledgegaps.Operation{ID: hrKey(9), Draft: draft}, student, 422)
+	hrResponse[any](t, h, "POST", path+"/questions", knowledgegaps.Operation{ID: hrKey(10), Draft: draft}, student, 409)
+
+	doc := knowledge.HRDocumentInput{Operation: hrKey(11), Title: "Инструкция", Content: "# Текст", Teams: []string{"team_demo_backend"}}
+	saved := hrResponse[knowledge.HRDocument](t, h, "POST", "/hr/documents", doc, hr, 200)
+	if replay := hrResponse[knowledge.HRDocument](t, h, "POST", "/hr/documents", doc, hr, 200); replay.ID != saved.ID {
+		t.Fatal(replay)
+	}
+	doc.Title = "Другой документ"
+	hrResponse[any](t, h, "POST", "/hr/documents", doc, hr, 409)
+	doc.Operation = "not-a-uuid"
+	hrResponse[any](t, h, "POST", "/hr/documents", doc, hr, 422)
+	doc.Operation = hrKey(12)
+	doc.Teams = []string{"team_demo_no_hr"}
+	hrResponse[any](t, h, "POST", "/hr/documents", doc, hr, 404)
+	dpath := "/hr/documents/" + saved.ID
+	hrResponse[any](t, h, "POST", dpath+"/retry", map[string]int{"version": 1}, hr, 409)
+	hrResponse[any](t, h, "POST", dpath+"/publish", map[string]int{"version": 7}, hr, 409)
+	hrResponse[any](t, h, "POST", "/hr/documents/bad/publish", map[string]int{"version": 1}, hr, 404)
+	hrResponse[any](t, h, "POST", dpath+"/revoke", map[string]int{"version": 1}, student, 403)
+}
