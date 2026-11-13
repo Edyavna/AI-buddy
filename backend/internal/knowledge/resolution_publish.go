@@ -119,7 +119,8 @@ func (s Uploads) PublishResolution(ctx context.Context, id string, revision int6
 		if e != nil {
 			return e
 		}
-		_, e = tx.ExecContext(ctx, `UPDATE resolution_drafts SET document_id=$3,document_version=$4,updated_at=now() WHERE question_id=$1 AND author_id=$2`, id, p.UserID, doc, version)
+		table, column := resolutionStorage(ctx)
+		_, e = tx.ExecContext(ctx, `UPDATE `+table+` SET document_id=$3,document_version=$4,updated_at=now() WHERE `+column+`=$1 AND author_id=$2`, id, p.UserID, doc, version)
 		if e != nil {
 			return e
 		}
@@ -131,6 +132,11 @@ func (s Uploads) PublishResolution(ctx context.Context, id string, revision int6
 }
 
 func queueResolution(ctx context.Context, tx *sql.Tx, p identity.Principal, q ResolutionSource, d ResolutionDraft, target ResolutionTarget, content string) (string, int64, error) {
+	if isGroupDraft(ctx) {
+		if err := checkGroupRecipients(ctx, tx, p, q.ID, q.TeamID); err != nil {
+			return "", 0, err
+		}
+	}
 	id := target.ID
 	version := target.Version + 1
 	if p.Role == identity.HR {
@@ -155,7 +161,11 @@ func queueResolution(ctx context.Context, tx *sql.Tx, p identity.Principal, q Re
 		}
 	} else {
 		if id == "" {
-			if err := tx.QueryRowContext(ctx, `INSERT INTO mentor_documents(author_id,team_id,upload_id,question_id,title,content) VALUES($1,$2,gen_random_uuid(),$3,$4,$5) RETURNING id::text`, p.UserID, q.TeamID, q.ID, d.Title, content).Scan(&id); err != nil {
+			var question any = q.ID
+			if isGroupDraft(ctx) {
+				question = nil
+			}
+			if err := tx.QueryRowContext(ctx, `INSERT INTO mentor_documents(author_id,team_id,upload_id,question_id,title,content) VALUES($1,$2,gen_random_uuid(),$3,$4,$5) RETURNING id::text`, p.UserID, q.TeamID, question, d.Title, content).Scan(&id); err != nil {
 				return "", 0, err
 			}
 		} else {
@@ -177,19 +187,20 @@ func queueResolution(ctx context.Context, tx *sql.Tx, p identity.Principal, q Re
 // visible. Source revocation aborts publication. The question link is exposed
 // only once the document is ready, through the existing ACL-filtered question API.
 func linkResolution(ctx context.Context, tx *sql.Tx, doc string, version int64) error {
-	rows, err := tx.QueryContext(ctx, `SELECT question_id::text,author_id,payload FROM resolution_drafts WHERE document_id=$1 AND document_version=$2`, doc, version)
+	rows, err := tx.QueryContext(ctx, `SELECT question_id::text,author_id,payload,false FROM resolution_drafts WHERE document_id=$1 AND document_version=$2 UNION ALL SELECT group_id::text,author_id,payload,true FROM resolution_group_drafts WHERE document_id=$1 AND document_version=$2`, doc, version)
 	if err != nil {
 		return err
 	}
 	type publication struct {
 		id, user string
 		draft    ResolutionDraft
+		group    bool
 	}
 	items := []publication{}
 	for rows.Next() {
 		var item publication
 		var raw []byte
-		if err = rows.Scan(&item.id, &item.user, &raw); err != nil {
+		if err = rows.Scan(&item.id, &item.user, &raw, &item.group); err != nil {
 			rows.Close()
 			return err
 		}
@@ -206,12 +217,22 @@ func linkResolution(ctx context.Context, tx *sql.Tx, doc string, version int64) 
 	}
 	for _, item := range items {
 		p := identity.Principal{UserID: item.user, TeamID: item.draft.Source.TeamID, Role: identity.Role(item.draft.Source.Direction)}
-		q, e := resolutionSource(ctx, tx, p, item.id)
+		sourceCtx := ctx
+		if item.group {
+			sourceCtx = withGroupDraft(ctx)
+		}
+		q, e := resolutionSource(sourceCtx, tx, p, item.id)
 		if e != nil {
 			return e
 		}
 		if q.Revision != item.draft.Source.Revision {
 			return ports.ErrConflict
+		}
+		if item.group {
+			if _, e = tx.ExecContext(ctx, `UPDATE question_groups SET published_at=COALESCE(published_at,now()),updated_at=now() WHERE id=$1`, item.id); e != nil {
+				return e
+			}
+			continue
 		}
 		if _, e = tx.ExecContext(ctx, `INSERT INTO knowledge_gap_history(question_id,revision,snapshot) SELECT id,revision,jsonb_build_object('event','instruction_published','document_id',$2::text,'document_version',$3::bigint) FROM knowledge_gaps WHERE id=$1`, item.id, doc, version); e != nil {
 			return e

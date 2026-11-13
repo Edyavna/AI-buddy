@@ -61,6 +61,9 @@ func resolutionSource(ctx context.Context, tx *sql.Tx, p identity.Principal, id 
 	if p.Role != identity.Mentor && p.Role != identity.HR {
 		return q, ports.ErrForbidden
 	}
+	if isGroupDraft(ctx) {
+		return groupResolutionSource(ctx, tx, p, id)
+	}
 	err := tx.QueryRowContext(ctx, `SELECT q.id::text,q.direction,q.team_id,q.student_id,q.question,q.resolution,q.step_id,q.revision
  FROM knowledge_gaps q WHERE q.id::text=$1 AND q.status='resolved' AND NULLIF(trim(q.resolution),'') IS NOT NULL
  AND (($2='mentor' AND q.direction='mentor' AND q.team_id=$4 AND EXISTS(SELECT 1 FROM mentor_assignments a WHERE a.intern_id=q.student_id AND a.team_id=q.team_id AND a.mentor_id=$3))
@@ -112,7 +115,8 @@ func readResolution(ctx context.Context, tx *sql.Tx, id, user string) (*Resoluti
 	var revision int64
 	var doc *string
 	var version *int64
-	err := tx.QueryRowContext(ctx, `SELECT revision,payload,document_id::text,document_version FROM resolution_drafts WHERE question_id::text=$1 AND author_id=$2 FOR UPDATE`, id, user).Scan(&revision, &raw, &doc, &version)
+	table, column := resolutionStorage(ctx)
+	err := tx.QueryRowContext(ctx, `SELECT revision,payload,document_id::text,document_version FROM `+table+` WHERE `+column+`::text=$1 AND author_id=$2 FOR UPDATE`, id, user).Scan(&revision, &raw, &doc, &version)
 	if errors.Is(err, sql.ErrNoRows) {
 		return nil, nil
 	}
@@ -250,7 +254,8 @@ func (s Uploads) SaveResolution(ctx context.Context, id string, in ResolutionInp
 		}
 		out.Revision++
 		raw, _ := json.Marshal(out) // Only strings, integers and nullable scalar fields.
-		_, e = tx.ExecContext(ctx, `INSERT INTO resolution_drafts(question_id,author_id,revision,payload) VALUES($1,$2,$3,$4) ON CONFLICT(question_id,author_id) DO UPDATE SET revision=EXCLUDED.revision,payload=EXCLUDED.payload,updated_at=now()`, id, p.UserID, out.Revision, string(raw))
+		table, column := resolutionStorage(ctx)
+		_, e = tx.ExecContext(ctx, `INSERT INTO `+table+`(`+column+`,author_id,revision,payload) VALUES($1,$2,$3,$4) ON CONFLICT(`+column+`,author_id) DO UPDATE SET revision=EXCLUDED.revision,payload=EXCLUDED.payload,updated_at=now()`, id, p.UserID, out.Revision, string(raw))
 		return e
 	})
 	return out, uploadError(err)
