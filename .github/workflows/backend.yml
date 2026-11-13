@@ -51,7 +51,7 @@ jobs:
           set -o pipefail
           go run ../scripts/go_line_coverage.go coverage.out | tee -a line-coverage.txt "$GITHUB_STEP_SUMMARY"
       - name: Changed backend lines above 90 percent
-        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/62-hr') || startsWith(github.head_ref, 'feature/resolution-knowledge-drafts'))
+        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/62-hr') || startsWith(github.head_ref, 'feature/resolution-knowledge-drafts') || startsWith(github.head_ref, 'feature/shared-question-resolutions'))
         shell: bash
         env:
           COVERAGE_BASE: ${{ github.event.pull_request.base.sha }}
@@ -185,6 +185,41 @@ jobs:
         with:
           name: resolution-drafts-browser
           path: tmp/resolution-browser/
+      - if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down
+
+  question-groups-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/shared-question-resolutions')
+    env:
+      COMPOSE_FILE: compose.yaml:scripts/compose.hr-test.yaml
+      GROUP_APP_URL: http://localhost:5173
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.node-version
+      - run: npm install --no-save --package-lock=false playwright-core@1.60.0
+      - run: npx playwright-core install --with-deps chromium
+      - run: docker compose up --build --wait --wait-timeout 180 frontend hr-fixture
+      - run: docker compose --profile demo run --rm seed
+      - name: Assign two synthetic interns to the same mentor
+        run: docker compose exec -T db psql -U buddy -d buddy -v ON_ERROR_STOP=1 -c "UPDATE mentor_assignments SET mentor_id='mentor_demo_1' WHERE intern_id='intern_demo_2'"
+      - run: node scripts/question-groups-browser.mjs
+      - name: Persist groups through API restart and repeated seed
+        run: |
+          docker compose restart api hr-fixture
+          docker compose up -d --wait api hr-fixture
+          docker compose --profile demo run --rm seed
+          node scripts/question-groups-browser.mjs --verify
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: question-groups-browser
+          path: tmp/question-groups-browser/
       - if: failure()
         run: docker compose logs
       - if: always()
