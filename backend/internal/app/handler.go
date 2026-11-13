@@ -22,12 +22,13 @@ import (
 )
 
 type Dependencies struct {
-	Access            ports.AccessChecker
-	Agent             ports.Agent
-	Requests          ports.RequestReader
-	Knowledge         ports.Knowledge
-	Questions         ports.OpenQuestionCounter
-	QuestionDocuments knowledgegaps.Documents
+	Access              ports.AccessChecker
+	Agent               ports.Agent
+	Requests            ports.RequestReader
+	Knowledge           ports.Knowledge
+	Questions           ports.OpenQuestionCounter
+	QuestionDocuments   knowledgegaps.Documents
+	ResolutionGenerator knowledge.ResolutionGenerator
 }
 
 // NewHandler is the composition root. Supplying AccessChecker connects #13
@@ -70,6 +71,7 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 			checkpoints.Register(mux, session)
 			knowledgegaps.Handler{Store: questions}.Register(mux, session)
 			uploads.Register(mux, session)
+			uploads.RegisterResolutions(mux, session, deps.ResolutionGenerator)
 			requests.Register(mux, session)
 			mux.Handle("GET /api/v1/documents/{document_id}", session.Require(knowledge.Handler(deps.Knowledge), false))
 			conversations.Register(mux, session)

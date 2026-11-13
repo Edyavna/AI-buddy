@@ -14,10 +14,11 @@ import (
 )
 
 func demoDependencies(db *sql.DB, provider *integrations.Provider, ai *config.AIConfig) Dependencies {
-	deps := Dependencies{Access: provider}
+	deps := Dependencies{Access: provider, ResolutionGenerator: knowledge.ResolutionGenerator{Demo: true}}
 	if ai == nil {
 		return deps
 	}
+	deps.ResolutionGenerator = knowledge.ResolutionGenerator{Client: providerhttp.Client{BaseURL: ai.ModelBaseURL, Key: ai.ModelKey}, Model: ai.ModelName}
 	k := &knowledge.Service{DB: db, Embedder: &knowledge.Jina{
 		Client: providerhttp.Client{BaseURL: ai.EmbeddingBaseURL, Key: ai.EmbeddingKey},
 	}}

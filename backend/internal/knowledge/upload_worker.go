@@ -52,7 +52,7 @@ func (w UploadWorker) RunOne(ctx context.Context) (bool, error) {
 		WHERE d.id=(SELECT id FROM mentor_documents WHERE status='processing'
 			AND (lease_until IS NULL OR lease_until<=clock_timestamp()) ORDER BY updated_at,id
 			LIMIT 1 FOR UPDATE SKIP LOCKED)
-		RETURNING d.id::text,d.title,d.content,d.team_id,d.claim::text`).Scan(&d.ID, &d.Title, &d.Content, &d.TeamID, &claim)
+		RETURNING d.id::text,d.title,d.content,d.team_id,d.claim::text,d.version`).Scan(&d.ID, &d.Title, &d.Content, &d.TeamID, &claim, &d.Version)
 	if errors.Is(err, sql.ErrNoRows) {
 		return false, nil
 	}
@@ -76,14 +76,20 @@ func (w UploadWorker) RunOne(ctx context.Context) (bool, error) {
 
 func (w UploadWorker) publish(ctx context.Context, d Document, claim string, chunks, vectors []string) error {
 	return database.WithinTx(ctx, w.Knowledge.DB, func(tx *sql.Tx) error {
+		if err := linkResolution(ctx, tx, d.ID, d.Version); err != nil {
+			return err
+		}
 		result, err := tx.ExecContext(ctx, `UPDATE mentor_documents SET status='ready',
 			error=NULL,updated_at=$3,claim=NULL,lease_until=NULL WHERE id=$1 AND claim=$2`, d.ID, claim, d.UpdatedAt)
 		if err != nil {
 			return err
 		}
 		count, err := result.RowsAffected()
-		if err != nil || count == 0 {
+		if err != nil {
 			return err
+		}
+		if count == 0 {
+			return sql.ErrNoRows
 		}
 		return writeIndex(ctx, tx, d, contentDigest(d), chunks, vectors)
 	})

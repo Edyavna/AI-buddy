@@ -57,12 +57,15 @@ WHERE document_id=$1 AND version=$2 AND claim=$3`, j.ID, j.Version, j.Claim)
 
 func (w UploadWorker) publishHR(ctx context.Context, j hrJob, chunks, vectors []string) error {
 	return database.WithinTx(ctx, w.Knowledge.DB, func(tx *sql.Tx) error {
+		if err := linkResolution(ctx, tx, j.ID, j.Version); err != nil {
+			return err
+		}
 		var latest int64
 		if err := tx.QueryRowContext(ctx, `SELECT latest_version FROM hr_documents WHERE id=$1 FOR UPDATE`, j.ID).Scan(&latest); err != nil {
 			return err
 		}
 		if latest != j.Version {
-			return nil
+			return sql.ErrNoRows
 		}
 		teams, err := versionTeams(ctx, tx, j.ID, j.Version)
 		if err != nil {
@@ -78,7 +81,10 @@ WHERE document_id=$1 AND version=$2 AND claim=$3 AND status='indexing'`, j.ID, j
 			return err
 		}
 		if count, err := result.RowsAffected(); err != nil || count == 0 {
-			return err
+			if err != nil {
+				return err
+			}
+			return sql.ErrNoRows
 		}
 		j.TeamID = teams[0]
 		if err := writeIndex(ctx, tx, j.Document, contentDigest(j.Document), chunks, vectors); err != nil {

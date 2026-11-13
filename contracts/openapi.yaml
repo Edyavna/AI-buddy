@@ -237,6 +237,446 @@ paths:
           $ref: '#/components/responses/Error'
         default:
           $ref: '#/components/responses/Error'
+  /mentor/questions/{question_id}/instruction-draft:
+    parameters:
+      - in: path
+        name: question_id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Resolution drafts
+      operationId: mentorResolutionWorkspace
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionWorkspace'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      tags:
+        - Resolution drafts
+      operationId: mentorSaveResolutionDraft
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionDraft'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveResolutionDraft'
+  /mentor/questions/{question_id}/instruction-draft/targets/{target_id}:
+    parameters:
+      - in: path
+        name: question_id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: target_id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Resolution drafts
+      operationId: mentorResolutionTarget
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionTarget'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /mentor/questions/{question_id}/instruction-draft/generate:
+    parameters:
+      - in: path
+        name: question_id
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - Resolution drafts
+      operationId: mentorgenerateResolutionDraft
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionSuggestion'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /mentor/questions/{question_id}/instruction-draft/publish:
+    parameters:
+      - in: path
+        name: question_id
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - Resolution drafts
+      operationId: mentorpublishResolutionDraft
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionDraft'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishResolutionDraft'
+  /mentor/questions/{question_id}/instruction-draft/retry:
+    parameters:
+      - in: path
+        name: question_id
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - Resolution drafts
+      operationId: mentorretryResolutionDraft
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionDraft'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishResolutionDraft'
+  /hr/questions/{question_id}/instruction-draft:
+    parameters:
+      - in: path
+        name: question_id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Resolution drafts
+      operationId: hrResolutionWorkspace
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionWorkspace'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      tags:
+        - Resolution drafts
+      operationId: hrSaveResolutionDraft
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionDraft'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SaveResolutionDraft'
+  /hr/questions/{question_id}/instruction-draft/targets/{target_id}:
+    parameters:
+      - in: path
+        name: question_id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: target_id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Resolution drafts
+      operationId: hrResolutionTarget
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionTarget'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /hr/questions/{question_id}/instruction-draft/generate:
+    parameters:
+      - in: path
+        name: question_id
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - Resolution drafts
+      operationId: hrgenerateResolutionDraft
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionSuggestion'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /hr/questions/{question_id}/instruction-draft/publish:
+    parameters:
+      - in: path
+        name: question_id
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - Resolution drafts
+      operationId: hrpublishResolutionDraft
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionDraft'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishResolutionDraft'
+  /hr/questions/{question_id}/instruction-draft/retry:
+    parameters:
+      - in: path
+        name: question_id
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - Resolution drafts
+      operationId: hrretryResolutionDraft
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolutionDraft'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublishResolutionDraft'
   /hr/questions:
     get:
       tags:
@@ -2070,6 +2510,253 @@ components:
           type: array
           items:
             type: string
+    ResolutionSource:
+      type: object
+      required:
+        - id
+        - direction
+        - team_id
+        - question
+        - resolution
+        - step_id
+        - revision
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        direction:
+          type: string
+          enum:
+            - mentor
+            - hr
+        team_id:
+          type: string
+        question:
+          type: string
+        resolution:
+          type: string
+        step_id:
+          type: string
+          nullable: true
+        revision:
+          type: integer
+          minimum: 1
+    ResolutionTarget:
+      type: object
+      required:
+        - id
+        - title
+        - version
+        - content
+        - team_ids
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        content:
+          type: string
+        team_ids:
+          type: array
+          items:
+            type: string
+    SaveResolutionDraft:
+      type: object
+      required:
+        - revision
+        - title
+        - content
+        - target_document_id
+        - base_version
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        content:
+          type: string
+          maxLength: 1048576
+        target_document_id:
+          type: string
+          nullable: true
+        base_version:
+          type: integer
+          minimum: 1
+          nullable: true
+    ResolutionDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - revision
+        - title
+        - content
+        - target_document_id
+        - base_version
+        - source
+        - base_content
+        - document_id
+        - document_version
+        - status
+        - error
+        - team_ids
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        content:
+          type: string
+          maxLength: 1048576
+        target_document_id:
+          type: string
+          nullable: true
+        base_version:
+          type: integer
+          minimum: 1
+          nullable: true
+        source:
+          $ref: '#/components/schemas/ResolutionSource'
+        base_content:
+          type: string
+        document_id:
+          type: string
+          nullable: true
+        document_version:
+          type: integer
+          minimum: 1
+          nullable: true
+        status:
+          type: string
+          enum:
+            - draft
+            - indexing
+            - ready
+            - failed
+        error:
+          type: string
+          nullable: true
+        team_ids:
+          type: array
+          items:
+            type: string
+    ResolutionWorkspace:
+      type: object
+      required:
+        - source
+        - draft
+        - targets
+      additionalProperties: false
+      properties:
+        source:
+          $ref: '#/components/schemas/ResolutionSource'
+        draft:
+          $ref: '#/components/schemas/NullableResolutionDraft'
+        targets:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResolutionTarget'
+    PublishResolutionDraft:
+      type: object
+      required:
+        - revision
+        - reviewed
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+        reviewed:
+          type: boolean
+          enum:
+            - true
+    ResolutionSuggestion:
+      type: object
+      required:
+        - title
+        - content
+        - mode
+      additionalProperties: false
+      properties:
+        title:
+          type: string
+        content:
+          type: string
+        mode:
+          type: string
+          enum:
+            - model
+            - demo
+    NullableResolutionDraft:
+      type: object
+      additionalProperties: false
+      required:
+        - revision
+        - title
+        - content
+        - target_document_id
+        - base_version
+        - source
+        - base_content
+        - document_id
+        - document_version
+        - status
+        - error
+        - team_ids
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        content:
+          type: string
+          maxLength: 1048576
+        target_document_id:
+          type: string
+          nullable: true
+        base_version:
+          type: integer
+          minimum: 1
+          nullable: true
+        source:
+          $ref: '#/components/schemas/ResolutionSource'
+        base_content:
+          type: string
+        document_id:
+          type: string
+          nullable: true
+        document_version:
+          type: integer
+          minimum: 1
+          nullable: true
+        status:
+          type: string
+          enum:
+            - draft
+            - indexing
+            - ready
+            - failed
+        error:
+          type: string
+          nullable: true
+        team_ids:
+          type: array
+          items:
+            type: string
+      nullable: true
     HRDocument:
       type: object
       required:
