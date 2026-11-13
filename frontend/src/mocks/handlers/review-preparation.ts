@@ -151,7 +151,7 @@ export function createReviewPreparationHandlers() {
       const existingChecks = prep.checks.filter(check => check.source === 'intern');
       const sameChecks = manualChecks.length === existingChecks.length && manualChecks.every((check, index) => {
         const existing = existingChecks[index];
-        return check.name === existing.name && check.status === existing.status && check.detail === existing.detail;
+        return existing !== undefined && check.name === existing.name && check.status === existing.status && check.detail === existing.detail;
       });
       if (prep.description === body.data.description &&
           JSON.stringify(prep.answers) === JSON.stringify(body.data.answers) && sameChecks) {
