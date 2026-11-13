@@ -13,6 +13,7 @@ type Role string
 const (
 	Intern Role = "intern"
 	Mentor Role = "mentor"
+	HR     Role = "hr"
 )
 
 type Principal struct {
@@ -31,7 +32,7 @@ func WithPrincipal(ctx context.Context, p Principal) context.Context {
 
 func Require(ctx context.Context) (Principal, error) {
 	p, ok := ctx.Value(principalKey{}).(Principal)
-	if !ok || p.UserID == "" || p.TeamID == "" || (p.Role != Intern && p.Role != Mentor) {
+	if !ok || p.UserID == "" || p.TeamID == "" || (p.Role != Intern && p.Role != Mentor && p.Role != HR) {
 		return Principal{}, ErrUnauthenticated
 	}
 	return p, nil

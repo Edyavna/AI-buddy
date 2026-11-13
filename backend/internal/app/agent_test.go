@@ -146,11 +146,17 @@ func agentProviderFixture(w http.ResponseWriter, r *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{"data": []any{map[string]any{"embedding": vector}}})
 	case "/chat/completions":
 		var input struct {
-			Model    string          `json:"model"`
-			Messages []agent.Message `json:"messages"`
+			Model    string            `json:"model"`
+			Messages []agent.Message   `json:"messages"`
+			Format   map[string]string `json:"response_format"`
 		}
 		if json.NewDecoder(r.Body).Decode(&input) != nil || input.Model != "test-model" {
 			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if input.Format["type"] == "json_object" {
+			reply := agent.Message{Role: "assistant", Content: "{\"direction\":\"mentor\",\"reason\":\"Технический доступ\",\"clarification\":null,\"split\":false}"}
+			_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": reply, "finish_reason": "stop"}}})
 			return
 		}
 		calls := []agent.Function{

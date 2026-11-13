@@ -26,6 +26,8 @@ type Embedder interface {
 }
 type Document struct {
 	ID, Source, SourceID, Title, Content, TeamID string
+	Direction                                    string
+	Version                                      int64
 	Users                                        []string
 	UpdatedAt                                    time.Time
 }
@@ -146,8 +148,14 @@ func writeIndex(ctx context.Context, tx *sql.Tx, d Document, digest string, chun
 		users = []string{}
 	}
 	acl, _ := json.Marshal(users)
+	if d.Direction == "" {
+		d.Direction = "mentor"
+	}
+	if d.Version == 0 {
+		d.Version = 1
+	}
 	// ACL is always replaced even when the content hash did not change.
-	_, err := tx.ExecContext(ctx, `INSERT INTO knowledge_documents(id,source,source_id,title,content,updated_at,team_id,users,hash) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT(id) DO UPDATE SET source=EXCLUDED.source,source_id=EXCLUDED.source_id,title=EXCLUDED.title,content=EXCLUDED.content,updated_at=EXCLUDED.updated_at,team_id=EXCLUDED.team_id,users=EXCLUDED.users,hash=EXCLUDED.hash`, d.ID, d.Source, d.SourceID, d.Title, d.Content, d.UpdatedAt, d.TeamID, string(acl), digest)
+	_, err := tx.ExecContext(ctx, `INSERT INTO knowledge_documents(id,source,source_id,title,content,updated_at,team_id,users,hash,direction,version) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) ON CONFLICT(id) DO UPDATE SET source=EXCLUDED.source,source_id=EXCLUDED.source_id,title=EXCLUDED.title,content=EXCLUDED.content,updated_at=EXCLUDED.updated_at,team_id=EXCLUDED.team_id,users=EXCLUDED.users,hash=EXCLUDED.hash,direction=EXCLUDED.direction,version=EXCLUDED.version`, d.ID, d.Source, d.SourceID, d.Title, d.Content, d.UpdatedAt, d.TeamID, string(acl), digest, d.Direction, d.Version)
 	if err != nil {
 		return ports.ErrUnavailable
 	}
@@ -164,9 +172,16 @@ func writeIndex(ctx context.Context, tx *sql.Tx, d Document, digest string, chun
 	return nil
 }
 func (s *Service) Search(ctx context.Context, q string) ([]ports.Source, error) {
+	return s.SearchDirection(ctx, q, "")
+}
+
+func (s *Service) SearchDirection(ctx context.Context, q, direction string) ([]ports.Source, error) {
 	p, e := identity.Require(ctx)
 	if e != nil {
 		return nil, e
+	}
+	if s.Embedder == nil {
+		return nil, ports.ErrUnavailable
 	}
 	if strings.TrimSpace(q) == "" || len([]rune(q)) > 2000 {
 		return nil, ports.ErrInvalid
@@ -183,7 +198,7 @@ func (s *Service) Search(ctx context.Context, q string) ([]ports.Source, error) 
 	if threshold == 0 {
 		threshold = 0.35
 	}
-	rows, e := s.DB.QueryContext(ctx, `SELECT c.id,d.id,d.title,c.excerpt FROM knowledge_chunks c JOIN knowledge_documents d ON d.id=c.document_id WHERE d.team_id=$1 AND (d.users='[]'::jsonb OR d.users ? $2) AND 1-(c.embedding <=> $3::vector)>=$4 ORDER BY c.embedding <=> $3::vector,c.id LIMIT 5`, p.TeamID, p.UserID, encoded, threshold)
+	rows, e := s.DB.QueryContext(ctx, `SELECT c.id,d.id,d.title,c.excerpt,d.direction,d.version,d.updated_at FROM knowledge_chunks c JOIN knowledge_documents d ON d.id=c.document_id WHERE `+readableDocument+` AND ($6='' OR d.direction=$6) AND 1-(c.embedding <=> $4::vector)>=$5 ORDER BY c.embedding <=> $4::vector,c.id LIMIT 5`, p.TeamID, p.UserID, p.Role, encoded, threshold, direction)
 	if e != nil {
 		return nil, ports.ErrUnavailable
 	}
@@ -191,7 +206,7 @@ func (s *Service) Search(ctx context.Context, q string) ([]ports.Source, error) 
 	out := []ports.Source{}
 	for rows.Next() {
 		var x ports.Source
-		if rows.Scan(&x.ID, &x.DocumentID, &x.Title, &x.Excerpt) != nil {
+		if rows.Scan(&x.ID, &x.DocumentID, &x.Title, &x.Excerpt, &x.Direction, &x.Version, &x.UpdatedAt) != nil {
 			return nil, ports.ErrUnavailable
 		}
 		out = append(out, x)
@@ -207,7 +222,7 @@ func (s *Service) Read(ctx context.Context, id string) (ports.Document, error) {
 		return ports.Document{}, e
 	}
 	var d ports.Document
-	e = s.DB.QueryRowContext(ctx, `SELECT id,title,content,updated_at FROM knowledge_documents WHERE id=$1 AND team_id=$2 AND (users='[]'::jsonb OR users ? $3)`, id, p.TeamID, p.UserID).Scan(&d.ID, &d.Title, &d.Content, &d.UpdatedAt)
+	e = s.DB.QueryRowContext(ctx, `SELECT d.id,d.title,d.content,d.updated_at,d.direction,d.version FROM knowledge_documents d WHERE `+readableDocument+` AND d.id=$4`, p.TeamID, p.UserID, p.Role, id).Scan(&d.ID, &d.Title, &d.Content, &d.UpdatedAt, &d.Direction, &d.Version)
 	if errors.Is(e, sql.ErrNoRows) {
 		return d, ports.ErrNotFound
 	}
@@ -259,6 +274,8 @@ func Handler(k ports.Knowledge) http.HandlerFunc {
 			Title     string    `json:"title"`
 			Content   string    `json:"content"`
 			UpdatedAt time.Time `json:"updated_at"`
-		}{d.ID, d.Title, d.Content, d.UpdatedAt.UTC()})
+			Direction string    `json:"direction,omitempty"`
+			Version   int64     `json:"version,omitempty"`
+		}{d.ID, d.Title, d.Content, d.UpdatedAt.UTC(), d.Direction, d.Version})
 	}
 }

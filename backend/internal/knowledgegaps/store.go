@@ -31,6 +31,7 @@ type Documents interface {
 type Store struct {
 	DB        *sql.DB
 	Documents Documents
+	Knowledge ports.Knowledge
 }
 
 type Student struct {
@@ -51,10 +52,16 @@ type Status struct {
 
 type Question struct {
 	Status
-	Student        Student `json:"student"`
-	StepID         *string `json:"step_id"`
-	Question       string  `json:"question"`
-	ContextExcerpt string  `json:"context_excerpt"`
+	TeamID            string                   `json:"team_id"`
+	Direction         string                   `json:"direction"`
+	OriginalDirection string                   `json:"original_direction"`
+	SpecialistID      *string                  `json:"specialist_id"`
+	Routing           *ports.RoutingSuggestion `json:"routing"`
+	AppliedRevision   *int64                   `json:"applied_revision"`
+	Student           Student                  `json:"student"`
+	StepID            *string                  `json:"step_id"`
+	Question          string                   `json:"question"`
+	ContextExcerpt    string                   `json:"context_excerpt"`
 }
 
 type Update struct {
@@ -65,22 +72,27 @@ type Update struct {
 }
 
 const columns = `q.id::text,q.message_id,q.status,q.revision,q.resolution,q.document_ids,q.created_at,q.updated_at,
- q.student_id,u.name,q.step_id,q.question,q.context_excerpt`
+ q.student_id,u.name,q.step_id,q.question,q.context_excerpt,q.team_id,q.direction,q.original_direction,CASE WHEN q.direction='hr' THEN q.hr_id ELSE (SELECT a.mentor_id FROM mentor_assignments a WHERE a.intern_id=q.student_id AND a.team_id=q.team_id) END,q.routing`
 const joined = ` FROM knowledge_gaps q JOIN users u ON u.id=q.student_id AND u.team_id=q.team_id `
-const assigned = ` q.mentor_id=$1 AND q.team_id=$2 AND EXISTS (
- SELECT 1 FROM mentor_assignments a WHERE a.intern_id=q.student_id AND a.mentor_id=q.mentor_id AND a.team_id=q.team_id)`
+const assigned = ` q.direction='mentor' AND q.team_id=$2 AND EXISTS (
+ SELECT 1 FROM mentor_assignments a WHERE a.intern_id=q.student_id AND a.mentor_id=$1 AND a.team_id=q.team_id)`
 
 type scanner interface{ Scan(...any) error }
 
 func scan(row scanner) (Question, error) {
 	var q Question
-	var documents []byte
+	var documents, routing []byte
 	err := row.Scan(&q.ID, &q.MessageID, &q.State, &q.Revision, &q.Resolution, &documents, &q.CreatedAt, &q.UpdatedAt,
-		&q.Student.ID, &q.Student.Name, &q.StepID, &q.Question, &q.ContextExcerpt)
+		&q.Student.ID, &q.Student.Name, &q.StepID, &q.Question, &q.ContextExcerpt, &q.TeamID, &q.Direction, &q.OriginalDirection, &q.SpecialistID, &routing)
 	if err != nil {
 		return q, err
 	}
 	q.CreatedAt, q.UpdatedAt = q.CreatedAt.UTC(), q.UpdatedAt.UTC()
+	if len(routing) > 0 {
+		if err := json.Unmarshal(routing, &q.Routing); err != nil {
+			return q, err
+		}
+	}
 	return q, json.Unmarshal(documents, &q.DocumentIDs)
 }
 
@@ -99,7 +111,7 @@ func mapped(err error) error {
 	case errors.Is(err, sql.ErrNoRows):
 		return ports.ErrNotFound
 	case errors.Is(err, ports.ErrNotFound), errors.Is(err, ports.ErrInvalid), errors.Is(err, ports.ErrMentorUnassigned),
-		errors.Is(err, ErrChanged), errors.Is(err, ErrDocument), errors.Is(err, ErrOutcome), errors.Is(err, ErrTransition):
+		errors.Is(err, ErrHRUnassigned), errors.Is(err, ErrClaimed), errors.Is(err, ports.ErrConflict), errors.Is(err, ErrChanged), errors.Is(err, ErrDocument), errors.Is(err, ErrOutcome), errors.Is(err, ErrTransition):
 		return err
 	default:
 		return fmt.Errorf("%w: %w", ports.ErrUnavailable, err)
@@ -124,7 +136,7 @@ func (s Store) Intern(ctx context.Context, messageID string, create bool) (*Stat
 		if err != nil {
 			return err
 		}
-		q, err := scan(tx.QueryRowContext(ctx, `SELECT `+columns+joined+`WHERE q.message_id=$1 AND q.student_id=$2 AND q.team_id=$3`, messageID, p.UserID, p.TeamID))
+		q, err := scan(tx.QueryRowContext(ctx, `SELECT `+columns+joined+`WHERE q.message_id=$1 AND q.original_direction='mentor' AND q.direction='mentor' AND q.student_id=$2 AND q.team_id=$3`, messageID, p.UserID, p.TeamID))
 		if err == nil {
 			result = &q.Status
 			return nil
@@ -134,6 +146,13 @@ func (s Store) Intern(ctx context.Context, messageID string, create bool) (*Stat
 		}
 		if !create {
 			return nil
+		}
+		var already bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM knowledge_gaps WHERE message_id=$1 AND original_direction='mentor')`, messageID).Scan(&already); err != nil {
+			return err
+		}
+		if already {
+			return ports.ErrConflict
 		}
 		if messageStatus != "completed" || outcome != string(ports.OutcomeKnowledgeGap) {
 			return ErrOutcome
@@ -158,7 +177,7 @@ func (s Store) Intern(ctx context.Context, messageID string, create bool) (*Stat
 			messageID, p.UserID, p.TeamID, mentorID, stepID, question, string(excerpt)); err != nil {
 			return err
 		}
-		q, err = scan(tx.QueryRowContext(ctx, `SELECT `+columns+joined+`WHERE q.message_id=$1`, messageID))
+		q, err = scan(tx.QueryRowContext(ctx, `SELECT `+columns+joined+`WHERE q.message_id=$1 AND q.original_direction='mentor'`, messageID))
 		if err != nil {
 			return err
 		}
@@ -166,6 +185,11 @@ func (s Store) Intern(ctx context.Context, messageID string, create bool) (*Stat
 		return nil
 	})
 	return result, created, mapped(err)
+}
+
+func specialistView(q Question) Question {
+	q.Routing = nil
+	return q
 }
 
 func (s Store) List(ctx context.Context, status string) ([]Question, error) {
@@ -187,7 +211,7 @@ func (s Store) List(ctx context.Context, status string) ([]Question, error) {
 		if err != nil {
 			return nil, mapped(err)
 		}
-		result = append(result, q)
+		result = append(result, specialistView(q))
 	}
 	return result, mapped(rows.Err())
 }
@@ -198,7 +222,7 @@ func (s Store) Get(ctx context.Context, id string) (Question, error) {
 		return Question{}, err
 	}
 	q, err := scan(s.DB.QueryRowContext(ctx, `SELECT `+columns+joined+`WHERE `+assigned+` AND q.id::text=$3`, p.UserID, p.TeamID, id))
-	return q, mapped(err)
+	return specialistView(q), mapped(err)
 }
 
 func (s Store) CountOpen(ctx context.Context, studentID string) (int, error) {
@@ -207,8 +231,8 @@ func (s Store) CountOpen(ctx context.Context, studentID string) (int, error) {
 		return 0, err
 	}
 	var count int
-	err = s.DB.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM knowledge_gaps q WHERE q.mentor_id=$1 AND q.team_id=$2
-    AND q.student_id=$3 AND q.status<>'resolved')
+	err = s.DB.QueryRowContext(ctx, `SELECT (SELECT count(*) FROM knowledge_gaps q WHERE q.team_id=$2
+    AND q.student_id=$3 AND q.direction='mentor' AND q.status<>'resolved')
    FROM mentor_assignments a WHERE a.mentor_id=$1 AND a.team_id=$2 AND a.intern_id=$3`, p.UserID, p.TeamID, studentID).Scan(&count)
 	return count, mapped(err)
 }
@@ -293,13 +317,13 @@ func (s Store) Patch(ctx context.Context, id string, in Update) (Question, error
 		if err != nil {
 			return err
 		}
-		if _, err = tx.ExecContext(ctx, `UPDATE knowledge_gaps SET status=$2,resolution=$3,document_ids=$4,revision=revision+1,
+		if _, err = tx.ExecContext(ctx, `UPDATE knowledge_gaps SET status=$2,resolution=$3,document_ids=$4,mentor_id=$5,revision=revision+1,
     updated_at=clock_timestamp(),resolved_at=CASE WHEN $2='resolved' THEN clock_timestamp() ELSE resolved_at END WHERE id=$1`,
-			id, in.State, resolution, string(links)); err != nil {
+			id, in.State, resolution, string(links), p.UserID); err != nil {
 			return err
 		}
 		result, err = scan(tx.QueryRowContext(ctx, `SELECT `+columns+joined+`WHERE q.id::text=$1`, id))
 		return err
 	})
-	return result, mapped(err)
+	return specialistView(result), mapped(err)
 }

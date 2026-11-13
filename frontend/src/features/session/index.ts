@@ -5,3 +5,5 @@ export { useDemoAccounts, useLogin, useLogout, useMe, isUnauthorized } from './h
 export { resetSessionState } from './session-state';
 export { RequireAuth } from './RequireAuth';
 export { LoginPage } from './LoginPage';
+export { roleHome, roleLabel } from './roles';
+export { useAccessScope, useAccessScopeRefresh } from './access-scope';

@@ -3,7 +3,7 @@ on:
   push:
     branches: [main, dev]
   pull_request:
-    paths: ['frontend/**', 'contracts/**', '.github/workflows/frontend.yml']
+    paths: ['frontend/**', 'contracts/**', '.github/workflows/frontend.yml', 'scripts/hr-coverage.mjs']
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -12,6 +12,8 @@ jobs:
         working-directory: frontend
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version-file: frontend/.node-version
@@ -22,9 +24,18 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run test:coverage
+      - name: Changed frontend lines for issue 62
+        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/62-hr')
+        shell: bash
+        env:
+          COVERAGE_BASE: ${{ github.event.pull_request.base.sha }}
+        run: |
+          set -o pipefail
+          node ../scripts/hr-coverage.mjs "$COVERAGE_BASE" frontend | tee coverage/changed-lines.txt "$GITHUB_STEP_SUMMARY"
       - run: npm run test:e2e
       - run: npm run build
-      - uses: actions/upload-artifact@v4
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
         with:
           name: frontend-coverage
           path: frontend/coverage/

@@ -28,26 +28,30 @@ type Conversation struct {
 	ClientID  string    `json:"client_conversation_id"`
 }
 type Source struct {
-	ID         string `json:"id"`
-	DocumentID string `json:"document_id"`
-	Title      string `json:"title"`
-	Excerpt    string `json:"excerpt"`
+	ID         string     `json:"id"`
+	DocumentID string     `json:"document_id"`
+	Title      string     `json:"title"`
+	Excerpt    string     `json:"excerpt"`
+	Direction  string     `json:"direction,omitempty"`
+	Version    int64      `json:"version,omitempty"`
+	UpdatedAt  *time.Time `json:"updated_at,omitempty"`
 }
 type APIError struct {
 	Error httpapi.Error `json:"error"`
 }
 type Message struct {
-	ID         string        `json:"id"`
-	ClientID   *string       `json:"client_message_id"`
-	Role       string        `json:"role"`
-	Text       string        `json:"text"`
-	Status     string        `json:"status"`
-	Sources    []Source      `json:"sources"`
-	RequestIDs []string      `json:"request_ids"`
-	Outcome    ports.Outcome `json:"outcome,omitempty"`
-	Error      *APIError     `json:"error,omitempty"`
-	CreatedAt  time.Time     `json:"created_at"`
-	InReplyTo  *string       `json:"in_reply_to_message_id"`
+	ID         string                   `json:"id"`
+	ClientID   *string                  `json:"client_message_id"`
+	Role       string                   `json:"role"`
+	Text       string                   `json:"text"`
+	Status     string                   `json:"status"`
+	Sources    []Source                 `json:"sources"`
+	RequestIDs []string                 `json:"request_ids"`
+	Routing    *ports.RoutingSuggestion `json:"routing,omitempty"`
+	Outcome    ports.Outcome            `json:"outcome,omitempty"`
+	Error      *APIError                `json:"error,omitempty"`
+	CreatedAt  time.Time                `json:"created_at"`
+	InReplyTo  *string                  `json:"in_reply_to_message_id"`
 }
 type Reservation struct {
 	Conversation    Conversation
@@ -64,9 +68,10 @@ type Store interface {
 	Finish(context.Context, identity.Principal, string, Message) (Message, error)
 }
 type Service struct {
-	Store    Store
-	Agent    ports.Agent
-	Requests ports.RequestReader
+	Knowledge ports.Knowledge
+	Store     Store
+	Agent     ports.Agent
+	Requests  ports.RequestReader
 }
 
 func principal(ctx context.Context) (identity.Principal, error) {

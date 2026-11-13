@@ -105,7 +105,7 @@ func (s SQLStore) Create(ctx context.Context, p identity.Principal, clientID str
 	return result, created, sqlError(err)
 }
 func messages(ctx context.Context, q queryer, conversationID string) ([]Message, error) {
-	rows, err := q.QueryContext(ctx, `SELECT m.id,m.client_message_id::text,m.role,m.text,m.status,m.sources,m.error,m.created_at,m.in_reply_to_message_id,m.outcome,
+	rows, err := q.QueryContext(ctx, `SELECT m.id,m.client_message_id::text,m.role,m.text,m.status,m.sources,m.error,m.created_at,m.in_reply_to_message_id,m.outcome,m.routing,
  ARRAY(SELECT l.request_id FROM chat_message_requests l WHERE l.assistant_message_id=m.id ORDER BY l.request_id)
  FROM chat_messages m WHERE m.conversation_id=$1 ORDER BY m.sequence`, conversationID)
 	if err != nil {
@@ -116,14 +116,19 @@ func messages(ctx context.Context, q queryer, conversationID string) ([]Message,
 	codec := pgtype.NewMap()
 	for rows.Next() {
 		var m Message
-		var sources, apiError []byte
+		var sources, apiError, routing []byte
 		var links string
 		var outcome sql.NullString
-		if err := rows.Scan(&m.ID, &m.ClientID, &m.Role, &m.Text, &m.Status, &sources, &apiError, &m.CreatedAt, &m.InReplyTo, &outcome, &links); err != nil {
+		if err := rows.Scan(&m.ID, &m.ClientID, &m.Role, &m.Text, &m.Status, &sources, &apiError, &m.CreatedAt, &m.InReplyTo, &outcome, &routing, &links); err != nil {
 			return nil, err
 		}
 		if err := json.Unmarshal(sources, &m.Sources); err != nil {
 			return nil, err
+		}
+		if len(routing) > 0 {
+			if err := json.Unmarshal(routing, &m.Routing); err != nil {
+				return nil, err
+			}
 		}
 		if len(apiError) > 0 {
 			if err := json.Unmarshal(apiError, &m.Error); err != nil {
@@ -252,7 +257,11 @@ func (s SQLStore) Finish(ctx context.Context, p identity.Principal, conversation
 			if m.Status == "completed" && m.Outcome != "" && m.Outcome != ports.OutcomeUnknown {
 				outcome = string(m.Outcome)
 			}
-			if _, err := tx.ExecContext(ctx, `UPDATE chat_messages SET text=$1,status=$2,sources=$3,error=$4,outcome=$5 WHERE id=$6`, m.Text, m.Status, string(sources), failure, outcome, m.ID); err != nil {
+			routing, err := json.Marshal(m.Routing)
+			if err != nil {
+				return err
+			}
+			if _, err := tx.ExecContext(ctx, `UPDATE chat_messages SET text=$1,status=$2,sources=$3,error=$4,outcome=$5,routing=$7 WHERE id=$6`, m.Text, m.Status, string(sources), failure, outcome, m.ID, routing); err != nil {
 				return err
 			}
 			if _, err := tx.ExecContext(ctx, `UPDATE conversations SET updated_at=clock_timestamp() WHERE id=$1`, conversationID); err != nil {

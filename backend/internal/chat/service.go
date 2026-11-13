@@ -36,7 +36,11 @@ func (s Service) Messages(ctx context.Context, id string) ([]Message, error) {
 	if err != nil {
 		return nil, err
 	}
-	return s.Store.Messages(ctx, p, id)
+	items, err := s.Store.Messages(ctx, p, id)
+	if err == nil {
+		s.checkSources(ctx, items)
+	}
+	return items, err
 }
 func (s Service) Create(ctx context.Context, id string, step *string) (Conversation, bool, error) {
 	p, err := principal(ctx)
@@ -92,6 +96,7 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 	if err != nil {
 		return Prepared{}, err
 	}
+	s.checkSources(work, r.Previous)
 	in := ports.AgentInput{ConversationID: id, AssistantMessageID: r.Assistant.ID, StepID: r.Conversation.StepID, Text: text, History: history(r.Previous, text), Requests: []ports.RequestState{}}
 	ids := map[string]bool{}
 	for _, m := range r.Previous {
@@ -372,6 +377,10 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 		}
 	}
 	message.Text = text.String()
+	if finished && result.PrivateAnswer != "" {
+		message.Text = result.PrivateAnswer
+	}
+	message.Routing = result.Routing
 	message.Sources = []Source{}
 	message.RequestIDs = []string{}
 	for _, source := range result.Sources {
@@ -379,7 +388,11 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 			cause = ports.ErrInvalid
 			continue
 		}
-		message.Sources = append(message.Sources, Source{source.ID, source.DocumentID, source.Title, source.Excerpt})
+		item := Source{ID: source.ID, DocumentID: source.DocumentID, Title: source.Title, Excerpt: source.Excerpt, Direction: source.Direction, Version: source.Version}
+		if !source.UpdatedAt.IsZero() {
+			item.UpdatedAt = &source.UpdatedAt
+		}
+		message.Sources = append(message.Sources, item)
 	}
 	for _, id := range result.RequestIDs {
 		if slices.Contains(message.RequestIDs, id) {
@@ -426,5 +439,32 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 	if saved.Status == "failed" {
 		event = "message.failed"
 	}
-	return sink.Event(event, map[string]Message{"message": saved})
+	visible := []Message{saved}
+	s.checkSources(ctx, visible)
+	return sink.Event(event, map[string]Message{"message": visible[0]})
+}
+
+func (s Service) checkSources(ctx context.Context, messages []Message) {
+	if s.Knowledge == nil {
+		return
+	}
+	for i := range messages {
+		m := &messages[i]
+		allowed := make([]Source, 0, len(m.Sources))
+		for _, src := range m.Sources {
+			// Legacy citations predate versioned HR documents.
+			if src.Direction != "hr" {
+				allowed = append(allowed, src)
+				continue
+			}
+			doc, err := s.Knowledge.Read(ctx, src.DocumentID)
+			if err != nil || doc.Version != src.Version {
+				m.Text = "Источник этого ответа больше недоступен."
+				allowed = allowed[:0]
+				break
+			}
+			allowed = append(allowed, src)
+		}
+		m.Sources = allowed
+	}
 }

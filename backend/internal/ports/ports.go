@@ -20,10 +20,16 @@ var (
 )
 
 type Resource struct{ ID, Name, Permission string }
-type Source struct{ ID, DocumentID, Title, Excerpt string }
+type Source struct {
+	ID, DocumentID, Title, Excerpt string
+	Direction                      string
+	Version                        int64
+	UpdatedAt                      time.Time
+}
 type Document struct {
-	ID, Title, Content string
-	UpdatedAt          time.Time
+	ID, Title, Content, Direction string
+	Version                       int64
+	UpdatedAt                     time.Time
 }
 type Task struct {
 	ID, Title, Description, URL string
@@ -48,10 +54,18 @@ const (
 )
 
 // Return collected Sources/RequestIDs even with an error after partial work.
+type RoutingSuggestion struct {
+	Direction     string  `json:"direction"`
+	Reason        string  `json:"reason"`
+	Clarification *string `json:"clarification"`
+	Split         bool    `json:"split"`
+}
 type AgentResult struct {
-	Sources    []Source
-	RequestIDs []string
-	Outcome    Outcome // set only when the agent completes successfully
+	Routing       *RoutingSuggestion
+	PrivateAnswer string
+	Sources       []Source
+	RequestIDs    []string
+	Outcome       Outcome // set only when the agent completes successfully
 }
 type ToolEvent struct{ CallID, Label, Status string }
 

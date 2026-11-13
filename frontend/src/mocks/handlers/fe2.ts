@@ -54,7 +54,10 @@ export function createFe2Handlers(options: { plan?: Plan } = {}) {
     role: 'mentor',
     team: intern.team,
   };
-  const accounts: User[] = [intern, mentor];
+  const hr: User = { id: 'hr_demo_1', name: 'Анна, HR', role: 'hr', team: intern.team };
+  const otherHR: User = { ...hr, id: 'hr_demo_2', name: 'Денис, HR' };
+  const noHR: User = { ...intern, id: 'intern_demo_no_hr', name: 'Стажёр без HR', team: { id: 'team_no_hr', name: 'Команда без HR' } };
+  const accounts: User[] = [intern, mentor, hr, otherHR, noHR];
 
   let currentUser: User | null = intern;
   let plan: Plan = withServerProgress(planSchema.parse(options.plan ?? createFullCheckpointPlan()));
@@ -74,6 +77,12 @@ export function createFe2Handlers(options: { plan?: Plan } = {}) {
 
     http.get('*/api/v1/me', () => currentUser ? HttpResponse.json(currentUser) : unauthorized()),
 
+    http.get('*/api/v1/me/access-scope', () => currentUser ? HttpResponse.json({
+      version: '1',
+      teams: currentUser.id === hr.id ? [hr.team, { id: 'team_other', name: 'Вторая команда' }] : [currentUser.team],
+    }) : unauthorized()),
+    http.get('*/api/v1/hr/questions', () => currentUser?.role === 'hr' ? HttpResponse.json({ items: [] }) : notFound()),
+    http.get('*/api/v1/hr/documents', () => currentUser?.role === 'hr' ? HttpResponse.json({ items: [] }) : notFound()),
     http.delete('*/api/v1/session', () => {
       currentUser = null;
       return new HttpResponse(null, { status: 204 });

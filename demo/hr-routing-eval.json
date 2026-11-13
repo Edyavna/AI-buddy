@@ -1,0 +1,1122 @@
+[
+  {
+    "id": "1-1-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Где взять доступ на чтение учебного репозитория?"
+  },
+  {
+    "id": "1-1-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Как получить права чтения для репозитория учебного проекта?"
+  },
+  {
+    "id": "1-2-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Кому отправлять PR на ревью?"
+  },
+  {
+    "id": "1-2-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Кто проверяет мой первый pull request?"
+  },
+  {
+    "id": "1-3-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Как запустить интеграционные тесты команды?"
+  },
+  {
+    "id": "1-3-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Какая команда запускает тесты с базой?"
+  },
+  {
+    "id": "1-4-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "У меня падает сборка Go, кто может помочь?"
+  },
+  {
+    "id": "1-4-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "К кому обратиться с ошибкой компиляции Go?"
+  },
+  {
+    "id": "1-5-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Где посмотреть договорённости по веткам Git?"
+  },
+  {
+    "id": "1-5-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Как у нас принято называть ветки в репозитории?"
+  },
+  {
+    "id": "1-6-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "В каком канале команда обсуждает инциденты?"
+  },
+  {
+    "id": "1-6-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Где команда координируется при сбое сервиса?"
+  },
+  {
+    "id": "1-7-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Кто выдаёт технический доступ к стенду?"
+  },
+  {
+    "id": "1-7-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "У кого запросить разрешение на тестовый стенд?"
+  },
+  {
+    "id": "1-8-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Как настроить локальные переменные для приложения?"
+  },
+  {
+    "id": "1-8-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Где пример конфигурации для локального запуска?"
+  },
+  {
+    "id": "1-9-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "По каким критериям принимают первую задачу?"
+  },
+  {
+    "id": "1-9-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Что считается выполнением моего первого тикета?"
+  },
+  {
+    "id": "1-10-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Почему линтер ругается на новый код?"
+  },
+  {
+    "id": "1-10-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Помогите понять ошибку линтера в моём PR."
+  },
+  {
+    "id": "1-11-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "У кого узнать формат отчёта по тестированию?"
+  },
+  {
+    "id": "1-11-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Есть ли командный шаблон отчёта о тестах?"
+  },
+  {
+    "id": "1-12-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Кто подтвердит чекпоинт запуска проекта?"
+  },
+  {
+    "id": "1-12-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "К кому обратиться за подтверждением запуска?"
+  },
+  {
+    "id": "1-13-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Где посмотреть схему API для задач команды?"
+  },
+  {
+    "id": "1-13-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Как найти актуальный OpenAPI нашей команды?"
+  },
+  {
+    "id": "1-14-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Как пройти процесс согласования изменений БД?"
+  },
+  {
+    "id": "1-14-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Кто проверяет миграции перед вливанием?"
+  },
+  {
+    "id": "1-15-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Как поднять PostgreSQL для проекта?"
+  },
+  {
+    "id": "1-15-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Что нужно, чтобы запустить локальную базу проекта?"
+  },
+  {
+    "id": "1-16-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Где найти примеры API-клиента для проекта?"
+  },
+  {
+    "id": "1-16-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "У кого спросить про интеграцию с API?"
+  },
+  {
+    "id": "1-17-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Кто добавит меня в закрытый чат разработки?"
+  },
+  {
+    "id": "1-17-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "У кого попросить приглашение в чат команды?"
+  },
+  {
+    "id": "1-18-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Как распределены дежурства по сервису в команде?"
+  },
+  {
+    "id": "1-18-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Где технический график дежурства по сервису?"
+  },
+  {
+    "id": "1-19-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Что делать с конфликтом при слиянии моего PR?"
+  },
+  {
+    "id": "1-19-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Кто поможет разрешить конфликт веток в задаче?"
+  },
+  {
+    "id": "1-20-1",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Как оформлять описание изменений для релиза?"
+  },
+  {
+    "id": "1-20-2",
+    "category": "work",
+    "direction": "mentor",
+    "split": false,
+    "text": "Где шаблон заметок для релиза нашего сервиса?"
+  },
+  {
+    "id": "2-1-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Как подать заявление на отпуск?"
+  },
+  {
+    "id": "2-1-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Где оформляют ежегодный отпуск?"
+  },
+  {
+    "id": "2-2-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Где заказать справку с места работы?"
+  },
+  {
+    "id": "2-2-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Как получить подтверждение трудоустройства?"
+  },
+  {
+    "id": "2-3-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Как изменить данные для кадрового учёта?"
+  },
+  {
+    "id": "2-3-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Кому сообщить об изменении паспортных данных?"
+  },
+  {
+    "id": "2-4-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Как оформляется выход на больничный?"
+  },
+  {
+    "id": "2-4-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Что нужно передать в отдел кадров по больничному?"
+  },
+  {
+    "id": "2-5-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Кто объяснит условия моего трудового договора?"
+  },
+  {
+    "id": "2-5-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "К кому обратиться с вопросом по договору о работе?"
+  },
+  {
+    "id": "2-6-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Какие документы нужны при трудоустройстве?"
+  },
+  {
+    "id": "2-6-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Что подготовить для кадрового оформления?"
+  },
+  {
+    "id": "2-7-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Как согласовать отпуск без сохранения зарплаты?"
+  },
+  {
+    "id": "2-7-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Куда подать заявление на отпуск за свой счёт?"
+  },
+  {
+    "id": "2-8-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Где посмотреть корпоративные правила рабочего времени?"
+  },
+  {
+    "id": "2-8-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Как узнать официальные правила учёта рабочего времени?"
+  },
+  {
+    "id": "2-9-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Что делать, если в расчётном листке ошибка?"
+  },
+  {
+    "id": "2-9-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Кто поможет разобраться с ошибкой в начислении зарплаты?"
+  },
+  {
+    "id": "2-10-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Куда отправить заявление на изменение графика по договору?"
+  },
+  {
+    "id": "2-10-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "У кого оформить официальное изменение рабочего графика?"
+  },
+  {
+    "id": "2-11-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Где получить копию подписанного договора?"
+  },
+  {
+    "id": "2-11-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Как запросить свой экземпляр трудового договора?"
+  },
+  {
+    "id": "2-12-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Кто отвечает за кадровые документы при увольнении?"
+  },
+  {
+    "id": "2-12-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "У кого уточнить порядок оформления последнего рабочего дня?"
+  },
+  {
+    "id": "2-13-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Как оформить командировку в кадровой системе?"
+  },
+  {
+    "id": "2-13-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Куда подать документы для официальной командировки?"
+  },
+  {
+    "id": "2-14-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Какие правила действуют для переноса отпуска?"
+  },
+  {
+    "id": "2-14-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "У кого уточнить перенос согласованных дат отдыха?"
+  },
+  {
+    "id": "2-15-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Как сообщить о смене банковских реквизитов для зарплаты?"
+  },
+  {
+    "id": "2-15-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Где обновить карту для начислений?"
+  },
+  {
+    "id": "2-16-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Что делать, если мой отпуск совпал с больничным?"
+  },
+  {
+    "id": "2-16-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "У кого уточнить перенос дней отпуска при болезни?"
+  },
+  {
+    "id": "2-17-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Как подтвердить стаж для другой организации?"
+  },
+  {
+    "id": "2-17-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Куда обратиться за справкой о периоде работы?"
+  },
+  {
+    "id": "2-18-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Где оформить дополнительные дни отдыха по личным обстоятельствам?"
+  },
+  {
+    "id": "2-18-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Кто объяснит положенные дни отдыха по семейному случаю?"
+  },
+  {
+    "id": "2-19-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Как узнать статус подписания кадровых документов?"
+  },
+  {
+    "id": "2-19-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "У кого проверить, приняли ли мои документы при оформлении?"
+  },
+  {
+    "id": "2-20-1",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Какой порядок учёта сверхурочной работы по правилам компании?"
+  },
+  {
+    "id": "2-20-2",
+    "category": "hr",
+    "direction": "hr",
+    "split": false,
+    "text": "Где официально уточнить, как оформляется сверхурочное время?"
+  },
+  {
+    "id": "3-1-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Как получить доступ к репозиторию и оформить отпуск?"
+  },
+  {
+    "id": "3-1-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Мне нужны права на репозиторий и заявление на отдых, кто помогает?"
+  },
+  {
+    "id": "3-2-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Кто проверит мой PR и выдаст справку с работы?"
+  },
+  {
+    "id": "3-2-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Хочу ревью кода и подтверждение трудоустройства."
+  },
+  {
+    "id": "3-3-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Как запустить тесты и куда отправить больничный?"
+  },
+  {
+    "id": "3-3-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Не идут тесты, ещё нужно передать сведения о больничном."
+  },
+  {
+    "id": "3-4-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Где документация API и копия трудового договора?"
+  },
+  {
+    "id": "3-4-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Помогите найти описание API и подписанный договор."
+  },
+  {
+    "id": "3-5-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Кто добавит меня в чат команды и обновит паспортные данные?"
+  },
+  {
+    "id": "3-5-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Нужны приглашение в рабочий чат и изменение документов в кадрах."
+  },
+  {
+    "id": "3-6-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Как исправить сборку и ошибку в расчётном листке?"
+  },
+  {
+    "id": "3-6-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Сломался билд и неверно начислили зарплату, к кому идти?"
+  },
+  {
+    "id": "3-7-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Как настроить PostgreSQL и оформить командировку?"
+  },
+  {
+    "id": "3-7-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Нужно поднять базу и заполнить кадровые бумаги для поездки."
+  },
+  {
+    "id": "3-8-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Кто подтвердит чекпоинт и согласует отпуск за свой счёт?"
+  },
+  {
+    "id": "3-8-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Мне нужна отметка в плане и разрешение на неоплачиваемый отпуск."
+  },
+  {
+    "id": "3-9-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Где шаблон описания PR и заявление на перенос отпуска?"
+  },
+  {
+    "id": "3-9-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Ищу пример для ревью и форму для смены дат отдыха."
+  },
+  {
+    "id": "3-10-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Кто поможет с техническим стендом и подписью договора?"
+  },
+  {
+    "id": "3-10-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Мне нужны права на стенд и оформление трудового договора."
+  },
+  {
+    "id": "3-11-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Как принять первый тикет и изменить банковские реквизиты?"
+  },
+  {
+    "id": "3-11-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Нужно закрыть задачу и обновить реквизиты для зарплаты."
+  },
+  {
+    "id": "3-12-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Где логи тестов и кадровые правила учёта времени?"
+  },
+  {
+    "id": "3-12-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Не могу найти вывод тестов и официальное положение о графике."
+  },
+  {
+    "id": "3-13-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Как согласовать миграцию БД и официальный график работы?"
+  },
+  {
+    "id": "3-13-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Нужно проверить миграцию и оформить изменение графика по договору."
+  },
+  {
+    "id": "3-14-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Кто поможет с конфликтом Git и справкой о стаже?"
+  },
+  {
+    "id": "3-14-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Нужно разобрать merge conflict и запросить подтверждение стажа."
+  },
+  {
+    "id": "3-15-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Где список дежурных сервиса и правила сверхурочных?"
+  },
+  {
+    "id": "3-15-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Ищу техдежурного и документ о том, как оформляют переработку."
+  },
+  {
+    "id": "3-16-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Как собрать приложение и оформить семейные дни отдыха?"
+  },
+  {
+    "id": "3-16-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Не работает локальная сборка, ещё вопрос о кадровом отгуле."
+  },
+  {
+    "id": "3-17-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Где обновить секреты стенда и данные для трудового договора?"
+  },
+  {
+    "id": "3-17-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Нужно изменить техническую конфигурацию и личные сведения в кадрах."
+  },
+  {
+    "id": "3-18-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Кто подскажет по формату релиза и последнему рабочему дню?"
+  },
+  {
+    "id": "3-18-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Нужно оформить релиз и узнать процедуру увольнения."
+  },
+  {
+    "id": "3-19-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "К кому идти с ошибкой линтера и переносом отпуска после болезни?"
+  },
+  {
+    "id": "3-19-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Хочу разобраться с линтером и узнать, что делать с отпуском при больничном."
+  },
+  {
+    "id": "3-20-1",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Как пройти ревью миграции и узнать статус кадровых документов?"
+  },
+  {
+    "id": "3-20-2",
+    "category": "mixed",
+    "direction": "needs_clarification",
+    "split": true,
+    "text": "Кто проверяет SQL и кто подтверждает, что мои документы приняты?"
+  },
+  {
+    "id": "4-1-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "К кому мне обратиться?"
+  },
+  {
+    "id": "4-1-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Кто может подсказать, что делать?"
+  },
+  {
+    "id": "4-2-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Мне это не одобрили. Что теперь?"
+  },
+  {
+    "id": "4-2-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Получил отказ, куда писать?"
+  },
+  {
+    "id": "4-3-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Где лежит документ?"
+  },
+  {
+    "id": "4-3-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Как найти нужную бумагу?"
+  },
+  {
+    "id": "4-4-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Как всё оформить?"
+  },
+  {
+    "id": "4-4-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Подскажите порядок оформления."
+  },
+  {
+    "id": "4-5-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Кто это подписывает?"
+  },
+  {
+    "id": "4-5-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Чья подпись здесь нужна?"
+  },
+  {
+    "id": "4-6-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Как исправить данные?"
+  },
+  {
+    "id": "4-6-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Где можно поменять сведения?"
+  },
+  {
+    "id": "4-7-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Мне не открыли доступ."
+  },
+  {
+    "id": "4-7-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Куда обратиться, если меня не пускает?"
+  },
+  {
+    "id": "4-8-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Как согласовать график?"
+  },
+  {
+    "id": "4-8-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "С кем нужно сверить расписание?"
+  },
+  {
+    "id": "4-9-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "У меня ошибка, что делать?"
+  },
+  {
+    "id": "4-9-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Кто поможет разобраться со сбоем?"
+  },
+  {
+    "id": "4-10-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Когда ждать ответ?"
+  },
+  {
+    "id": "4-10-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Какие сроки рассмотрения?"
+  },
+  {
+    "id": "4-11-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Где посмотреть статус?"
+  },
+  {
+    "id": "4-11-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Как проверить, что запрос обработали?"
+  },
+  {
+    "id": "4-12-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Мне нужно подтверждение."
+  },
+  {
+    "id": "4-12-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Кто может выдать подтверждение?"
+  },
+  {
+    "id": "4-13-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Что делать, если изменились даты?"
+  },
+  {
+    "id": "4-13-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Как сообщить о переносе?"
+  },
+  {
+    "id": "4-14-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Где взять инструкцию?"
+  },
+  {
+    "id": "4-14-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Можно ссылку на правила?"
+  },
+  {
+    "id": "4-15-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Не получается завершить процедуру."
+  },
+  {
+    "id": "4-15-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Не могу закончить, с кем обсудить?"
+  },
+  {
+    "id": "4-16-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Как запустить процесс заново?"
+  },
+  {
+    "id": "4-16-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Можно ли повторить после отмены?"
+  },
+  {
+    "id": "4-17-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Мне отказали во внесении изменений."
+  },
+  {
+    "id": "4-17-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Не принимают изменения, кто разбирает такие случаи?"
+  },
+  {
+    "id": "4-18-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Это нужно делать лично?"
+  },
+  {
+    "id": "4-18-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Могу ли я пройти эту процедуру дистанционно?"
+  },
+  {
+    "id": "4-19-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Какие данные нужно отправить?"
+  },
+  {
+    "id": "4-19-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Что приложить, чтобы всё приняли?"
+  },
+  {
+    "id": "4-20-1",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Кто отвечает за мой случай?"
+  },
+  {
+    "id": "4-20-2",
+    "category": "unclear",
+    "direction": "needs_clarification",
+    "split": false,
+    "text": "Как узнать, кто ведёт мой вопрос?"
+  }
+]

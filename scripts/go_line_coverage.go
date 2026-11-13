@@ -10,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 )
 
@@ -61,6 +62,17 @@ func (b block) contains(p token.Position) bool {
 }
 
 func countLines(source []byte, blocks []block) (covered, total int, err error) {
+	lines, err := instrumentedLines(source, blocks)
+	for _, hit := range lines {
+		total++
+		if hit {
+			covered++
+		}
+	}
+	return covered, total, err
+}
+
+func instrumentedLines(source []byte, blocks []block) (lines map[int]bool, err error) {
 	f := token.NewFileSet().AddFile("", -1, len(source))
 	var tokens scanner.Scanner
 	tokens.Init(f, source, func(p token.Position, message string) {
@@ -68,17 +80,12 @@ func countLines(source []byte, blocks []block) (covered, total int, err error) {
 			err = fmt.Errorf("%s: %s", p, message)
 		}
 	}, 0)
-	lines := map[int]bool{}
+	lines = map[int]bool{}
 	for {
 		pos, kind, _ := tokens.Scan()
 		switch kind {
 		case token.EOF:
-			for _, hit := range lines {
-				if hit {
-					covered++
-				}
-			}
-			return covered, len(lines), err
+			return lines, err
 		case token.SEMICOLON, token.LBRACE, token.RBRACE, token.LPAREN, token.RPAREN,
 			token.LBRACK, token.RBRACK, token.COMMA, token.COLON:
 			continue
@@ -121,6 +128,13 @@ func report(profile string) (covered, total int, err error) {
 }
 
 func main() {
+	if len(os.Args) == 3 && os.Args[1] == "--lines" {
+		if err := writeLineHits(os.Args[2], os.Stdout); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) != 2 {
 		fmt.Fprintln(os.Stderr, "usage (from backend): go run ../scripts/go_line_coverage.go coverage.out")
 		os.Exit(2)
@@ -136,4 +150,46 @@ func main() {
 		fmt.Fprintf(os.Stderr, "Go line coverage must be greater than %d%%.\n", lineCoverageThreshold)
 		os.Exit(1)
 	}
+}
+
+func writeLineHits(profile string, out io.Writer) error {
+	f, err := os.Open(profile)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+	files, err := readProfile(f)
+	if err != nil {
+		return err
+	}
+	paths := make([]string, 0, len(files))
+	for path := range files {
+		paths = append(paths, path)
+	}
+	slices.Sort(paths)
+	for _, path := range paths {
+		src, err := os.ReadFile(filepath.FromSlash(path))
+		if err != nil {
+			return err
+		}
+		lines, err := instrumentedLines(src, files[path])
+		if err != nil {
+			return err
+		}
+		numbers := make([]int, 0, len(lines))
+		for number := range lines {
+			numbers = append(numbers, number)
+		}
+		slices.Sort(numbers)
+		for _, number := range numbers {
+			count := 0
+			if lines[number] {
+				count = 1
+			}
+			if _, err := fmt.Fprintf(out, "%s\t%d\t%d\n", path, number, count); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
 }
