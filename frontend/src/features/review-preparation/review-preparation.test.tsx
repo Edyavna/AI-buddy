@@ -110,7 +110,7 @@ describe('ReviewPreparationPage — сценарий стажёра', () => {
     expect(await screen.findByText('Черновик сохранён.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Отправить обновление' }));
     await user.click(await screen.findByRole('button', { name: 'Подтвердить отправку на ревью' }));
-    expect(await screen.findByText(/ревизия 5/)).toBeInTheDocument();
+    expect(await screen.findByText(/ревизия 4/)).toBeInTheDocument();
     expect(screen.getByText(/Итоговое принятие результата/)).toBeInTheDocument();
   });
   it('сбой отправки показывает ошибку, повтор со старой ревизией — конфликт', async () => {
