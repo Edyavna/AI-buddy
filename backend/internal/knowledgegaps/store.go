@@ -187,6 +187,11 @@ func (s Store) Intern(ctx context.Context, messageID string, create bool) (*Stat
 	return result, created, mapped(err)
 }
 
+func specialistView(q Question) Question {
+	q.Routing = nil
+	return q
+}
+
 func (s Store) List(ctx context.Context, status string) ([]Question, error) {
 	p, err := principal(ctx, identity.Mentor)
 	if err != nil {
@@ -206,7 +211,7 @@ func (s Store) List(ctx context.Context, status string) ([]Question, error) {
 		if err != nil {
 			return nil, mapped(err)
 		}
-		result = append(result, q)
+		result = append(result, specialistView(q))
 	}
 	return result, mapped(rows.Err())
 }
@@ -217,7 +222,7 @@ func (s Store) Get(ctx context.Context, id string) (Question, error) {
 		return Question{}, err
 	}
 	q, err := scan(s.DB.QueryRowContext(ctx, `SELECT `+columns+joined+`WHERE `+assigned+` AND q.id::text=$3`, p.UserID, p.TeamID, id))
-	return q, mapped(err)
+	return specialistView(q), mapped(err)
 }
 
 func (s Store) CountOpen(ctx context.Context, studentID string) (int, error) {
@@ -320,5 +325,5 @@ func (s Store) Patch(ctx context.Context, id string, in Update) (Question, error
 		result, err = scan(tx.QueryRowContext(ctx, `SELECT `+columns+joined+`WHERE q.id::text=$1`, id))
 		return err
 	})
-	return result, mapped(err)
+	return specialistView(result), mapped(err)
 }

@@ -426,6 +426,7 @@ func (s Store) HRList(ctx context.Context, team, status, search string) ([]Quest
 AND ($4='' OR strpos(lower(q.question),lower($4))>0 OR strpos(lower(u.name),lower($4))>0) ORDER BY q.created_at DESC,q.id`, p.UserID, team, status, search)
 	if err == nil {
 		for i := range qs {
+			qs[i] = specialistView(qs[i])
 			if err = s.filterLinks(ctx, p, &qs[i]); err != nil {
 				break
 			}
@@ -443,7 +444,7 @@ func (s Store) HRGet(ctx context.Context, id string) (Question, error) {
 	if err == nil {
 		err = s.filterLinks(ctx, p, &q)
 	}
-	return q, mapped(err)
+	return specialistView(q), mapped(err)
 }
 
 func (s Store) HRPatch(ctx context.Context, id string, in HRUpdate) (Question, error) {
@@ -560,7 +561,7 @@ revision=revision+1,updated_at=now(),resolved_at=CASE WHEN $3='resolved' THEN no
 	if err == nil {
 		err = s.filterLinks(ctx, p, &q)
 	}
-	return q, mapped(err)
+	return specialistView(q), mapped(err)
 }
 
 func (s Store) filterLinks(ctx context.Context, p identity.Principal, q *Question) error {

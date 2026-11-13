@@ -44,7 +44,7 @@ func TestPostgresHRLifecycle(t *testing.T) {
 	db := testkit.Postgres(t)
 	_, student, conversation := prepareDraft(t, db)
 	var assistant string
-	if err := db.QueryRow("SELECT id FROM chat_messages WHERE conversation_id=$1 AND role='assistant'", conversation).Scan(&assistant); err != nil {
+	if err := db.QueryRow(`UPDATE chat_messages SET routing='{"direction":"hr","reason":"Приватная тема отпуска","clarification":null,"split":false}' WHERE conversation_id=$1 AND role='assistant' RETURNING id`, conversation).Scan(&assistant); err != nil {
 		t.Fatal(err)
 	}
 	service := &knowledge.Service{DB: db, Embedder: uploadEmbedder{}}
@@ -310,7 +310,7 @@ func TestPostgresHRRevokedSpecialistReleasesClaimAndRerouteKeepsPrivateHistory(t
 	transfer.Revision = q.Revision
 	hrResponse[any](t, h, "POST", "/questions/"+q.ID+"/reroute", transfer, student, 200)
 	body := apiRequest(t, h, "GET", "/api/v1/mentor/questions/"+q.ID, "", mentor, 200).Body.String()
-	for _, secret := range []string{"Личный контекст", "Приватный ответ HR", "семейной причине"} {
+	for _, secret := range []string{"Личный контекст", "Приватный ответ HR", "семейной причине", "Приватная тема отпуска"} {
 		if strings.Contains(body, secret) {
 			t.Fatal("prior route leaked:", body)
 		}
