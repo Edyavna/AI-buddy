@@ -38,6 +38,18 @@ assert assignment['assigned']['team_id'] == assignment['available']['items'][0][
 assert assignment['conflict']['error']['code'] == 'INTERN_ALREADY_ASSIGNED'
 assert 'requestBody' not in spec['paths']['/mentor/interns/{id}/assignment']['put']
 
+hr = json.loads((ROOT / 'contracts/examples/hr.json').read_text(encoding='utf-8'))
+for user in hr['users']:
+    check('User', user)
+for scope in hr['scopes'].values():
+    check('AccessScope', scope)
+for key, schema in [('routing', 'RoutingSuggestion'), ('question', 'RoutedQuestion'),
+                    ('no_hr', 'RoutedQuestions'), ('document', 'HRDocument'), ('foreign', 'ApiError')]:
+    check(schema, hr[key])
+assert hr['question']['team_id'] in {t['id'] for t in hr['scopes']['hr_demo_1']['teams']}
+assert hr['question']['team_id'] in {t['id'] for t in hr['scopes']['hr_demo_2']['teams']}
+assert hr['no_hr']['available_directions'] == []
+
 checkpoints = json.loads((ROOT / 'contracts/examples/checkpoints.json').read_text(encoding='utf-8'))
 for key in ['confirm', 'revoke']:
     check('SetCheckpointConfirmation', checkpoints[key])

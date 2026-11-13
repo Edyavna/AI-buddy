@@ -4,7 +4,7 @@ import { apiErrorSchema } from '../../shared/api';
 // Test-only contract checks, not production feature schemas. FE2 owns the latter.
 const date = z.iso.datetime();
 export const userFixtureSchema = z.object({
-  id: z.string(), name: z.string(), role: z.enum(['intern', 'mentor']),
+  id: z.string(), name: z.string(), role: z.enum(['intern', 'mentor', 'hr']),
   team: z.object({ id: z.string(), name: z.string() }),
 });
 export const conversationFixtureSchema = z.object({
