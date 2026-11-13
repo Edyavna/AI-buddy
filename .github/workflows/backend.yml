@@ -158,7 +158,7 @@ jobs:
         run: docker compose down
 
   resolution-drafts-browser:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 18
     if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/resolution-knowledge-drafts')
     env:
