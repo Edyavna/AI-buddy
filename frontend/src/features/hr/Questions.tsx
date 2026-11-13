@@ -20,6 +20,7 @@ export function HRQuestionsPage() {
 
   return <section className={styles.page}>
     <h1>Кадровые обращения</h1>
+    <Link to="/hr/question-groups">Один ответ на похожие вопросы</Link>
     <div className={styles.form}>
       <label>Команда<select value={teamId} onChange={event => setTeam(event.target.value)}>
         <option value="">Все обслуживаемые команды</option>

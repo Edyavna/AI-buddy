@@ -13,18 +13,22 @@ export type Direction = 'mentor' | 'hr';
 export type Draft = z.infer<typeof resolutionDraftSchema>;
 export type Workspace = z.infer<typeof workspaceSchema>;
 export type SaveDraft = components['schemas']['SaveResolutionDraft'];
-const root = (direction: Direction, id: string) => `/${direction}/questions/${encodeURIComponent(id)}/instruction-draft`;
-export const draftKey = (direction: Direction, id: string) => ['resolution-drafts', direction, id] as const;
+export const draftKey = (direction: Direction, id: string, group = false) => group ? ['resolution-drafts', direction, 'groups', id] as const : ['resolution-drafts', direction, id] as const;
 async function request<T>(path: string, schema: z.ZodType<T>, options: RequestOptions) {
   const result = await apiRequest(path, schema, options);
   options.signal?.throwIfAborted();
   if (!result.data) throw new ClientError('protocol', 'Сервер вернул пустой ответ');
   return result.data;
 }
-export const resolutionApi = {
+function resolutionClient(kind: 'questions' | 'question-groups') {
+const root = (direction: Direction, id: string) => `/${direction}/${kind}/${encodeURIComponent(id)}/instruction-draft`;
+return {
   workspace: (direction: Direction, id: string, signal: AbortSignal) => request(root(direction, id), workspaceSchema, { signal }),
   target: (direction: Direction, id: string, targetId: string, signal: AbortSignal) => request(`${root(direction, id)}/targets/${encodeURIComponent(targetId)}`, target, { signal }),
   save: (direction: Direction, id: string, body: SaveDraft, signal: AbortSignal) => request(root(direction, id), resolutionDraftSchema, { method: 'PUT', body, signal }),
   generate: (direction: Direction, id: string, signal: AbortSignal) => request(`${root(direction, id)}/generate`, z.object({ title: z.string(), content: z.string(), mode: z.enum(['model', 'demo']) }), { method: 'POST', signal }),
   publish: (direction: Direction, id: string, revision: number, retry: boolean, signal: AbortSignal) => request(`${root(direction, id)}/${retry ? 'retry' : 'publish'}`, resolutionDraftSchema, { method: 'POST', body: { revision, reviewed: true }, signal }),
 };
+}
+export const resolutionApi = resolutionClient('questions');
+export const groupResolutionApi = resolutionClient('question-groups');

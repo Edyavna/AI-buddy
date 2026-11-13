@@ -14,6 +14,7 @@ export function MentorQuestionsPage() {
   const status = params.get('status') ?? '';
   const query = useMentorQuery(mentorKeys.questions(status), signal => mentorApi.questions(status, signal));
   return <section className={styles.page}><header className={styles.heading}><h1>Вопросы без ответа</h1><p className={styles.muted}>Помогите стажёрам и дополните знания команды.</p></header>
+    <Link to="/mentor/question-groups">Один ответ на похожие вопросы</Link>
     <label className={styles.field}>Статус вопроса<select value={status} onChange={e => setParams(e.target.value ? { status: e.target.value } : {})}><option value="">Все вопросы</option>{Object.entries(questionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
     <QueryFeedback query={query} />
     {query.data && (query.data.items.length ? <ul className={styles.list}>{query.data.items.map(q => <li key={q.id} className={styles.card}><span className={styles.tag}>{questionLabels[q.status]}</span><h2><Link to={`/mentor/questions/${encodeURIComponent(q.id)}`}>{q.question}</Link></h2><p className={styles.muted}>{q.student.name} · {dateLabel(q.created_at)}</p></li>)}</ul> : <EmptyState title="Вопросов пока нет" description="Новые вопросы появятся здесь." />)}
