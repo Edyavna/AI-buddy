@@ -99,7 +99,8 @@ func decodePlan(t *testing.T, w *httptest.ResponseRecorder) onboarding.Plan {
 		t.Fatal("null steps")
 	}
 	for _, step := range plan.Steps {
-		if step.RequestIDs == nil || step.AllowedStatuses == nil {
+		if step.RequestIDs == nil || step.AllowedStatuses == nil || step.Confirmations == nil ||
+			step.AllowedActions == nil || step.Resources == nil {
 			t.Fatal("null step arrays")
 		}
 	}

@@ -68,7 +68,7 @@ func TestProjection(t *testing.T) {
 		{"prerequisite", []Record{{Step: Step{ID: "a", Status: "in_progress"}}, {Step: Step{ID: "b", Status: "not_started"}, Prerequisites: []string{"a"}}}, 0, "a"},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
-			p := project(Snapshot{Steps: tt.steps}, nil)
+			p := project(Snapshot{Steps: tt.steps}, nil, identity.Principal{})
 			if p.ProgressPercent != tt.progress {
 				t.Fatal(p)
 			}

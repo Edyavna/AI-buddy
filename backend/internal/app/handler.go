@@ -50,6 +50,8 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 		}
 		session := auth.Handler{Service: &auth.Service{Store: auth.SQLStore{DB: db}, TTL: cfg.SessionTTL}, DemoMode: cfg.DemoMode, CookieSecure: cfg.SessionCookieSecure}
 		plans := onboarding.Handler{Service: onboarding.Service{Store: onboarding.SQLStore{DB: db}, Access: deps.Access}}
+		mentors := mentor.Store{DB: db}
+		checkpoints := onboarding.CheckpointHandler{Service: onboarding.Checkpoints{DB: db, Access: deps.Access, Assignments: mentors}}
 		conversations := chat.Handler{Service: chat.Service{Store: chat.SQLStore{DB: db}, Agent: deps.Agent, Requests: deps.Requests}, Logger: logger}
 		uploads := knowledge.Uploads{DB: db}
 		if deps.QuestionDocuments == nil {
@@ -62,7 +64,8 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 		opts.Register = func(mux *http.ServeMux) {
 			session.Register(mux)
 			plans.Register(mux, session)
-			mentor.Handler{Store: mentor.Store{DB: db}, Questions: deps.Questions}.Register(mux, session)
+			mentor.Handler{Store: mentors, Questions: deps.Questions, Access: deps.Access}.Register(mux, session)
+			checkpoints.Register(mux, session)
 			knowledgegaps.Handler{Store: questions}.Register(mux, session)
 			uploads.Register(mux, session)
 			requests.Register(mux, session)

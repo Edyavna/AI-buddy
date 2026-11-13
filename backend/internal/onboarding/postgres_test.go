@@ -6,6 +6,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/Edyavna/AI-buddy/backend/internal/demo"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
@@ -176,5 +177,96 @@ func TestPostgresConcurrentConfirmBlocksStalePatch(t *testing.T) {
 	snapshot, err := (SQLStore{DB: db}).Read(ctx, owner())
 	if err != nil || snapshot.Steps[0].Status != "blocked" {
 		t.Fatal(snapshot, err)
+	}
+}
+
+func TestPostgresCheckpointAccessRace(t *testing.T) {
+	db := testkit.Postgres(t)
+	ctx, cancel := context.WithTimeout(testkit.Context(t.Context()), 10*time.Second)
+	defer cancel()
+	if err := demo.Seed(ctx, db, true); err != nil {
+		t.Fatal(err)
+	}
+	const stepID = "step_local_setup"
+	store := SQLStore{DB: db}
+	db.SetMaxOpenConns(1)
+	checked, release := make(chan struct{}), make(chan struct{})
+	var once sync.Once
+	service := Checkpoints{DB: db, Access: accessFunc(func(ctx context.Context, _ ports.AccessCheck) (bool, error) {
+		if err := db.PingContext(ctx); err != nil {
+			return false, err
+		}
+		once.Do(func() { close(checked); <-release })
+		return true, nil
+	})}
+	apply := func(id, status string) {
+		t.Helper()
+		if err := database.WithinTx(ctx, db, func(tx *sql.Tx) error {
+			return ApplyRequestStateTx(ctx, tx, owner(), stepID, requestState(id, status, testkit.ResourceID))
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	read := func() Snapshot {
+		t.Helper()
+		snapshot, err := store.Read(ctx, owner())
+		if err != nil {
+			t.Fatal(err)
+		}
+		return snapshot
+	}
+	initial := read()
+	result := make(chan error, 1)
+	go func() {
+		_, err := service.Set(ctx, identity.Intern, "", stepID, SetConfirmation{Confirmed: true, Revision: initial.Revision})
+		result <- err
+	}()
+	select {
+	case <-checked:
+	case err := <-result:
+		t.Fatalf("confirmation failed before the grant check: %v", err)
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+	func() {
+		defer close(release)
+		apply("access1", "pending")
+	}()
+	if err := <-result; !errors.Is(err, ErrPlanChanged) {
+		t.Fatal("stale access allowed confirmation", err)
+	}
+	blocked := read()
+	if blocked.Steps[0].Status != "blocked" || len(blocked.Steps[0].Confirmations) != 0 {
+		t.Fatal(blocked)
+	}
+	apply("access1", "pending")
+	if repeated := read(); repeated.Revision != blocked.Revision {
+		t.Fatal("duplicate request state advanced the revision", repeated)
+	}
+	if _, err := service.Set(ctx, identity.Intern, "", stepID, SetConfirmation{Confirmed: true, Revision: blocked.Revision}); !errors.Is(err, ErrTransition) {
+		t.Fatal(err)
+	}
+	apply("access1", "granted")
+	plan, err := service.Set(ctx, identity.Intern, "", stepID, SetConfirmation{Confirmed: true, Revision: read().Revision})
+	if err != nil || plan.ProgressPercent != 100 {
+		t.Fatal(plan, err)
+	}
+	apply("access2", "pending")
+	held := read()
+	if held.Steps[0].Status != "blocked" || len(held.Steps[0].Confirmations) != 1 {
+		t.Fatal(held)
+	}
+	apply("access2", "granted")
+	if recovered := read(); recovered.Steps[0].Status != "completed" {
+		t.Fatal(recovered)
+	}
+	apply("access3", "pending")
+	plan, err = service.Set(ctx, identity.Intern, "", stepID, SetConfirmation{Revision: read().Revision})
+	if err != nil || plan.Steps[0].Status != "blocked" || len(plan.Steps[0].Confirmations) != 0 {
+		t.Fatal(plan, err)
+	}
+	apply("access3", "granted")
+	if recovered := read(); recovered.Steps[0].Status != "in_progress" {
+		t.Fatal(recovered)
 	}
 }

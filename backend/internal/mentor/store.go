@@ -109,7 +109,7 @@ ORDER BY u.id FOR SHARE OF a,u,m`, p.UserID, p.TeamID, internID)
 	return result, nil
 }
 
-func (s Store) Plan(ctx context.Context, internID string) (onboarding.Plan, error) {
+func (s Store) Plan(ctx context.Context, internID string, access ports.AccessChecker) (onboarding.Plan, error) {
 	p, err := mentorPrincipal(ctx)
 	if err != nil {
 		return onboarding.Plan{}, err
@@ -117,16 +117,21 @@ func (s Store) Plan(ctx context.Context, internID string) (onboarding.Plan, erro
 	if internID == "" {
 		return onboarding.Plan{}, ports.ErrNotFound
 	}
-	var plan onboarding.Plan
+	var owner identity.Principal
+	var snapshot onboarding.Snapshot
 	err = database.WithinTx(ctx, s.DB, func(tx *sql.Tx) error {
-		items, err := assigned(ctx, tx, p, internID)
+		var err error
+		owner, err = s.AssignedInternTx(ctx, tx, internID)
 		if err != nil {
 			return err
 		}
-		plan, err = onboarding.ReadOnlyPlanTx(ctx, tx, items[0].owner)
+		snapshot, err = onboarding.ReadSnapshotTx(ctx, tx, owner)
 		return err
 	})
-	return plan, storeError(err)
+	if err != nil {
+		return onboarding.Plan{}, storeError(err)
+	}
+	return (onboarding.Checkpoints{Access: access}).View(ctx, snapshot, owner, p), nil
 }
 
 type InternSummary struct {

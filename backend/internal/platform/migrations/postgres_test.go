@@ -11,7 +11,9 @@ import (
 	"sync"
 	"testing"
 	"testing/fstest"
+	"time"
 
+	"github.com/Edyavna/AI-buddy/backend/internal/demo"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/migrations"
 	"github.com/Edyavna/AI-buddy/backend/internal/testkit"
@@ -23,21 +25,7 @@ func TestPostgresUpgradeFromDev(t *testing.T) {
 	db := testDB(t)
 	ctx := context.Background()
 	// Reconstruct the released dev migration set, before access requests were added.
-	dev := fstest.MapFS{}
-	entries, err := fs.ReadDir(migrations.Files, "sql")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, entry := range entries {
-		if entry.Name() > "000005_chat.sql" {
-			continue
-		}
-		data, err := fs.ReadFile(migrations.Files, "sql/"+entry.Name())
-		if err != nil {
-			t.Fatal(err)
-		}
-		dev["sql/"+entry.Name()] = &fstest.MapFile{Data: data}
-	}
+	dev := migrationsThrough(t, "000005_chat.sql")
 	if err := migrations.Apply(ctx, db, dev); err != nil {
 		t.Fatal(err)
 	}
@@ -56,6 +44,84 @@ func TestPostgresUpgradeFromDev(t *testing.T) {
 		t.Fatalf("dev migration reapplied: %q != %q: %v", kept, appliedAt, err)
 	}
 	assertDemoAndChat(t, db)
+}
+
+func migrationsThrough(t *testing.T, last string) fstest.MapFS {
+	t.Helper()
+	source := fstest.MapFS{}
+	entries, err := fs.ReadDir(migrations.Files, "sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.Name() > last {
+			continue
+		}
+		data, err := fs.ReadFile(migrations.Files, "sql/"+entry.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		source["sql/"+entry.Name()] = &fstest.MapFile{Data: data}
+	}
+	return source
+}
+
+func TestPostgresUpgradePreservesCheckpointProgress(t *testing.T) {
+	db := testDB(t)
+	ctx := t.Context()
+	if err := migrations.Apply(ctx, db, migrationsThrough(t, "000011_mentor_documents.sql")); err != nil {
+		t.Fatal(err)
+	}
+	if err := demo.Seed(ctx, db, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`
+UPDATE onboarding_steps SET status='completed' WHERE id='step_local_setup';
+INSERT INTO onboarding_steps(id,plan_id,position,title,description,status,blocked_reason)
+VALUES ('blocked','plan_demo_1',1,'Запрос доступа','','blocked','Ожидается доступ');
+INSERT INTO conversations(id,user_id,team_id,client_conversation_id,step_id,title)
+VALUES ('old_chat','intern_demo_1','team_demo_backend','d413d58a-bee0-4f56-baae-7c82f1f06466','blocked','Чат');
+INSERT INTO chat_messages(id,conversation_id,sequence,client_message_id,role,status,trace_id,in_reply_to_message_id)
+VALUES ('old_user','old_chat',1,'d4b5c050-d632-4a6a-aef1-42811cfe955d','user','completed','trace',NULL),
+       ('old_assistant','old_chat',2,NULL,'assistant','completed','trace','old_user');
+INSERT INTO access_requests(id,user_id,team_id,conversation_id,assistant_message_id,step_id,resource_id,
+                            resource_name,permission,reason,status,external_id)
+VALUES ('old_request','intern_demo_1','team_demo_backend','old_chat','old_assistant','blocked','repo_demo_backend',
+        'Репозиторий','read','Для задания','pending','ACCESS-1');
+INSERT INTO onboarding_step_requests(step_id,request_id,resource_id,permission,status)
+VALUES ('blocked','old_request','repo_demo_backend','read','pending');
+INSERT INTO chat_message_requests(assistant_message_id,request_id) VALUES ('old_assistant','old_request');`); err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if err := migrations.Apply(ctx, db, migrations.Files); err != nil {
+			t.Fatal(err)
+		}
+		if err := demo.Seed(ctx, db, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var policy, status, role, author string
+	var confirmedAt time.Time
+	err := db.QueryRow(`SELECT s.completion_policy,s.status,c.role,c.user_id,c.confirmed_at
+FROM onboarding_steps s JOIN onboarding_step_confirmations c ON c.step_id=s.id WHERE s.id='step_local_setup'`).
+		Scan(&policy, &status, &role, &author, &confirmedAt)
+	if err != nil || policy != "intern" || status != "completed" || role != "intern" || author != "intern_demo_1" || confirmedAt.IsZero() {
+		t.Fatal(policy, status, role, author, confirmedAt, err)
+	}
+	var preserved bool
+	err = db.QueryRow(`SELECT EXISTS (
+  SELECT 1 FROM onboarding_steps s JOIN onboarding_step_requests sr ON sr.step_id=s.id
+  JOIN access_requests r ON r.step_id=s.id AND r.id=sr.request_id
+  JOIN conversations ch ON ch.id=r.conversation_id AND ch.step_id=s.id
+  JOIN chat_message_requests mr ON mr.request_id=r.id AND mr.assistant_message_id=r.assistant_message_id
+  WHERE s.id='blocked' AND s.status='blocked' AND s.blocked_reason='Ожидается доступ'
+    AND r.external_id='ACCESS-1' AND sr.status='pending'
+    AND NOT EXISTS (SELECT 1 FROM onboarding_step_confirmations c WHERE c.step_id=s.id)
+)`).Scan(&preserved)
+	if err != nil || !preserved {
+		t.Fatal("blocked step, access request or chat history was lost", err)
+	}
 }
 
 func assertDemoAndChat(t *testing.T, db *sql.DB) {

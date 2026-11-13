@@ -35,6 +35,7 @@ func TestPostgresMentorAssignmentAndReadOnlyPlan(t *testing.T) {
 		}
 	}
 	if _, err := db.Exec(`UPDATE onboarding_steps SET status='completed' WHERE id='step_local_setup';
+INSERT INTO onboarding_step_confirmations(step_id,role,user_id) VALUES ('step_local_setup','intern','intern_demo_1');
 INSERT INTO onboarding_steps(id,plan_id,position,title,description,status,blocked_reason) VALUES
 ('step_blocked','plan_demo_1',1,'Заблокированный шаг','Демо','blocked','Нужен доступ')`); err != nil {
 		t.Fatal(err)
