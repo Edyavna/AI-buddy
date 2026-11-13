@@ -80,6 +80,22 @@ services:
       retries: 10
     stop_grace_period: 15s
 
+  frontend:
+    build:
+      context: .
+      target: frontend
+    depends_on:
+      api:
+        condition: service_healthy
+        restart: true
+    ports:
+      - "127.0.0.1:5173:80"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   db-test:
     image: pgvector/pgvector:0.8.7-pg17
     profiles: ["test"]

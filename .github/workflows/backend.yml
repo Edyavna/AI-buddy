@@ -79,7 +79,7 @@ jobs:
         with:
           python-version: '3.13'
       - run: docker compose config --quiet
-      - run: docker compose up --build --wait --wait-timeout 180 api
+      - run: docker compose up --build --wait --wait-timeout 180 frontend
       - run: curl --fail http://localhost:8080/healthz && curl --fail http://localhost:8080/readyz
       - name: Reapply migrations
         run: docker compose run --rm migrate
@@ -88,6 +88,10 @@ jobs:
           docker compose --profile demo run --rm seed
           python scripts/smoke_session_onboarding.py prepare
           python scripts/smoke_chat.py prepare
+      - name: Check the production SPA and live SSE through the same origin
+        run: |
+          python scripts/smoke_frontend.py
+          python scripts/smoke_chat.py prepare --base http://localhost:5173 --state tmp/frontend-chat-smoke.json --check-streaming
       - name: Persist a probe and recreate containers without removing the volume
         run: |
           docker compose exec -T db psql -U buddy -d buddy -v ON_ERROR_STOP=1 -c "CREATE TABLE day1_restart_probe (id integer PRIMARY KEY); INSERT INTO day1_restart_probe VALUES (1);"

@@ -23,6 +23,8 @@ def main():
     parser.add_argument("phase", choices=["prepare", "verify", "crash", "recover"])
     parser.add_argument("--base", default="http://localhost:8080")
     parser.add_argument("--state", default="tmp/chat-smoke.json")
+    parser.add_argument("--check-streaming", action="store_true",
+                        help="Check that the first answer delta arrives while Go still reports generating")
     target = parser.add_mutually_exclusive_group()
     target.add_argument("--docker", action="store_true")
     target.add_argument("--process-id", type=int)
@@ -70,8 +72,18 @@ def main():
             assert response.status == 200
             assert response.headers["Content-Type"] == "text/event-stream"
             assert "no-store" in response.headers["Cache-Control"]
-            assert response.headers["X-Accel-Buffering"] == "no"
-            events = list(frames(response))
+            if not args.check_streaming:
+                assert response.headers["X-Accel-Buffering"] == "no"
+            events = []
+            first_delta = True
+            for kind, data in frames(response):
+                if args.check_streaming and kind == "answer.delta" and first_delta:
+                    message_id = events[0][1]["message_id"]
+                    history = call("GET", endpoint)
+                    message = next(message for message in history if message["id"] == message_id)
+                    assert message["status"] == "generating", "The proxy buffered the SSE response"
+                    first_delta = False
+                events.append((kind, data))
         assert events[0][0] == "message.started"
         assert events[-1][0] == "message.completed", events
         assert sum(kind in ("message.completed", "message.failed") for kind, _ in events) == 1
