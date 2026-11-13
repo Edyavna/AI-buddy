@@ -19,6 +19,37 @@ const POLICY_LABEL: Record<Step['completion_policy'], string> = {
   both: 'Подтверждают стажёр и наставник',
 };
 
+function ChatIcon() {
+  return (
+    <svg className={styles.buttonIcon} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M4 15.5 2.5 18v-5.2A7 7 0 0 1 1 9a7 7 0 0 1 7-7h4a7 7 0 0 1 0 14H8.5L4 15.5Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ArrowIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={`${styles.buttonIcon} ${className}`} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ActionIcon({ action }: { action: StepTarget | 'confirm' | 'revoke' }) {
+  const isCheck = action === 'completed' || action === 'confirm';
+  return (
+    <svg className={styles.buttonIcon} viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      {isCheck ? (
+        <path d="m4.5 10 3.5 3.5 7.5-8" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      ) : action === 'in_progress' ? (
+        <path d="M4 10h11m-4-4 4 4-4 4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      ) : (
+        <path d="M5.5 6.5A6.5 6.5 0 1 1 3.7 12M3.5 5v4h4" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" />
+      )}
+    </svg>
+  );
+}
+
 function safeUrl(value: string | null | undefined): string | null {
   if (!value) return null;
   try {
@@ -190,7 +221,12 @@ export const StepCard: React.FC<StepCardProps> = ({
           className={styles.askLink}
           aria-label={`Спросить помощника о шаге: ${step.title}`}
         >
-          <Button variant={isNext ? 'primary' : 'secondary'} size="sm">
+          <Button
+            variant={isNext ? 'primary' : 'secondary'}
+            size="sm"
+            leftIcon={<ChatIcon />}
+            rightIcon={<ArrowIcon className={styles.askArrow ?? ''} />}
+          >
             Спросить помощника
           </Button>
         </Link>
@@ -201,6 +237,7 @@ export const StepCard: React.FC<StepCardProps> = ({
             variant="secondary"
             size="sm"
             disabled={isUpdating || isCheckpointUpdating}
+            leftIcon={<ActionIcon action={target} />}
             onClick={() => onStatusChange(step.id, target)}
           >
             {TARGET_LABEL[target](step)}
@@ -213,6 +250,7 @@ export const StepCard: React.FC<StepCardProps> = ({
             variant={action === 'confirm' ? 'primary' : 'secondary'}
             size="sm"
             disabled={isUpdating || isCheckpointUpdating}
+            leftIcon={<ActionIcon action={action} />}
             onClick={() => onConfirmationChange(step.id, action === 'confirm', step.revision)}
           >
             {action === 'confirm' ? 'Подтвердить выполнение' : 'Отозвать подтверждение'}
