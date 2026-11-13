@@ -441,3 +441,41 @@ func TestPostgresHRDatabaseUnavailable(t *testing.T) {
 		})
 	}
 }
+
+func TestPostgresHRReopensWhenFormerSpecialistLosesAccess(t *testing.T) {
+	db := testkit.Postgres(t)
+	_, student, conversation := prepareDraft(t, db)
+	h := requestHandler(db, Dependencies{})
+	hr1 := loginCookie(t, h, "hr_demo_1", nil)
+	hr2 := loginCookie(t, h, "hr_demo_2", nil)
+	var assistant string
+	if err := db.QueryRow("SELECT id FROM chat_messages WHERE conversation_id=$1 AND role='assistant'", conversation).Scan(&assistant); err != nil {
+		t.Fatal(err)
+	}
+	path := "/messages/" + assistant + "/questions"
+	draft := knowledgegaps.Draft{Direction: "hr", Question: "Как оформить кадровые документы?"}
+	q := hrResponse[knowledgegaps.Question](t, h, "POST", path, knowledgegaps.Operation{ID: hrKey(1), Draft: draft}, student, 200)
+	qpath := "/hr/questions/" + q.ID
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(2), Action: "claim", Revision: q.Revision}, hr1, 200)
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(3), Action: "resolve", Resolution: "Ответ", Revision: q.Revision}, hr1, 200)
+	reopen := knowledgegaps.HRUpdate{ID: hrKey(4), Action: "reopen", Revision: q.Revision}
+	hrResponse[any](t, h, "PATCH", qpath, reopen, hr2, 409)
+	scope := hrscope.Store{DB: db}
+	if err := scope.Set(t.Context(), "hr_demo_1", "team_demo_backend", false); err != nil {
+		t.Fatal(err)
+	}
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", qpath, reopen, hr2, 200)
+	if q.State != "in_progress" || q.SpecialistID == nil || *q.SpecialistID != "hr_demo_2" {
+		t.Fatal(q)
+	}
+	list := hrResponse[knowledgegaps.MessageQuestions](t, h, "GET", path, nil, student, 200)
+	if len(list.Items) != 1 || len(list.Available) != 2 {
+		t.Fatal(list)
+	}
+	if _, err := db.Exec("DELETE FROM mentor_assignments WHERE intern_id='intern_demo_1'"); err != nil {
+		t.Fatal(err)
+	}
+	draft.Direction = "mentor"
+	hrResponse[any](t, h, "POST", path, knowledgegaps.Operation{ID: hrKey(5), Draft: draft}, student, 409)
+	hrResponse[any](t, h, "POST", "/questions/"+q.ID+"/reroute", knowledgegaps.Operation{ID: hrKey(6), Revision: q.Revision, Draft: draft}, student, 409)
+}
