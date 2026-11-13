@@ -38,7 +38,15 @@ func (m *DeepSeek) Complete(ctx context.Context, msg []Message) (Message, error)
 	if m.Model == "" {
 		return Message{}, ports.ErrUnavailable
 	}
-	e := m.Client.Post(ctx, "/chat/completions", map[string]any{"model": m.Model, "messages": msg, "tools": toolSchemas(), "stream": false, "max_tokens": 4096, "thinking": map[string]string{"type": "disabled"}}, &response)
+	e := m.Client.Post(ctx, "/chat/completions", map[string]any{
+		"model":           m.Model,
+		"messages":        msg,
+		"tools":           toolSchemas(),
+		"stream":          false,
+		"max_tokens":      4096,
+		"thinking":        map[string]string{"type": "disabled"},
+		"response_format": map[string]string{"type": "json_object"},
+	}, &response)
 	if e != nil {
 		return Message{}, e
 	}

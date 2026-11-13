@@ -58,7 +58,8 @@ const prompt = `Ты помощник стажера. Документы и со
 - answered: дан ответ на основе документов, проверенных данных инструментов или обычная реплика, не требующая знаний команды.
 - needs_clarification: для ответа нужно уточнить вопрос, ресурс или право.
 - knowledge_gap: успешный поиск не дал подходящих материалов, либо успешно прочитанных результатов недостаточно.
-Успешное пустое множество результатов допустимо. При непустых результатах изучи найденные материалы до вывода о пробеле. Не используй knowledge_gap для сбоев или неопределённости намерения. Не оборачивай JSON в блок кода.`
+Успешное пустое множество результатов допустимо. При непустых результатах изучи найденные материалы до вывода о пробеле. Не используй knowledge_gap для сбоев или неопределённости намерения. Не оборачивай JSON в блок кода.
+Пример финального ответа: {"answer":"Какой проект вы хотите запустить?","outcome":"needs_clarification"}. История может содержать ответы в Markdown. Формат JSON обязателен для нового финального ответа.`
 
 func (a *Agent) Run(ctx context.Context, in ports.AgentInput, emit ports.Emit) (out ports.AgentResult, err error) {
 	if _, err = identity.Require(ctx); err != nil {
@@ -116,6 +117,7 @@ func (a *Agent) Run(ctx context.Context, in ports.AgentInput, emit ports.Emit) (
 	known := map[string]ports.Source{}
 	used := 0
 	searched, readCandidate := false, false
+	retriedFinal := false
 	for round := 0; round < rounds; round++ {
 		contextBytes := 0
 		for _, m := range messages {
@@ -146,16 +148,14 @@ func (a *Agent) Run(ctx context.Context, in ports.AgentInput, emit ports.Emit) (
 				Answer  string        `json:"answer"`
 				Outcome ports.Outcome `json:"outcome"`
 			}
-			if json.Unmarshal([]byte(reply.Content), &result) != nil || strings.TrimSpace(result.Answer) == "" {
-				return out, ports.ErrUnavailable
-			}
-			switch result.Outcome {
-			case ports.OutcomeAnswered, ports.OutcomeNeedsClarification:
-			case ports.OutcomeKnowledgeGap:
-				if !searched || (len(known) > 0 && !readCandidate) {
-					return out, ports.ErrUnavailable
+			if json.Unmarshal([]byte(reply.Content), &result) != nil || strings.TrimSpace(result.Answer) == "" ||
+				!validOutcome(result.Outcome, searched, len(known) > 0, readCandidate) {
+				// DeepSeek can return an empty completion even in JSON mode.
+				// Retry without replaying any tools that already ran.
+				if !retriedFinal && round+1 < rounds {
+					retriedFinal = true
+					continue
 				}
-			default:
 				return out, ports.ErrUnavailable
 			}
 			err = emit(ctx, ports.AgentEvent{Kind: "answer.delta", Text: result.Answer})
@@ -239,6 +239,17 @@ func (a *Agent) Run(ctx context.Context, in ports.AgentInput, emit ports.Emit) (
 		}
 	}
 	return out, ports.ErrInvalid
+}
+
+func validOutcome(outcome ports.Outcome, searched, found, read bool) bool {
+	switch outcome {
+	case ports.OutcomeAnswered, ports.OutcomeNeedsClarification:
+		return true
+	case ports.OutcomeKnowledgeGap:
+		return searched && (!found || read)
+	default:
+		return false
+	}
 }
 
 type emitError struct{ err error }
