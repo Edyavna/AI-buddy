@@ -2,6 +2,10 @@ import { z } from 'zod';
 import type { components } from '@/shared/api/generated/schema';
 
 type Schemas = components['schemas'];
+const assignmentPerson = z.object({ id: z.string().min(1), name: z.string().min(1) });
+export const availableInternSchema = assignmentPerson.extend({ team: assignmentPerson }) satisfies z.ZodType<Schemas['AvailableIntern']>;
+export const assignmentSchema = z.object({ intern_id: z.string().min(1), mentor_id: z.string().min(1), team_id: z.string().min(1) }) satisfies z.ZodType<Schemas['MentorAssignment']>;
+export type AvailableIntern = z.infer<typeof availableInternSchema>;
 const person = z.object({ id: z.string(), name: z.string() });
 const date = z.iso.datetime();
 export const questionStatusSchema = z.enum(['new', 'in_progress', 'resolved']);

@@ -2,16 +2,39 @@ import { http, HttpResponse } from 'msw';
 import { z } from 'zod';
 import { createMentorFixtures } from './fixtures';
 import { questionStatusSchema, mentorDocumentSchema } from '@/features/mentor/models';
+import { setCheckpointConfirmationSchema, type Plan } from '@/features/onboarding';
 
-export type MentorScenario = 'normal' | 'empty' | 'failed' | 'processing' | 'question_changed' | 'lost_upload';
+export type MentorScenario = 'normal' | 'empty' | 'failed' | 'processing' | 'question_changed' | 'lost_upload' | 'assignment_conflict' | 'assignment_lost' | 'assignment_unconfirmed' | 'checkpoint_conflict' | 'checkpoint_lost' | 'checkpoint_unconfirmed';
 const error = (status: number, code: string, message: string) => HttpResponse.json({ error: { code, message, trace_id: 'mentor_mock' } }, { status });
 
 // Fully isolated session + workspace. Installed only explicitly, never a Go fallback.
-export function createMentorMock(scenario: MentorScenario = 'normal') {
+export function createMentorMock(scenario: MentorScenario = 'normal', options: { plan?: Plan } = {}) {
   const f = createMentorFixtures();
   let principal: typeof f.mentor | typeof f.internUser | null = null;
   const questions = structuredClone(scenario === 'empty' ? [] : f.questions);
   const documents = structuredClone(scenario === 'empty' ? [] : f.documents);
+  const interns = structuredClone(scenario === 'empty' ? [] : f.interns);
+  const available = structuredClone(scenario === 'empty' ? [] : f.available);
+  const plan = structuredClone(options.plan ?? f.plan);
+  let checkpointConflict = false, checkpointLost = false;
+  function mentorPlan(): Plan {
+    return { ...plan, steps: plan.steps.map(s => ({ ...s, allowed_actions: s.completion_policy === 'intern' ? [] : s.confirmations.some(c => c.role === 'mentor' && c.user_id === f.mentor.id) ? ['revoke'] : s.status === 'blocked' ? [] : ['confirm'] })) };
+  }
+  function bump() { const next = Math.max(1, ...plan.steps.map(s => s.revision)) + 1; for (const s of plan.steps) s.revision = next; }
+  function confirm(role: 'intern' | 'mentor', stepId: string, confirmed: boolean) {
+    const s = plan.steps.find(s => s.id === stepId); if (!s || (s.completion_policy !== role && s.completion_policy !== 'both')) return;
+    if (s.confirmations.some(c => c.role === role) === confirmed) return;
+    s.confirmations = s.confirmations.filter(c => c.role !== role);
+    if (confirmed) s.confirmations.push({ role, user_id: role === 'mentor' ? f.mentor.id : f.internUser.id, confirmed_at: '2026-11-12T12:00:00Z' });
+    const own = s.confirmations.some(c => c.role === 'intern'), mentor = s.confirmations.some(c => c.role === 'mentor');
+    const completed = s.completion_policy === 'both' ? own && mentor : s.completion_policy === 'intern' ? own : mentor;
+    s.status = s.status === 'blocked' ? 'blocked' : completed ? 'completed' : 'in_progress';
+    s.awaiting_role = s.completion_policy === 'both' && own !== mentor ? (own ? 'mentor' : 'intern') : null;
+    bump();
+    plan.progress_percent = plan.steps.length ? Math.floor(100 * plan.steps.filter(s => s.status === 'completed').length / plan.steps.length) : 0;
+    plan.next_step_id = plan.steps.find(s => s.status !== 'completed' && s.status !== 'blocked')?.id ?? null;
+  }
+  let assignmentLost = false;
   const uploads = new Map<string, { signature: string; documentId: string }>();
   const reads = new Map<string, number>();
   let conflictSent = false, uploadLost = false;
@@ -87,8 +110,43 @@ export function createMentorMock(scenario: MentorScenario = 'normal') {
       if (doc.status === 'ready') return error(409, 'DOCUMENT_ALREADY_READY', 'Документ уже готов');
       doc.status = 'processing'; doc.error = null; reads.set(doc.id, 0); return HttpResponse.json(doc, { status: 202 });
     }),
-    http.get('*/api/v1/mentor/interns', () => { const denial = denied(); if (denial) return denial; return HttpResponse.json({ items: scenario === 'empty' ? [] : f.interns.map(i => ({ ...i, open_questions: questions.filter(q => q.student.id === i.id && q.status !== 'resolved').length })) }); }),
-    http.get('*/api/v1/mentor/interns/:id/plan', ({ params }) => { const denial = denied(); if (denial) return denial; return params.id === f.internUser.id ? HttpResponse.json(f.plan) : missing(); }),
+    http.get('*/api/v1/mentor/available-interns', () => { const denial = denied(); return denial ?? HttpResponse.json({ items: available }); }),
+    http.put('*/api/v1/mentor/interns/:id/assignment', async ({ params, request }) => {
+      const denial = denied(); if (denial) return denial;
+      if ((await request.text()).length) return error(422, 'VALIDATION_ERROR', 'Тело запроса должно отсутствовать');
+      const candidate = available.find(i => i.id === params.id);
+      if (!candidate && !interns.some(i => i.id === params.id)) return missing();
+      if (candidate && scenario === 'assignment_conflict') {
+        available.splice(available.indexOf(candidate), 1);
+        return error(409, 'INTERN_ALREADY_ASSIGNED', 'Стажёра уже назначили');
+      }
+      if (scenario === 'assignment_unconfirmed') return HttpResponse.error();
+      if (candidate) {
+        available.splice(available.indexOf(candidate), 1);
+        interns.push({ ...candidate, progress_percent: 0, completed_steps: 0, total_steps: 0, blocked_steps: 0, open_questions: 0, next_step_id: null });
+      }
+      if (scenario === 'assignment_lost' && !assignmentLost) { assignmentLost = true; return HttpResponse.error(); }
+      return HttpResponse.json({ intern_id: params.id, mentor_id: f.mentor.id, team_id: f.mentor.team.id });
+    }),
+    http.get('*/api/v1/mentor/interns', () => { const denial = denied(); if (denial) return denial; return HttpResponse.json({ items: interns.map(i => ({ ...i, ...(i.id === f.internUser.id && { progress_percent: plan.progress_percent, total_steps: plan.steps.length, completed_steps: plan.steps.filter(s => s.status === 'completed').length, blocked_steps: plan.steps.filter(s => s.status === 'blocked').length, next_step_id: plan.next_step_id }), open_questions: questions.filter(q => q.student.id === i.id && q.status !== 'resolved').length })) }); }),
+    http.get('*/api/v1/mentor/interns/:id/plan', ({ params }) => { const denial = denied(); if (denial) return denial; return params.id === f.internUser.id ? HttpResponse.json(mentorPlan()) : missing(); }),
+    http.put('*/api/v1/mentor/interns/:id/steps/:stepId/confirmation', async ({ params, request }) => {
+      const denial = denied(); if (denial) return denial;
+      if (params.id !== f.internUser.id) return missing();
+      const step = plan.steps.find(s => s.id === params.stepId); if (!step) return missing();
+      const body = setCheckpointConfirmationSchema.safeParse(await request.json().catch(() => null));
+      if (!body.success) return error(422, 'VALIDATION_ERROR', 'Проверьте параметры');
+      if (step.completion_policy === 'intern') return error(403, 'ROLE_FORBIDDEN', 'Подтверждает стажёр');
+      if (scenario === 'checkpoint_unconfirmed') return HttpResponse.error();
+      if (scenario === 'checkpoint_conflict' && !checkpointConflict) { checkpointConflict = true; bump(); }
+      const own = step.confirmations.some(c => c.role === 'mentor' && c.user_id === f.mentor.id);
+      if (own === body.data.confirmed) return HttpResponse.json(mentorPlan());
+      if (step.revision !== body.data.revision) return error(409, 'CHECKPOINT_REVISION_CONFLICT', 'План изменился');
+      if (step.status === 'blocked' && body.data.confirmed) return error(409, 'STEP_TRANSITION_FORBIDDEN', 'Шаг заблокирован');
+      confirm('mentor', step.id, body.data.confirmed);
+      if (scenario === 'checkpoint_lost' && !checkpointLost) { checkpointLost = true; return HttpResponse.error(); }
+      return HttpResponse.json(mentorPlan());
+    }),
   ];
-  return { handlers, control: { setRole: (role: 'mentor' | 'intern' | null) => { principal = role === 'mentor' ? f.mentor : role === 'intern' ? f.internUser : null; }, questions, documents } };
+  return { handlers, control: { setRole: (role: 'mentor' | 'intern' | null) => { principal = role === 'mentor' ? f.mentor : role === 'intern' ? f.internUser : null; }, questions, documents, interns, available, plan, confirmIntern: (id: string, confirmed: boolean) => confirm('intern', id, confirmed) } };
 }

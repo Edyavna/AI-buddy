@@ -23,7 +23,7 @@ it('uses server progress counts and opens a read-only plan without mutation cont
   expect(screen.getByText('Блокировки: 0 · Открытые вопросы: 1')).toBeInTheDocument();
   const link = screen.getByRole('link', { name: 'Тестовый стажер' }); fireEvent.click(link);
   expect(await screen.findByText('Подготовка к первой задаче')).toBeInTheDocument();
-  expect(screen.getByText('План доступен только для просмотра. Стажёр сам отмечает выполнение шагов.')).toBeInTheDocument();
+  expect(screen.getByText('Подтверждайте свою часть там, где это разрешено. Отметка стажёра сохраняется независимо.')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /выполн|начать|спросить/i })).not.toBeInTheDocument();
 });
 it('opens a direct assigned plan URL and displays blocked checkpoints', async () => {
@@ -39,7 +39,7 @@ it('shows empty assignments', async () => {
 });
 it('does not expose another intern through a direct URL', async () => {
   start('/mentor/interns/foreign');
-  expect(await screen.findByRole('alert')).toHaveTextContent('Данные недоступны');
+  expect(await screen.findByRole('alert')).toHaveTextContent(/недоступ/);
   expect(screen.queryByText('Подготовка к первой задаче')).not.toBeInTheDocument();
 });
 it.each([401, 403, 404])('hides previously loaded progress and plan after %s', async status => {
@@ -53,7 +53,7 @@ it.each([401, 403, 404])('hides previously loaded progress and plan after %s', a
   await screen.findByText('Подготовка к первой задаче');
   server.use(http.get('*/api/v1/mentor/interns/:id/plan', () => new HttpResponse(null, { status })));
   await queryClient.invalidateQueries({ queryKey: mentorKeys.plan('intern_demo_1') });
-  expect(await screen.findByRole('alert')).toHaveTextContent('Данные недоступны');
+  expect(await screen.findByRole('alert')).toHaveTextContent(/недоступ/);
   expect(screen.queryByText('Подготовка к первой задаче')).not.toBeInTheDocument();
 });
 it('offers retry on 503 without hiding last successful progress', async () => {

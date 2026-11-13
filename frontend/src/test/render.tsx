@@ -7,9 +7,10 @@ import { createQueryClient } from '../shared/api';
 const clients = new Set<ReturnType<typeof createQueryClient>>();
 afterEach(() => { clients.forEach(client => client.clear()); clients.clear(); });
 
-export function renderWithQuery(ui: ReactElement) {
+export function renderWithQuery(ui: ReactElement, setup?: (queryClient: ReturnType<typeof createQueryClient>) => void) {
   const queryClient = createQueryClient();
   queryClient.setDefaultOptions({ queries: { retry: false }, mutations: { retry: false } });
+  setup?.(queryClient);
   clients.add(queryClient);
   return { queryClient, ...render(<QueryClientProvider client={queryClient}>{ui}</QueryClientProvider>) };
 }
