@@ -5,7 +5,7 @@ import { AvitoLogo, Button } from '@/shared/ui';
 import { useLogout, useMe } from '@/features/session';
 import styles from './AppShell.module.css';
 
-const ROLE_LABEL = { intern: 'Стажёр', mentor: 'Наставник' } as const;
+const ROLE_LABEL = { intern: 'Стажёр', mentor: 'Наставник', hr: 'HR' } as const;
 
 export const AppShell: React.FC = () => {
   const me = useMe();
