@@ -405,7 +405,7 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 		message.RequestIDs = append(message.RequestIDs, id)
 	}
 	message.Status = "completed"
-	if disconnected || ctx.Err() != nil && !finished {
+	if disconnected || errors.Is(cause, context.Canceled) || ctx.Err() != nil && !finished {
 		message.Status = "interrupted"
 		message.Error = failure("GENERATION_INTERRUPTED", httpapi.TraceID(ctx))
 	} else if timedOut {

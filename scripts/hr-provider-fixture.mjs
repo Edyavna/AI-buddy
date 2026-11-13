@@ -21,7 +21,7 @@ createServer(async (request, response) => {
     if (request.url !== '/chat/completions') throw new Error('Unknown path');
     const last = input.messages.at(-1).content;
     let result = { answer: 'Порядок работы можно уточнить у наставника.', outcome: 'answered' };
-    if (input.response_format?.type === 'json_object') {
+    if (input.response_format?.type === 'json_object' && !input.tools?.length) {
       if (input.messages[0].content.startsWith('Подготовь обезличенную')) {
         result = { title: 'Инструкция команды', content: JSON.parse(last).answer };
       } else if (input.messages[0].content.startsWith('Определи тему')) {

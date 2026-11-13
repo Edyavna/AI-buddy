@@ -149,12 +149,13 @@ func agentProviderFixture(w http.ResponseWriter, r *http.Request) {
 			Model    string            `json:"model"`
 			Messages []agent.Message   `json:"messages"`
 			Format   map[string]string `json:"response_format"`
+			Tools []json.RawMessage `json:"tools"`
 		}
 		if json.NewDecoder(r.Body).Decode(&input) != nil || input.Model != "test-model" {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		if input.Format["type"] == "json_object" {
+		if input.Format["type"] == "json_object" && len(input.Tools) == 0 {
 			reply := agent.Message{Role: "assistant", Content: "{\"direction\":\"mentor\",\"reason\":\"Технический доступ\",\"clarification\":null,\"split\":false}"}
 			_ = json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"message": reply, "finish_reason": "stop"}}})
 			return
