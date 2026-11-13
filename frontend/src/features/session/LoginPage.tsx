@@ -1,14 +1,9 @@
 import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { AvitoLogo, Button, InlineError, Spinner, StatusBadge } from '@/shared/ui';
-import type { User } from '@/shared/api';
+import { roleHome, roleLabel } from './roles';
 import { useDemoAccounts, useLogin, useMe } from './hooks';
 import styles from './LoginPage.module.css';
-
-const ROLE_LABEL: Record<User['role'], string> = {
-  intern: 'Стажёр',
-  mentor: 'Наставник', hr: 'HR',
-};
 
 function initialsOf(name: string): string {
   const parts = name.split(/\s+/).filter(Boolean);
@@ -22,7 +17,7 @@ export const LoginPage: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
   if (me.data) {
-    return <Navigate to="/onboarding" replace />;
+    return <Navigate to={roleHome[me.data.role]} replace />;
   }
 
   const list = accounts.data ?? [];
@@ -43,7 +38,7 @@ export const LoginPage: React.FC = () => {
           </p>
           <div className={styles.demoFact}>
             <span className={styles.demoFactDot} aria-hidden="true" />
-            {accounts.data ? `${accounts.data.length} роли доступны без регистрации` : 'Загружаем тестовые учетные записи'}
+            {accounts.data ? `${accounts.data.length} учётных записей доступно без регистрации` : 'Загружаем тестовые учетные записи'}
           </div>
         </section>
 
@@ -82,12 +77,12 @@ export const LoginPage: React.FC = () => {
                       <span className={styles.accountDetails}>
                         <span className={styles.accountName}>{account.name}</span>
                         <span className={styles.accountRole}>
-                          {ROLE_LABEL[account.role]}, {account.team.name}
+                          {roleLabel[account.role]}, {account.team.name}
                         </span>
                       </span>
                       <StatusBadge
-                        status={account.role === 'mentor' ? 'completed' : 'in_progress'}
-                        label={ROLE_LABEL[account.role]}
+                        status={account.role === 'intern' ? 'in_progress' : 'completed'}
+                        label={roleLabel[account.role]}
                         size="sm"
                       />
                     </button>

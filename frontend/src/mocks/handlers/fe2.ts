@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createScenario } from '../fixtures/scenario';
 import { createFullCheckpointPlan } from '../fixtures/checkpoints';
 import { notFound } from './chat';
+import { mockSession } from './session-bus';
 import { userSchema } from '../../features/session/schemas';
 import { planSchema, setCheckpointConfirmationSchema } from '../../features/onboarding/schemas';
 import type { Plan, Step } from '../../features/onboarding/schemas';
@@ -54,7 +55,10 @@ export function createFe2Handlers(options: { plan?: Plan } = {}) {
     role: 'mentor',
     team: intern.team,
   };
-  const accounts: User[] = [intern, mentor];
+  const hr: User = { id: 'hr_demo_1', name: 'Анна, HR', role: 'hr', team: intern.team };
+  const otherHR: User = { ...hr, id: 'hr_demo_2', name: 'Денис, HR' };
+  const noHR: User = { ...intern, id: 'intern_demo_no_hr', name: 'Стажёр без HR', team: { id: 'team_no_hr', name: 'Команда без HR' } };
+  const accounts: User[] = [intern, mentor, hr, otherHR, noHR];
 
   let currentUser: User | null = intern;
   let plan: Plan = withServerProgress(planSchema.parse(options.plan ?? createFullCheckpointPlan()));
@@ -69,13 +73,21 @@ export function createFe2Handlers(options: { plan?: Plan } = {}) {
       const account = accounts.find((item) => item.id === parsed.data.account_id);
       if (!account) return jsonError(404, 'NOT_FOUND', 'Тестовая учетная запись не найдена');
       currentUser = account;
+      mockSession.set(account);
       return HttpResponse.json(account);
     }),
 
     http.get('*/api/v1/me', () => currentUser ? HttpResponse.json(currentUser) : unauthorized()),
 
+    http.get('*/api/v1/me/access-scope', () => currentUser ? HttpResponse.json({
+      version: '1',
+      teams: currentUser.id === hr.id ? [hr.team, { id: 'team_other', name: 'Вторая команда' }] : [currentUser.team],
+    }) : unauthorized()),
+    http.get('*/api/v1/hr/questions', () => currentUser?.role === 'hr' ? HttpResponse.json({ items: [] }) : notFound()),
+    http.get('*/api/v1/hr/documents', () => currentUser?.role === 'hr' ? HttpResponse.json({ items: [] }) : notFound()),
     http.delete('*/api/v1/session', () => {
       currentUser = null;
+      mockSession.set(null);
       return new HttpResponse(null, { status: 204 });
     }),
 

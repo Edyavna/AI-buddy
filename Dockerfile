@@ -6,6 +6,7 @@ COPY backend/ ./
 RUN CGO_ENABLED=0 go build -trimpath -o /out/server ./cmd/server \
     && CGO_ENABLED=0 go build -trimpath -o /out/migrate ./cmd/migrate \
     && CGO_ENABLED=0 go build -trimpath -o /out/seed ./cmd/seed \
+    && CGO_ENABLED=0 go build -trimpath -o /out/hr-scope ./cmd/hr-scope \
     && CGO_ENABLED=0 go build -trimpath -o /out/demo-control ./cmd/demo-control \
     && CGO_ENABLED=0 go build -trimpath -o /out/knowledge-import ./cmd/knowledge-import
 
@@ -25,7 +26,7 @@ COPY --from=frontend-build /src/frontend/dist /usr/share/nginx/html
 
 FROM alpine:3.23 AS runtime
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
-COPY --from=build /out/server /out/migrate /out/seed /out/demo-control /out/knowledge-import /app/
+COPY --from=build /out/server /out/migrate /out/seed /out/demo-control /out/knowledge-import /out/hr-scope /app/
 COPY demo/knowledge /app/knowledge
 USER 10001:10001
 EXPOSE 8080

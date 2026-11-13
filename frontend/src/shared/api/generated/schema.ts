@@ -93,6 +93,188 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/mentor/questions/{question_id}/instruction-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["mentorResolutionWorkspace"];
+        put: operations["mentorSaveResolutionDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/questions/{question_id}/instruction-draft/targets/{target_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+                target_id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["mentorResolutionTarget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/questions/{question_id}/instruction-draft/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["mentorgenerateResolutionDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/questions/{question_id}/instruction-draft/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["mentorpublishResolutionDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/questions/{question_id}/instruction-draft/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["mentorretryResolutionDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hr/questions/{question_id}/instruction-draft": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["hrResolutionWorkspace"];
+        put: operations["hrSaveResolutionDraft"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hr/questions/{question_id}/instruction-draft/targets/{target_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+                target_id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["hrResolutionTarget"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hr/questions/{question_id}/instruction-draft/generate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["hrgenerateResolutionDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hr/questions/{question_id}/instruction-draft/publish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["hrpublishResolutionDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hr/questions/{question_id}/instruction-draft/retry": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post: operations["hrretryResolutionDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/hr/questions": {
         parameters: {
             query?: never;
@@ -607,6 +789,155 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/review-preparations/template": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Действующий шаблон чек-листа команды (свой наставника или встроенный по умолчанию). */
+        get: operations["getReviewChecklistTemplate"];
+        /** @description Только наставник. Сохраняет шаблон чек-листа своей команды; требуется актуальная revision. */
+        put: operations["saveReviewChecklistTemplate"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/review-preparations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Только стажёр. Последняя подготовка: неотправленный черновик важнее отправленной. */
+        get: operations["getLatestReviewPreparation"];
+        put?: never;
+        /** @description Только стажёр. Создаёт черновик по ссылке на PR; при доступной интеграции GitHub подтягивает сведения и CI-результаты, при её сбое черновик сохраняется с ошибкой в pr.fetch_error. */
+        post: operations["createReviewPreparation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/review-preparations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Только автор. Полная подготовка с чек-листом, результатами и историей ревизий. */
+        get: operations["getReviewPreparation"];
+        /** @description Только автор. Сохраняет черновик; обновление отправленной подготовки фиксирует снимок предыдущей ревизии в истории. Результаты проверок стажёра заменяют предыдущие, CI-результаты (source=ci) не трогаются. */
+        put: operations["updateReviewPreparation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/review-preparations/{id}/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Только автор. Явное подтверждённое пользователем действие «готово к ревью»; повторная отправка отправленной подготовки создаёт новую ревизию с видимой историей. */
+        post: operations["submitReviewPreparation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/review-preparations/{id}/assistant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Ассистент помогает сформулировать описание и показывает пропущенные обязательные пункты чек-листа на основании сохранённых данных. Слова ассистента ничего не подтверждают. */
+        post: operations["reviewPreparationAssistant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/review-preparations/{id}/refresh": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Только автор и только режим интеграции GitHub. Подтягивает сведения о PR и привязывает CI-результаты к актуальному head-коммиту; changed=true сигналит, что PR обновился после подготовки. Сбой интеграции сохраняет ручной черновик нетронутым. */
+        post: operations["refreshReviewPreparation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/review-preparations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Подготовки к ревью назначенных стажёров; фильтр intern_id — только назначенный стажёр. */
+        get: operations["listMentorReviewPreparations"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/review-preparations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Полная карточка подготовки назначенного стажёра: ссылка, резюме, чек-лист, результаты с источниками, вопросы и история ревизий. */
+        get: operations["getMentorReviewPreparation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/access-requests": {
         parameters: {
             query?: never;
@@ -798,6 +1129,76 @@ export interface components {
             resolution?: string;
             document_ids?: string[];
         };
+        ResolutionSource: {
+            id: string;
+            /** @enum {string} */
+            direction: "mentor" | "hr";
+            team_id: string;
+            question: string;
+            resolution: string;
+            step_id: string | null;
+            revision: number;
+        };
+        ResolutionTarget: {
+            id: string;
+            title: string;
+            version: number;
+            content: string;
+            team_ids: string[];
+        };
+        SaveResolutionDraft: {
+            revision: number;
+            title: string;
+            content: string;
+            target_document_id: string | null;
+            base_version: number | null;
+        };
+        ResolutionDraft: {
+            revision: number;
+            title: string;
+            content: string;
+            target_document_id: string | null;
+            base_version: number | null;
+            source: components["schemas"]["ResolutionSource"];
+            base_content: string;
+            document_id: string | null;
+            document_version: number | null;
+            /** @enum {string} */
+            status: "draft" | "indexing" | "ready" | "failed";
+            error: string | null;
+            team_ids: string[];
+        };
+        ResolutionWorkspace: {
+            source: components["schemas"]["ResolutionSource"];
+            draft: components["schemas"]["NullableResolutionDraft"];
+            targets: components["schemas"]["ResolutionTarget"][];
+        };
+        PublishResolutionDraft: {
+            revision: number;
+            /** @enum {boolean} */
+            reviewed: true;
+        };
+        ResolutionSuggestion: {
+            title: string;
+            content: string;
+            /** @enum {string} */
+            mode: "model" | "demo";
+        };
+        NullableResolutionDraft: {
+            revision: number;
+            title: string;
+            content: string;
+            target_document_id: string | null;
+            base_version: number | null;
+            source: components["schemas"]["ResolutionSource"];
+            base_content: string;
+            document_id: string | null;
+            document_version: number | null;
+            /** @enum {string} */
+            status: "draft" | "indexing" | "ready" | "failed";
+            error: string | null;
+            team_ids: string[];
+        } | null;
         HRDocument: {
             /** Format: uuid */
             id: string;
@@ -1193,6 +1594,127 @@ export interface components {
         };
         /** @description Логическое представление SSE: поле event из строки event:, data — JSON из строк data:. По сети это НЕ JSON-envelope. */
         ChatEvent: components["schemas"]["MessageStartedEvent"] | components["schemas"]["ToolStartedEvent"] | components["schemas"]["ToolFinishedEvent"] | components["schemas"]["AnswerDeltaEvent"] | components["schemas"]["ActionProposedEvent"] | components["schemas"]["MessageCompletedEvent"] | components["schemas"]["MessageFailedEvent"];
+        ReviewTemplateItem: {
+            key: string;
+            label: string;
+            required: boolean;
+        };
+        ReviewChecklistTemplate: {
+            items: components["schemas"]["ReviewTemplateItem"][];
+            revision: number;
+            /** Format: date-time */
+            updated_at: string;
+            updated_by: string;
+            custom: boolean;
+        };
+        ReviewChecklistTemplateUpsert: {
+            items: components["schemas"]["ReviewTemplateItem"][];
+            revision: number;
+        };
+        ReviewPRSnapshot: {
+            url: string;
+            repo: string;
+            number: number;
+            title: string;
+            head_sha: string;
+            /** @enum {string} */
+            source: "github" | "manual";
+            fetch_error: string;
+            /** Format: date-time */
+            fetched_at: string | null;
+        };
+        ReviewItemAnswer: {
+            done: boolean;
+            note: string;
+        };
+        ReviewAnswers: {
+            summary: string;
+            verification: string;
+            limitations: string;
+            questions: string;
+            items: {
+                [key: string]: components["schemas"]["ReviewItemAnswer"];
+            };
+        };
+        ReviewCheck: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            status: "passed" | "failed" | "skipped";
+            /** @enum {string} */
+            source: "intern" | "ci";
+            detail: string;
+            /** Format: date-time */
+            created_at: string;
+        };
+        ReviewCheckUpsert: {
+            name: string;
+            /** @enum {string} */
+            status: "passed" | "failed" | "skipped";
+            detail?: string;
+        };
+        ReviewHistoryEntry: {
+            revision: number;
+            /** Format: date-time */
+            submitted_at: string;
+        };
+        ReviewPreparation: {
+            id: string;
+            /** @enum {string} */
+            status: "draft" | "submitted";
+            revision: number;
+            step_id: string | null;
+            pr: components["schemas"]["ReviewPRSnapshot"];
+            description: string;
+            answers: components["schemas"]["ReviewAnswers"];
+            checks: components["schemas"]["ReviewCheck"][];
+            history: components["schemas"]["ReviewHistoryEntry"][];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: date-time */
+            submitted_at: string | null;
+        };
+        ReviewPreparationListItem: {
+            id: string;
+            /** @enum {string} */
+            status: "draft" | "submitted";
+            revision: number;
+            step_id: string | null;
+            pr: components["schemas"]["ReviewPRSnapshot"];
+            description: string;
+            answers: components["schemas"]["ReviewAnswers"];
+            checks: components["schemas"]["ReviewCheck"][];
+            history: components["schemas"]["ReviewHistoryEntry"][];
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** Format: date-time */
+            submitted_at: string | null;
+            student: {
+                id: string;
+                name: string;
+            };
+        };
+        ReviewPreparationUpsert: {
+            revision: number;
+            description: string;
+            answers: components["schemas"]["ReviewAnswers"];
+            checks: components["schemas"]["ReviewCheckUpsert"][];
+        };
+        ReviewSubmit: {
+            revision: number;
+        };
+        ReviewAssistantResult: {
+            summary: string;
+            missing: string[];
+        };
+        ReviewRefreshResult: {
+            preparation: components["schemas"]["ReviewPreparation"];
+            changed: boolean;
+        };
     };
     responses: {
         /**
@@ -1396,6 +1918,392 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoutedQuestion"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    mentorResolutionWorkspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Результат операции */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionWorkspace"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    mentorSaveResolutionDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveResolutionDraft"];
+            };
+        };
+        responses: {
+            /** @description Результат операции */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionDraft"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    mentorResolutionTarget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+                target_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Результат операции */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionTarget"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    mentorgenerateResolutionDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Результат операции */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionSuggestion"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    mentorpublishResolutionDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishResolutionDraft"];
+            };
+        };
+        responses: {
+            /** @description Результат операции */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionDraft"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    mentorretryResolutionDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishResolutionDraft"];
+            };
+        };
+        responses: {
+            /** @description Результат операции */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionDraft"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    hrResolutionWorkspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Результат операции */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionWorkspace"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    hrSaveResolutionDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SaveResolutionDraft"];
+            };
+        };
+        responses: {
+            /** @description Результат операции */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionDraft"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    hrResolutionTarget: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+                target_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Результат операции */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionTarget"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    hrgenerateResolutionDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Результат операции */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionSuggestion"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    hrpublishResolutionDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishResolutionDraft"];
+            };
+        };
+        responses: {
+            /** @description Результат операции */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionDraft"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    hrretryResolutionDraft: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                question_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PublishResolutionDraft"];
+            };
+        };
+        responses: {
+            /** @description Результат операции */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResolutionDraft"];
                 };
             };
             400: components["responses"]["Error"];
@@ -2560,6 +3468,328 @@ export interface operations {
             404: components["responses"]["Error"];
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getReviewChecklistTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Шаблон чек-листа */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewChecklistTemplate"];
+                };
+            };
+            401: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    saveReviewChecklistTemplate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewChecklistTemplateUpsert"];
+            };
+        };
+        responses: {
+            /** @description Сохранённый шаблон */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewChecklistTemplate"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getLatestReviewPreparation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Последняя подготовка или null */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        item: components["schemas"]["ReviewPreparation"];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    createReviewPreparation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    pr_url: string;
+                    step_id?: string | null;
+                    /** @description Принудительно заполнить сведения вручную без интеграции. */
+                    manual?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Созданный черновик */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewPreparation"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getReviewPreparation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Подготовка */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewPreparation"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    updateReviewPreparation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewPreparationUpsert"];
+            };
+        };
+        responses: {
+            /** @description Обновлённая подготовка */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewPreparation"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    submitReviewPreparation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReviewSubmit"];
+            };
+        };
+        responses: {
+            /** @description Отправленная подготовка */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewPreparation"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    reviewPreparationAssistant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Подсказка ассистента */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewAssistantResult"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    refreshReviewPreparation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Обновлённые сведения */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewRefreshResult"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    listMentorReviewPreparations: {
+        parameters: {
+            query?: {
+                intern_id?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Список подготовок с резюме */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        items: components["schemas"]["ReviewPreparationListItem"][];
+                    };
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getMentorReviewPreparation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Карточка подготовки */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReviewPreparation"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
             503: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };

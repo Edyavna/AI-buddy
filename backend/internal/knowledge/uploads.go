@@ -79,7 +79,7 @@ func uploadError(err error) error {
 		return nil
 	case errors.Is(err, sql.ErrNoRows):
 		return ports.ErrNotFound
-	case errors.Is(err, ports.ErrNotFound), errors.Is(err, ports.ErrConflict), errors.Is(err, ErrAlreadyReady):
+	case errors.Is(err, ports.ErrInvalid), errors.Is(err, ports.ErrNotFound), errors.Is(err, ports.ErrConflict), errors.Is(err, ErrAlreadyReady):
 		return err
 	default:
 		return ports.ErrUnavailable
@@ -158,8 +158,8 @@ func (s Uploads) Create(ctx context.Context, in UploadInput) (Upload, bool, erro
 		if in.QuestionID != "" {
 			var found int
 			if err := tx.QueryRowContext(ctx, `SELECT 1 FROM knowledge_gaps q JOIN mentor_assignments a
-				ON (a.intern_id,a.team_id,a.mentor_id)=(q.student_id,q.team_id,q.mentor_id)
-				WHERE q.id=$1 AND q.mentor_id=$2 AND q.team_id=$3 FOR SHARE OF q,a`, in.QuestionID, p.UserID, p.TeamID).Scan(&found); err != nil {
+				ON (a.intern_id,a.team_id)=(q.student_id,q.team_id)
+				WHERE q.id=$1 AND q.direction='mentor' AND a.mentor_id=$2 AND q.team_id=$3 FOR SHARE OF q,a`, in.QuestionID, p.UserID, p.TeamID).Scan(&found); err != nil {
 				return err
 			}
 		}
@@ -221,6 +221,17 @@ func (s Uploads) Retry(ctx context.Context, id string) (Upload, error) {
 
 // CheckReady holds the ACL and readiness rows until the question update commits.
 func (s Uploads) CheckReady(ctx context.Context, tx *sql.Tx, mentor, student identity.Principal, ids []string) error {
+	if mentor.Role == identity.HR {
+		for _, id := range ids {
+			if !uuidPattern.MatchString(id) {
+				return ports.ErrNotFound
+			}
+			if err := checkHRLink(ctx, tx, mentor, student, id); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 	if mentor.TeamID != student.TeamID {
 		return ports.ErrNotFound
 	}

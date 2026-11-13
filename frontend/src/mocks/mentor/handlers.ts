@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createMentorFixtures } from './fixtures';
 import { questionStatusSchema, mentorDocumentSchema } from '@/features/mentor/models';
 import { setCheckpointConfirmationSchema, type Plan } from '@/features/onboarding';
+import { mockSession } from '../handlers/session-bus';
 
 export type MentorScenario = 'normal' | 'empty' | 'failed' | 'processing' | 'question_changed' | 'lost_upload' | 'assignment_conflict' | 'assignment_lost' | 'assignment_unconfirmed' | 'checkpoint_conflict' | 'checkpoint_lost' | 'checkpoint_unconfirmed';
 const error = (status: number, code: string, message: string) => HttpResponse.json({ error: { code, message, trace_id: 'mentor_mock' } }, { status });
@@ -55,10 +56,11 @@ export function createMentorMock(scenario: MentorScenario = 'normal', options: {
       const input = z.object({ account_id: z.string() }).safeParse(await request.json());
       if (!input.success) return error(422, 'VALIDATION_ERROR', 'Выберите пользователя');
       principal = [f.internUser, f.mentor].find(user => user.id === input.data.account_id) ?? null;
+      mockSession.set(principal);
       return principal ? HttpResponse.json(principal) : missing();
     }),
     http.get('*/api/v1/me', () => principal ? HttpResponse.json(principal) : error(401, 'UNAUTHENTICATED', 'Войдите в систему')),
-    http.delete('*/api/v1/session', () => { principal = null; return new HttpResponse(null, { status: 204 }); }),
+    http.delete('*/api/v1/session', () => { principal = null; mockSession.set(null); return new HttpResponse(null, { status: 204 }); }),
     http.get('*/api/v1/mentor/questions', ({ request }) => {
       const denial = denied(); if (denial) return denial;
       const status = new URL(request.url).searchParams.get('status');
