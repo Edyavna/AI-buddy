@@ -199,7 +199,7 @@ paths:
       tags:
       - Onboarding
       operationId: updateStep
-      description: 'Пользователь отмечает свой шаг. blocked выставляет сервер по состоянию заявки.
+      description: 'Стажёр меняет статус. Завершение через PATCH доступно для intern; blocked выставляет сервер.
 
         Пока доступ не подтвержден сервисом, зависимый шаг нельзя завершить (409).
 
@@ -240,6 +240,47 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '422':
+          $ref: '#/components/responses/Error'
+  /onboarding/steps/{step_id}/confirmation:
+    put:
+      tags:
+      - Onboarding
+      operationId: setMyCheckpointConfirmation
+      description: Устанавливает или отзывает собственное подтверждение. Правила revision и повторов описаны в behavior.md.
+      parameters:
+      - name: step_id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetCheckpointConfirmation'
+      responses:
+        '200':
+          description: Актуальный план с действиями текущего пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
           $ref: '#/components/responses/Error'
   /conversations:
     get:
@@ -895,7 +936,7 @@ paths:
       tags:
       - Mentor
       operationId: getAssignedInternPlan
-      description: План назначенного стажёра только для чтения. Чужой ID возвращает 404.
+      description: План назначенного стажёра. Чужой ID возвращает 404.
       parameters:
       - name: id
         in: path
@@ -904,7 +945,7 @@ paths:
           type: string
       responses:
         '200':
-          description: План с пустым allowed_statuses для каждого шага
+          description: План с пустым allowed_statuses и действиями наставника в allowed_actions
           content:
             application/json:
               schema:
@@ -914,6 +955,52 @@ paths:
         '403':
           $ref: '#/components/responses/Error'
         '404':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /mentor/interns/{id}/steps/{step_id}/confirmation:
+    put:
+      tags:
+      - Mentor
+      operationId: setAssignedCheckpointConfirmation
+      description: Устанавливает или отзывает собственное подтверждение. Правила revision и повторов описаны в behavior.md.
+      parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: step_id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetCheckpointConfirmation'
+      responses:
+        '200':
+          description: Актуальный план с действиями текущего пользователя
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Plan'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
@@ -1205,6 +1292,15 @@ components:
       - request_ids
       - allowed_statuses
       - blocked_reason
+      - template_key
+      - period
+      - completion_policy
+      - confirmations
+      - revision
+      - allowed_actions
+      - awaiting_role
+      - instructions
+      - resources
       properties:
         id:
           type: string
@@ -1238,6 +1334,86 @@ components:
           type: string
           nullable: true
           description: Понятная причина блокировки; null если блокировки нет.
+        template_key:
+          type: string
+          minLength: 1
+          description: Стабильный ключ внутри плана; у старых шагов совпадает с id.
+        period:
+          type: string
+          nullable: true
+          description: Период адаптации из каталога.
+        completion_policy:
+          $ref: '#/components/schemas/CheckpointCompletionPolicy'
+        confirmations:
+          type: array
+          maxItems: 2
+          description: Активные отметки в порядке intern, mentor. Не больше одной на роль.
+          items:
+            $ref: '#/components/schemas/CheckpointConfirmation'
+        revision:
+          $ref: '#/components/schemas/CheckpointRevision'
+        allowed_actions:
+          type: array
+          uniqueItems: true
+          items:
+            type: string
+            enum: [confirm, revoke]
+          description: Действия с собственной отметкой для текущей сессии.
+        awaiting_role:
+          type: string
+          enum: [intern, mentor, null]
+          nullable: true
+          description: Оставшаяся роль для частично подтверждённого both.
+        instructions:
+          type: string
+          description: Инструкции в Markdown.
+        resources:
+          type: array
+          items:
+            $ref: '#/components/schemas/CheckpointResource'
+    CheckpointCompletionPolicy:
+      type: string
+      enum: [intern, mentor, both]
+    CheckpointRevision:
+      type: integer
+      minimum: 1
+      maximum: 9007199254740991
+      description: Версия снимка плана. Использовать значение из последнего ответа.
+    CheckpointConfirmation:
+      type: object
+      required: [role, user_id, confirmed_at]
+      properties:
+        role:
+          type: string
+          enum: [intern, mentor]
+        user_id:
+          type: string
+        confirmed_at:
+          type: string
+          format: date-time
+    CheckpointResource:
+      type: object
+      required: [title, url, note]
+      properties:
+        title:
+          type: string
+          minLength: 1
+        url:
+          type: string
+          format: uri
+          nullable: true
+        note:
+          type: string
+          nullable: true
+    SetCheckpointConfirmation:
+      type: object
+      additionalProperties: false
+      required: [confirmed, revision]
+      properties:
+        confirmed:
+          type: boolean
+        revision:
+          $ref: '#/components/schemas/CheckpointRevision'
     Conversation:
       type: object
       required:

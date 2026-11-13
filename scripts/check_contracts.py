@@ -38,6 +38,24 @@ assert assignment['assigned']['team_id'] == assignment['available']['items'][0][
 assert assignment['conflict']['error']['code'] == 'INTERN_ALREADY_ASSIGNED'
 assert 'requestBody' not in spec['paths']['/mentor/interns/{id}/assignment']['put']
 
+checkpoints = json.loads((ROOT / 'contracts/examples/checkpoints.json').read_text(encoding='utf-8'))
+for key in ['confirm', 'revoke']:
+    check('SetCheckpointConfirmation', checkpoints[key])
+for plan in checkpoints['plans'].values():
+    check('Plan', plan)
+    step = plan['steps'][0]
+    marks = {mark['role'] for mark in step['confirmations']}
+    assert len(marks) == len(step['confirmations'])
+    required = {'intern', 'mentor'} if step['completion_policy'] == 'both' else {step['completion_policy']}
+    assert marks <= required
+    if step['status'] != 'blocked':
+        assert (step['status'] == 'completed') == (marks == required)
+    assert step['awaiting_role'] == (next(iter(required - marks)) if marks and marks < required else None)
+    assert plan['progress_percent'] == (100 if step['status'] == 'completed' else 0)
+for error in checkpoints['errors'].values():
+    check('ApiError', error)
+assert checkpoints['errors']['revision_conflict']['error']['code'] == 'CHECKPOINT_REVISION_CONFLICT'
+
 assert f['messages'][1]['in_reply_to_message_id'] == f['messages'][0]['id']
 assert f['messages'][0]['client_message_id'] == f['send_message']['client_message_id']
 assert f['conversation']['client_conversation_id'] == f['create_conversation']['client_conversation_id']
@@ -77,6 +95,9 @@ else: raise AssertionError('Whitespace-only text accepted')
 for schema,bad in [
     ('SendMessage', {**f['send_message'], 'user_id':'forged_user'}),
     ('AccessRequest', {**f['draft'], 'status':'approved'}),
+    ('SetCheckpointConfirmation', {'confirmed': True, 'revision': 0}),
+    ('SetCheckpointConfirmation', {'confirmed': False}),
+    ('SetCheckpointConfirmation', {**checkpoints['confirm'], 'mentor_id': 'forged'}),
     ('ChatEvent', {'event':'answer.delta','data':{'message_id':'msg_a1','text':123}}),
 ]:
     try: check(schema,bad)

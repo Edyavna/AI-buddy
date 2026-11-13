@@ -47,6 +47,16 @@ export const planFixtureSchema = z.object({
     id: z.string(), title: z.string(), description: z.string(),
     status: z.enum(['not_started', 'in_progress', 'blocked', 'completed']), request_ids: z.array(z.string()),
     allowed_statuses: z.array(z.enum(['not_started', 'in_progress', 'completed'])), blocked_reason: z.string().nullable(),
+    template_key: z.string().min(1), period: z.string().nullable(),
+    completion_policy: z.enum(['intern', 'mentor', 'both']),
+    confirmations: z.array(z.object({
+      role: z.enum(['intern', 'mentor']), user_id: z.string(), confirmed_at: date,
+    })).max(2),
+    revision: z.number().int().positive(),
+    allowed_actions: z.array(z.enum(['confirm', 'revoke'])),
+    awaiting_role: z.enum(['intern', 'mentor']).nullable(),
+    instructions: z.string(),
+    resources: z.array(z.object({ title: z.string().min(1), url: z.url().nullable(), note: z.string().nullable() })),
   })),
 });
 export const documentFixtureSchema = z.object({ id: z.string(), title: z.string(), content: z.string(), updated_at: date });

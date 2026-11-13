@@ -1,0 +1,352 @@
+{
+  "confirm": {
+    "confirmed": true,
+    "revision": 1
+  },
+  "revoke": {
+    "confirmed": false,
+    "revision": 3
+  },
+  "plans": {
+    "intern": {
+      "id": "plan_demo_checkpoint",
+      "title": "План стажировки",
+      "progress_percent": 0,
+      "next_step_id": "step_demo_checkpoint",
+      "steps": [
+        {
+          "id": "step_demo_checkpoint",
+          "title": "Обсудить цели",
+          "description": "Встреча с наставником",
+          "status": "not_started",
+          "request_ids": [],
+          "allowed_statuses": [
+            "in_progress",
+            "completed"
+          ],
+          "blocked_reason": null,
+          "template_key": "discuss_goals",
+          "period": "2 неделя",
+          "completion_policy": "intern",
+          "confirmations": [],
+          "revision": 1,
+          "allowed_actions": [
+            "confirm"
+          ],
+          "awaiting_role": null,
+          "instructions": "Согласуйте цели на встрече.",
+          "resources": [
+            {
+              "title": "Шаблон целей",
+              "url": null,
+              "note": "Запросите у наставника"
+            }
+          ]
+        }
+      ]
+    },
+    "mentor": {
+      "id": "plan_demo_checkpoint",
+      "title": "План стажировки",
+      "progress_percent": 0,
+      "next_step_id": "step_demo_checkpoint",
+      "steps": [
+        {
+          "id": "step_demo_checkpoint",
+          "title": "Обсудить цели",
+          "description": "Встреча с наставником",
+          "status": "not_started",
+          "request_ids": [],
+          "allowed_statuses": [],
+          "blocked_reason": null,
+          "template_key": "discuss_goals",
+          "period": "2 неделя",
+          "completion_policy": "mentor",
+          "confirmations": [],
+          "revision": 1,
+          "allowed_actions": [
+            "confirm"
+          ],
+          "awaiting_role": null,
+          "instructions": "Согласуйте цели на встрече.",
+          "resources": [
+            {
+              "title": "Шаблон целей",
+              "url": null,
+              "note": "Запросите у наставника"
+            }
+          ]
+        }
+      ]
+    },
+    "both_0": {
+      "id": "plan_demo_checkpoint",
+      "title": "План стажировки",
+      "progress_percent": 0,
+      "next_step_id": "step_demo_checkpoint",
+      "steps": [
+        {
+          "id": "step_demo_checkpoint",
+          "title": "Обсудить цели",
+          "description": "Встреча с наставником",
+          "status": "not_started",
+          "request_ids": [],
+          "allowed_statuses": [
+            "in_progress"
+          ],
+          "blocked_reason": null,
+          "template_key": "discuss_goals",
+          "period": "2 неделя",
+          "completion_policy": "both",
+          "confirmations": [],
+          "revision": 1,
+          "allowed_actions": [
+            "confirm"
+          ],
+          "awaiting_role": null,
+          "instructions": "Согласуйте цели на встрече.",
+          "resources": [
+            {
+              "title": "Шаблон целей",
+              "url": null,
+              "note": "Запросите у наставника"
+            }
+          ]
+        }
+      ]
+    },
+    "both_1": {
+      "id": "plan_demo_checkpoint",
+      "title": "План стажировки",
+      "progress_percent": 0,
+      "next_step_id": "step_demo_checkpoint",
+      "steps": [
+        {
+          "id": "step_demo_checkpoint",
+          "title": "Обсудить цели",
+          "description": "Встреча с наставником",
+          "status": "in_progress",
+          "request_ids": [],
+          "allowed_statuses": [],
+          "blocked_reason": null,
+          "template_key": "discuss_goals",
+          "period": "2 неделя",
+          "completion_policy": "both",
+          "confirmations": [
+            {
+              "role": "intern",
+              "user_id": "intern_demo_1",
+              "confirmed_at": "2026-11-12T12:00:00Z"
+            }
+          ],
+          "revision": 2,
+          "allowed_actions": [
+            "confirm"
+          ],
+          "awaiting_role": "mentor",
+          "instructions": "Согласуйте цели на встрече.",
+          "resources": [
+            {
+              "title": "Шаблон целей",
+              "url": null,
+              "note": "Запросите у наставника"
+            }
+          ]
+        }
+      ]
+    },
+    "both_1_mentor_first": {
+      "id": "plan_demo_checkpoint",
+      "title": "План стажировки",
+      "progress_percent": 0,
+      "next_step_id": "step_demo_checkpoint",
+      "steps": [
+        {
+          "id": "step_demo_checkpoint",
+          "title": "Обсудить цели",
+          "description": "Встреча с наставником",
+          "status": "in_progress",
+          "request_ids": [],
+          "allowed_statuses": [],
+          "blocked_reason": null,
+          "template_key": "discuss_goals",
+          "period": "2 неделя",
+          "completion_policy": "both",
+          "confirmations": [
+            {
+              "role": "mentor",
+              "user_id": "mentor_demo_1",
+              "confirmed_at": "2026-11-12T12:00:00Z"
+            }
+          ],
+          "revision": 2,
+          "allowed_actions": [
+            "confirm"
+          ],
+          "awaiting_role": "intern",
+          "instructions": "Согласуйте цели на встрече.",
+          "resources": [
+            {
+              "title": "Шаблон целей",
+              "url": null,
+              "note": "Запросите у наставника"
+            }
+          ]
+        }
+      ]
+    },
+    "both_2": {
+      "id": "plan_demo_checkpoint",
+      "title": "План стажировки",
+      "progress_percent": 100,
+      "next_step_id": null,
+      "steps": [
+        {
+          "id": "step_demo_checkpoint",
+          "title": "Обсудить цели",
+          "description": "Встреча с наставником",
+          "status": "completed",
+          "request_ids": [],
+          "allowed_statuses": [],
+          "blocked_reason": null,
+          "template_key": "discuss_goals",
+          "period": "2 неделя",
+          "completion_policy": "both",
+          "confirmations": [
+            {
+              "role": "intern",
+              "user_id": "intern_demo_1",
+              "confirmed_at": "2026-11-12T12:00:00Z"
+            },
+            {
+              "role": "mentor",
+              "user_id": "mentor_demo_1",
+              "confirmed_at": "2026-11-12T12:00:00Z"
+            }
+          ],
+          "revision": 3,
+          "allowed_actions": [
+            "revoke"
+          ],
+          "awaiting_role": null,
+          "instructions": "Согласуйте цели на встрече.",
+          "resources": [
+            {
+              "title": "Шаблон целей",
+              "url": null,
+              "note": "Запросите у наставника"
+            }
+          ]
+        }
+      ]
+    },
+    "blocked": {
+      "id": "plan_demo_checkpoint",
+      "title": "План стажировки",
+      "progress_percent": 0,
+      "next_step_id": null,
+      "steps": [
+        {
+          "id": "step_demo_checkpoint",
+          "title": "Обсудить цели",
+          "description": "Встреча с наставником",
+          "status": "blocked",
+          "request_ids": [],
+          "allowed_statuses": [],
+          "blocked_reason": "Сначала завершите предыдущий шаг",
+          "template_key": "discuss_goals",
+          "period": "2 неделя",
+          "completion_policy": "both",
+          "confirmations": [
+            {
+              "role": "intern",
+              "user_id": "intern_demo_1",
+              "confirmed_at": "2026-11-12T12:00:00Z"
+            }
+          ],
+          "revision": 4,
+          "allowed_actions": [
+            "revoke"
+          ],
+          "awaiting_role": "mentor",
+          "instructions": "Согласуйте цели на встрече.",
+          "resources": [
+            {
+              "title": "Шаблон целей",
+              "url": null,
+              "note": "Запросите у наставника"
+            }
+          ]
+        }
+      ]
+    },
+    "blocked_with_both_confirmations": {
+      "id": "plan_demo_checkpoint",
+      "title": "План стажировки",
+      "progress_percent": 0,
+      "next_step_id": null,
+      "steps": [
+        {
+          "id": "step_demo_checkpoint",
+          "title": "Обсудить цели",
+          "description": "Встреча с наставником",
+          "status": "blocked",
+          "request_ids": [],
+          "allowed_statuses": [],
+          "blocked_reason": "Ожидается получение доступа",
+          "template_key": "discuss_goals",
+          "period": "2 неделя",
+          "completion_policy": "both",
+          "confirmations": [
+            {
+              "role": "intern",
+              "user_id": "intern_demo_1",
+              "confirmed_at": "2026-11-12T12:00:00Z"
+            },
+            {
+              "role": "mentor",
+              "user_id": "mentor_demo_1",
+              "confirmed_at": "2026-11-12T12:00:00Z"
+            }
+          ],
+          "revision": 4,
+          "allowed_actions": [
+            "revoke"
+          ],
+          "awaiting_role": null,
+          "instructions": "Согласуйте цели на встрече.",
+          "resources": [
+            {
+              "title": "Шаблон целей",
+              "url": null,
+              "note": "Запросите у наставника"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "errors": {
+    "revision_conflict": {
+      "error": {
+        "code": "CHECKPOINT_REVISION_CONFLICT",
+        "message": "Обновите план и проверьте доступные действия",
+        "trace_id": "checkpoint-fixture"
+      }
+    },
+    "blocked": {
+      "error": {
+        "code": "STEP_TRANSITION_FORBIDDEN",
+        "message": "Обновите план и проверьте доступные действия",
+        "trace_id": "checkpoint-fixture"
+      }
+    },
+    "wrong_policy": {
+      "error": {
+        "code": "ROLE_FORBIDDEN",
+        "message": "Обновите план и проверьте доступные действия",
+        "trace_id": "checkpoint-fixture"
+      }
+    }
+  }
+}
