@@ -3,6 +3,7 @@ import { AppShell } from './AppShell';
 import { LoginPage, RequireAuth, useMe } from '@/features/session';
 import { PlanPage } from '@/features/onboarding';
 import { ChatPage } from '@/features/chat';
+import { ResolutionDraftPage } from '@/features/resolution-drafts/ResolutionDraftPage';
 import { RoleHome, MentorGate, InternGate, MentorQuestionsPage, MentorQuestionPage, MentorDocumentsPage, MentorInternsPage, MentorInternPlanPage } from '@/features/mentor';
 
 import { HRDocumentsPage, HRQuestionPage, HRQuestionsPage } from '@/features/hr';
@@ -45,6 +46,7 @@ export const routes: RouteObject[] = [
         { index: true, element: <Navigate to="questions" replace /> },
         { path: 'questions', element: <MentorQuestionsPage /> },
         { path: 'questions/:id', element: <MentorQuestionPage /> },
+        { path: 'questions/:id/instruction', element: <ResolutionDraftPage direction="mentor" /> },
         { path: 'documents', element: <MentorDocumentsPage /> },
         { path: 'interns', element: <MentorInternsPage /> },
         { path: 'interns/:id', element: <MentorInternPlanPage /> },
@@ -53,6 +55,7 @@ export const routes: RouteObject[] = [
         { index: true, element: <Navigate to="questions" replace /> },
         { path: 'questions', element: <HRQuestionsPage /> },
         { path: 'questions/:id', element: <HRQuestionPage /> },
+        { path: 'questions/:id/instruction', element: <ResolutionDraftPage direction="hr" /> },
         { path: 'documents', element: <HRDocumentsPage /> },
       ] },
       { path: '*', element: <RoleHome /> },

@@ -90,7 +90,7 @@ function QuestionDetail({ item }: { item: RoutedQuestion }) {
       {item.document_ids.map(id => <Button key={id} variant="secondary" onClick={() => setOpenDocument(id)}>Открыть инструкцию</Button>)}
     </div>}
     {item.status === 'new' && <Button isLoading={op.pending} onClick={() => void apply('claim')}>Взять в работу</Button>}
-    {item.status === 'resolved' && <Button isLoading={op.pending} onClick={() => void apply('reopen')}>Вернуть в работу</Button>}
+    {item.status === 'resolved' && <><Button isLoading={op.pending} onClick={() => void apply('reopen')}>Вернуть в работу</Button><Link to={`/hr/questions/${encodeURIComponent(item.id)}/instruction`}>Подготовить инструкцию из решения</Link></>}
     {canAnswer && <form className={styles.form} onSubmit={event => { event.preventDefault(); void apply('answer'); }}>
       <label>Ответ стажёру<textarea required rows={5} value={response} onChange={event => setResponse(event.target.value)} /></label>
       <fieldset><legend>Инструкции к ответу</legend>
