@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Edyavna/AI-buddy/backend/internal/chat"
 	"github.com/Edyavna/AI-buddy/backend/internal/demo"
 	"github.com/Edyavna/AI-buddy/backend/internal/hrscope"
 	"github.com/Edyavna/AI-buddy/backend/internal/knowledge"
@@ -120,6 +121,18 @@ func TestPostgresHRLifecycle(t *testing.T) {
 	hrResponse[any](t, h, "GET", readPath, nil, student, 200)
 	hrResponse[any](t, h, "GET", readPath, nil, other, 404)
 	hrResponse[any](t, h, "GET", readPath, nil, mentor, 404)
+	citation := []chat.Source{{ID: "source", DocumentID: doc.ID, Title: doc.Title, Direction: "hr", Version: 1, Excerpt: "Цитата версии 1"}}
+	sources, err := json.Marshal(citation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("UPDATE chat_messages SET sources=$2,text=$3 WHERE id=$1", assistant, sources, "Ответ по версии 1"); err != nil {
+		t.Fatal(err)
+	}
+	historyPath := "/conversations/" + conversation + "/messages"
+	if messages := hrResponse[[]chat.Message](t, h, "GET", historyPath, nil, student, 200); len(messages[1].Sources) != 1 || messages[1].Text != "Ответ по версии 1" {
+		t.Fatal(messages)
+	}
 	qPath := "/hr/questions/" + q.ID
 	update := knowledgegaps.HRUpdate{ID: hrKey(12), Revision: claimed.Revision, Action: "answer", Resolution: "Следуйте инструкции", Documents: []string{doc.ID}}
 	answered := hrResponse[knowledgegaps.Question](t, h, "PATCH", qPath, update, owner, 200)
@@ -145,6 +158,9 @@ func TestPostgresHRLifecycle(t *testing.T) {
 	}
 	if current := hrResponse[map[string]any](t, h, "GET", readPath, nil, student, 200); current["content"] != docInput.Content {
 		t.Fatal(current)
+	}
+	if messages := hrResponse[[]chat.Message](t, h, "GET", historyPath, nil, student, 200); len(messages[1].Sources) != 0 || strings.Contains(messages[1].Text, "Ответ по версии 1") {
+		t.Fatal(messages)
 	}
 	hrResponse[any](t, h, "POST", docPath+"/revoke", map[string]any{"version": 2}, hr2, 200)
 	hrResponse[any](t, h, "GET", readPath, nil, student, 404)
@@ -379,4 +395,49 @@ func TestPostgresHRRejectsForbiddenTransitionsAndMalformedRequests(t *testing.T)
 	hrResponse[any](t, h, "POST", dpath+"/publish", map[string]int{"version": 7}, hr, 409)
 	hrResponse[any](t, h, "POST", "/hr/documents/bad/publish", map[string]int{"version": 1}, hr, 404)
 	hrResponse[any](t, h, "POST", dpath+"/revoke", map[string]int{"version": 1}, student, 403)
+}
+
+func TestPostgresHRDatabaseUnavailable(t *testing.T) {
+	db := testkit.Postgres(t)
+	// A closed DB reliably exercises the same service errors as losing the connection.
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	hr := identity.WithPrincipal(t.Context(), identity.Principal{UserID: "hr", TeamID: "team", Role: identity.HR})
+	intern := identity.WithPrincipal(t.Context(), identity.Principal{UserID: "intern", TeamID: "team", Role: identity.Intern})
+	anonymous := t.Context()
+	scope := hrscope.Store{DB: db}
+	questions := knowledgegaps.Store{DB: db}
+	docs := knowledge.Uploads{DB: db}
+	worker := knowledge.UploadWorker{Knowledge: &knowledge.Service{DB: db, Embedder: uploadEmbedder{}}}
+	operation := knowledgegaps.Operation{ID: hrKey(1), Revision: 1, Draft: knowledgegaps.Draft{Direction: "hr", Question: "Вопрос"}}
+	for name, check := range map[string]func() error{
+		"scope":                   func() error { _, err := scope.Current(hr); return err },
+		"scope anonymous":         func() error { _, err := scope.Current(anonymous); return err },
+		"scope list":              func() error { _, err := scope.List(hr); return err },
+		"scope set":               func() error { return scope.Set(hr, "hr", "team", true) },
+		"message":                 func() error { _, err := questions.MessageQuestions(intern, "message"); return err },
+		"message forbidden":       func() error { _, err := questions.MessageQuestions(hr, "message"); return err },
+		"draft forbidden":         func() error { _, err := questions.SaveDraft(hr, "message", operation.Draft); return err },
+		"create forbidden":        func() error { _, err := questions.Create(hr, "message", operation); return err },
+		"reroute forbidden":       func() error { _, err := questions.Reroute(hr, "question", operation); return err },
+		"history forbidden":       func() error { _, err := questions.History(hr, "question"); return err },
+		"queue":                   func() error { _, err := questions.HRList(hr, "", "", ""); return err },
+		"queue filtered":          func() error { _, err := questions.HRList(hr, "team", "", ""); return err },
+		"question":                func() error { _, err := questions.HRGet(hr, "question"); return err },
+		"patch forbidden":         func() error { _, err := questions.HRPatch(intern, "question", knowledgegaps.HRUpdate{}); return err },
+		"document list":           func() error { _, err := docs.HRList(hr); return err },
+		"document get":            func() error { _, err := docs.HRGet(hr, hrKey(2)); return err },
+		"document get forbidden":  func() error { _, err := docs.HRGet(intern, hrKey(2)); return err },
+		"document save forbidden": func() error { _, err := docs.HRSave(intern, "", knowledge.HRDocumentInput{}); return err },
+		"worker":                  func() error { _, err := worker.RunOne(hr); return err },
+		"recovery":                func() error { return worker.Recover(hr) },
+		"search":                  func() error { _, err := worker.Knowledge.SearchDirection(intern, "вопрос", "hr"); return err },
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := check(); err == nil {
+				t.Fatal("expected denial or unavailable database")
+			}
+		})
+	}
 }
