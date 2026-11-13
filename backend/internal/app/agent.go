@@ -23,11 +23,11 @@ func demoDependencies(db *sql.DB, provider *integrations.Provider, ai *config.AI
 	}}
 	requests := accessrequests.Store{DB: db}
 	deps.Knowledge, deps.Requests = k, requests
-	deps.Agent = &agent.Agent{
-		Model: &agent.DeepSeek{
-			Client: providerhttp.Client{BaseURL: ai.ModelBaseURL, Key: ai.ModelKey},
-			Model:  ai.ModelName,
-		},
+	model := &agent.DeepSeek{
+		Client: providerhttp.Client{BaseURL: ai.ModelBaseURL, Key: ai.ModelKey},
+		Model:  ai.ModelName,
+	}
+	deps.Agent = &agent.Agent{Model: model, Classifier: model,
 		Knowledge: k, Tasks: provider, Access: provider,
 		Checkpoints: onboarding.SQLStore{DB: db},
 		Drafts:      drafts.New(requests), Requests: requests,

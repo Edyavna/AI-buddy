@@ -17,6 +17,10 @@ type UploadWorker struct{ Knowledge *Service }
 func (w UploadWorker) Recover(ctx context.Context) error {
 	_, err := w.Knowledge.DB.ExecContext(ctx, `UPDATE mentor_documents SET claim=NULL, lease_until=NULL
 		WHERE status='processing' AND claim IS NOT NULL`)
+	if err != nil {
+		return err
+	}
+	_, err = w.Knowledge.DB.ExecContext(ctx, `UPDATE hr_document_versions SET claim=NULL,lease_until=NULL WHERE status='indexing' AND claim IS NOT NULL`)
 	return err
 }
 
@@ -38,6 +42,9 @@ func (w UploadWorker) Run(ctx context.Context, logger *slog.Logger) {
 }
 
 func (w UploadWorker) RunOne(ctx context.Context) (bool, error) {
+	if processed, err := w.runHR(ctx); processed || err != nil {
+		return processed, err
+	}
 	var d Document
 	var claim string
 	err := w.Knowledge.DB.QueryRowContext(ctx, `UPDATE mentor_documents d SET

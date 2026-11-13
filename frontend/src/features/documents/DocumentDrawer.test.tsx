@@ -53,8 +53,8 @@ it.each([401, 403, 404])('hides cached document title and content after reopenin
   allowed = false;
   fireEvent.click(screen.getByRole('button', { name: 'Открыть источник' }));
   expect(await screen.findByRole('alert')).toHaveTextContent('Документ недоступен');
-  // React Query deliberately retains old data after a refetch error.
-  expect(queryClient.getQueryData(['documents', cachedDocument.id])).toEqual(cachedDocument);
+  // Denial discards the cached text so a later service error cannot restore it.
+  expect(queryClient.getQueryData(['documents', cachedDocument.id])).toBeNull();
   expect(screen.queryByText(cachedDocument.content)).not.toBeInTheDocument();
   expect(screen.queryByText(cachedDocument.title)).not.toBeInTheDocument();
   expect(screen.getByRole('dialog')).toHaveAccessibleName('Источник ответа');

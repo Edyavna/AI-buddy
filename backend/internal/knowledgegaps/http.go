@@ -12,6 +12,7 @@ import (
 type Handler struct{ Store Store }
 
 func (h Handler) Register(mux *http.ServeMux, session auth.Handler) {
+	h.registerRouting(mux, session)
 	mux.Handle("GET /api/v1/messages/{id}/knowledge-gap", session.Require(http.HandlerFunc(h.intern), true))
 	mux.Handle("POST /api/v1/messages/{id}/knowledge-gap", session.Require(http.HandlerFunc(h.intern), true))
 	mux.Handle("GET /api/v1/mentor/questions", session.Require(http.HandlerFunc(h.list), false))
@@ -80,6 +81,12 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		result = &httpapi.Error{Status: 403, Code: "ROLE_FORBIDDEN", Message: "Действие недоступно для этой роли"}
 	case errors.Is(err, ports.ErrMentorUnassigned):
 		result = &httpapi.Error{Status: 409, Code: "MENTOR_UNASSIGNED", Message: "Стажёру ещё не назначен наставник"}
+	case errors.Is(err, ErrHRUnassigned):
+		result = &httpapi.Error{Status: 409, Code: "HR_UNASSIGNED", Message: "Для команды пока не назначен HR. Черновик можно отправить позже."}
+	case errors.Is(err, ErrClaimed):
+		result = &httpapi.Error{Status: 409, Code: "QUESTION_CLAIMED", Message: "Обращение уже взял другой HR"}
+	case errors.Is(err, ports.ErrConflict):
+		result = &httpapi.Error{Status: 409, Code: "IDEMPOTENCY_CONFLICT", Message: "Обращение или операция уже существуют"}
 	case errors.Is(err, ErrChanged):
 		result = &httpapi.Error{Status: 409, Code: "QUESTION_CHANGED", Message: "Вопрос уже изменился"}
 	case errors.Is(err, ErrDocument):
