@@ -20,6 +20,9 @@ def check(schema, value):
 
 f = json.loads((ROOT / 'contracts/examples/scenario.json').read_text(encoding='utf-8'))
 resolution = json.loads((ROOT / 'contracts/examples/resolution-drafts.json').read_text(encoding='utf-8'))
+groups = json.loads((ROOT / 'contracts/examples/question-groups.json').read_text(encoding='utf-8'))
+for key, schema in [('group', 'QuestionGroup'), ('workspace', 'GroupWorkspace'), ('save', 'SaveQuestionGroup'), ('action', 'GroupAction')]:
+    check(schema, groups[key])
 for key, schema in [('save', 'SaveResolutionDraft'), ('workspace', 'ResolutionWorkspace'), ('empty', 'ResolutionWorkspace'), ('publish', 'PublishResolutionDraft')]:
     check(schema, resolution[key])
 mapping = {'user':'User', 'create_conversation':'CreateConversation', 'conversation':'Conversation',

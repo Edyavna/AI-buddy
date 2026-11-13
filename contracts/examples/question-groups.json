@@ -1,0 +1,99 @@
+{
+  "group": {
+    "id": "87654321-1234-4321-9876-000000005800",
+    "author_id": "mentor_demo_1",
+    "direction": "mentor",
+    "team_id": "team_demo_backend",
+    "title": "Общее решение",
+    "resolution": "Проверьте настройки",
+    "revision": 1,
+    "published_at": null,
+    "members": [
+      {
+        "id": "87654321-1234-4321-9876-000000000001",
+        "question": {
+          "id": "87654321-1234-4321-9876-000000000001",
+          "team_id": "team_demo_backend",
+          "question": "Как настроить сервис?",
+          "student_id": "intern_demo_1",
+          "student_name": "Стажёр",
+          "step_id": null,
+          "revision": 1,
+          "status": "in_progress",
+          "created_at": "2026-11-13T12:00:00Z"
+        },
+        "status": "pending",
+        "error": null
+      }
+    ],
+    "history": [],
+    "draft": null,
+    "delivered_count": 0,
+    "repeat_count": 0,
+    "repeat_count_limited": false
+  },
+  "workspace": {
+    "groups": [
+      {
+        "id": "87654321-1234-4321-9876-000000005800",
+        "author_id": "mentor_demo_1",
+        "direction": "mentor",
+        "team_id": "team_demo_backend",
+        "title": "Общее решение",
+        "resolution": "Проверьте настройки",
+        "revision": 1,
+        "published_at": null,
+        "members": [
+          {
+            "id": "87654321-1234-4321-9876-000000000001",
+            "question": {
+              "id": "87654321-1234-4321-9876-000000000001",
+              "team_id": "team_demo_backend",
+              "question": "Как настроить сервис?",
+              "student_id": "intern_demo_1",
+              "student_name": "Стажёр",
+              "step_id": null,
+              "revision": 1,
+              "status": "in_progress",
+              "created_at": "2026-11-13T12:00:00Z"
+            },
+            "status": "pending",
+            "error": null
+          }
+        ],
+        "history": [],
+        "draft": null,
+        "delivered_count": 0,
+        "repeat_count": 0,
+        "repeat_count_limited": false
+      }
+    ],
+    "candidates": [
+      {
+        "id": "87654321-1234-4321-9876-000000000001",
+        "team_id": "team_demo_backend",
+        "question": "Как настроить сервис?",
+        "student_id": "intern_demo_1",
+        "student_name": "Стажёр",
+        "step_id": null,
+        "revision": 1,
+        "status": "in_progress",
+        "created_at": "2026-11-13T12:00:00Z"
+      }
+    ],
+    "suggestions": [],
+    "limited": false
+  },
+  "save": {
+    "operation_id": "87654321-1234-4321-9876-000000005800",
+    "revision": 0,
+    "title": "Общее решение",
+    "resolution": "Проверьте настройки",
+    "question_ids": [
+      "87654321-1234-4321-9876-000000000001"
+    ]
+  },
+  "action": {
+    "revision": 1
+  }
+}

@@ -78,6 +78,7 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 			reviewprep.Handler{Store: reviews}.Register(mux, session)
 			uploads.Register(mux, session)
 			uploads.RegisterResolutions(mux, session, deps.ResolutionGenerator)
+			uploads.RegisterGroups(mux, session)
 			requests.Register(mux, session)
 			mux.Handle("GET /api/v1/documents/{document_id}", session.Require(knowledge.Handler(deps.Knowledge), false))
 			conversations.Register(mux, session)
