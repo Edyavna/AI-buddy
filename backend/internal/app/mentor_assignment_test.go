@@ -38,9 +38,8 @@ func newAssignmentFixture(t *testing.T) assignmentFixture {
 	if err := demo.Seed(t.Context(), db, true); err != nil {
 		t.Fatal(err)
 	}
-	// #44 owns shared demo seed. #43 deliberately uses isolated test data.
+	// Keep a second candidate without a plan to exercise assignment independently of seed.
 	if _, err := db.Exec(`INSERT INTO users(id,name,team_id,role,demo_account) VALUES
- ('intern_demo_unassigned','Свободный стажёр','team_demo_backend','intern',true),
  ('intern_free_second','Свободный стажёр','team_demo_backend','intern',true)`); err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +121,7 @@ func TestPostgresMentorAssignmentLifecycle(t *testing.T) {
 	for _, i := range list.Items {
 		if i.ID == freeIntern {
 			found = true
-			if i.TotalSteps != 0 || i.ProgressPercent != 0 || i.NextStepID != nil {
+			if i.TotalSteps != 16 || i.ProgressPercent != 0 || i.NextStepID == nil {
 				t.Fatal(i)
 			}
 		}
@@ -130,11 +129,7 @@ func TestPostgresMentorAssignmentLifecycle(t *testing.T) {
 	if !found {
 		t.Fatal("assignment missing from list", list)
 	}
-	apiRequest(t, f.h, "GET", "/api/v1/mentor/interns/"+freeIntern+"/plan", "", f.first, 404)
-	var plans int
-	if err := f.db.QueryRow(`SELECT count(*) FROM onboarding_plans WHERE user_id=$1`, freeIntern).Scan(&plans); err != nil || plans != 0 {
-		t.Fatal("assignment created a plan", plans, err)
-	}
+	apiRequest(t, f.h, "GET", "/api/v1/mentor/interns/"+freeIntern+"/plan", "", f.first, 200)
 	repeat := assignHTTP(t.Context(), f.h, freeIntern, "", f.first, "http://localhost:5173")
 	assertAssignmentStatus(t, repeat, 200, "")
 	if repeat.Body.String() != response.Body.String() {
@@ -150,10 +145,12 @@ func TestPostgresMentorAssignmentLifecycle(t *testing.T) {
 		t.Fatal(left)
 	}
 	// A plan added independently later becomes available without re-assignment.
-	if _, err := f.db.Exec(`INSERT INTO onboarding_plans(id,user_id,team_id,title) VALUES('plan_demo_unassigned',$1,'team_demo_backend','План')`, freeIntern); err != nil {
+	const secondPlan = "/api/v1/mentor/interns/intern_free_second/plan"
+	apiRequest(t, f.h, "GET", secondPlan, "", f.first, 404)
+	if _, err := f.db.Exec(`INSERT INTO onboarding_plans(id,user_id,team_id,title) VALUES('plan_demo_second','intern_free_second','team_demo_backend','План')`); err != nil {
 		t.Fatal(err)
 	}
-	apiRequest(t, f.h, "GET", "/api/v1/mentor/interns/"+freeIntern+"/plan", "", f.first, 200)
+	apiRequest(t, f.h, "GET", secondPlan, "", f.first, 200)
 }
 
 func TestPostgresMentorAssignmentRejectsUnauthorizedAndBody(t *testing.T) {

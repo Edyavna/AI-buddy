@@ -57,12 +57,12 @@ func TestPostgresCheckpointPoliciesAndRecovery(t *testing.T) {
 	}
 	if _, err := db.Exec(`
 INSERT INTO onboarding_steps(id,plan_id,position,title,description,status,completion_policy,template_key,period,instructions,resources)
-VALUES ('step_intern','plan_demo_1',1,'Стажёр','Описание','not_started','intern','intern_task','1 неделя','Инструкция',
+VALUES ('step_intern','plan_demo_1',101,'Стажёр','Описание','not_started','intern','intern_task','1 неделя','Инструкция',
         '[{"title":"Шаблон","url":null,"note":"У наставника"}]'),
-       ('step_mentor','plan_demo_1',2,'Наставник','','not_started','mentor',NULL,NULL,NULL,'[]'),
-       ('step_both','plan_demo_1',3,'Вместе','','not_started','both',NULL,NULL,NULL,'[]'),
-       ('step_both_reverse','plan_demo_1',4,'Вместе','','not_started','both',NULL,NULL,NULL,'[]'),
-       ('step_dependent','plan_demo_1',5,'После обоих','','not_started','both',NULL,NULL,NULL,'[]');
+       ('step_mentor','plan_demo_1',102,'Наставник','','not_started','mentor',NULL,NULL,NULL,'[]'),
+       ('step_both','plan_demo_1',103,'Вместе','','not_started','both',NULL,NULL,NULL,'[]'),
+       ('step_both_reverse','plan_demo_1',104,'Вместе','','not_started','both',NULL,NULL,NULL,'[]'),
+       ('step_dependent','plan_demo_1',105,'После обоих','','not_started','both',NULL,NULL,NULL,'[]');
 INSERT INTO onboarding_step_dependencies(plan_id,step_id,prerequisite_id)
 VALUES ('plan_demo_1','step_dependent','step_both');`); err != nil {
 		t.Fatal(err)
@@ -137,7 +137,7 @@ VALUES ('plan_demo_1','step_dependent','step_both');`); err != nil {
 
 	plan = set(intern, "step_intern", true, initial.Revision)
 	internMark := checkpointStep(t, plan, "step_intern")
-	if plan.ProgressPercent != 16 || internMark.Status != "completed" || len(internMark.Confirmations) != 1 ||
+	if plan.ProgressPercent != 4 || internMark.Status != "completed" || len(internMark.Confirmations) != 1 ||
 		internMark.Confirmations[0].UserID != "intern_demo_1" || internMark.Confirmations[0].Role != identity.Intern ||
 		internMark.Confirmations[0].ConfirmedAt.IsZero() || internMark.Confirmations[0].ConfirmedAt.Location().String() != "UTC" {
 		t.Fatal(plan)
@@ -152,7 +152,7 @@ VALUES ('plan_demo_1','step_dependent','step_both');`); err != nil {
 		t.Fatal(plan)
 	}
 	plan = set(assigned, "step_mentor", true, plan.Steps[0].Revision)
-	if step := checkpointStep(t, plan, "step_mentor"); step.Status != "completed" || plan.ProgressPercent != 16 ||
+	if step := checkpointStep(t, plan, "step_mentor"); step.Status != "completed" || plan.ProgressPercent != 4 ||
 		len(step.Confirmations) != 1 || step.Confirmations[0].UserID != "mentor_demo_1" {
 		t.Fatal(plan)
 	}
@@ -163,8 +163,8 @@ VALUES ('plan_demo_1','step_dependent','step_both');`); err != nil {
 		awaiting                           identity.Role
 		partialProgress, completedProgress int
 	}{
-		{"step_both", intern, assigned, identity.Mentor, 16, 33},
-		{"step_both_reverse", assigned, intern, identity.Intern, 33, 50},
+		{"step_both", intern, assigned, identity.Mentor, 4, 9},
+		{"step_both_reverse", assigned, intern, identity.Intern, 9, 13},
 	} {
 		plan = set(tc.first, tc.id, true, plan.Steps[0].Revision)
 		partial := checkpointStep(t, plan, tc.id)
@@ -192,7 +192,7 @@ VALUES ('plan_demo_1','step_dependent','step_both');`); err != nil {
 	both := checkpointStep(t, plan, "step_both")
 	plan = set(intern, "step_both", false, both.Revision)
 	revoked := checkpointStep(t, plan, "step_both")
-	if plan.ProgressPercent != 50 || revoked.Status != "in_progress" || revoked.AwaitingRole == nil ||
+	if plan.ProgressPercent != 13 || revoked.Status != "in_progress" || revoked.AwaitingRole == nil ||
 		*revoked.AwaitingRole != identity.Intern || !reflect.DeepEqual(revoked.Confirmations, both.Confirmations[1:]) {
 		t.Fatal(plan)
 	}
@@ -215,7 +215,7 @@ VALUES ('plan_demo_1','step_dependent','step_both');`); err != nil {
 	}
 	h = requestHandler(db, Dependencies{})
 	mentorPlan, internPlan := get(assigned), get(intern)
-	if mentorPlan.ProgressPercent != 33 || internPlan.ProgressPercent != mentorPlan.ProgressPercent ||
+	if mentorPlan.ProgressPercent != 9 || internPlan.ProgressPercent != mentorPlan.ProgressPercent ||
 		!reflect.DeepEqual(internPlan.NextStepID, mentorPlan.NextStepID) ||
 		!reflect.DeepEqual(checkpointStep(t, internPlan, "step_both").Confirmations, revoked.Confirmations) {
 		t.Fatal(internPlan, mentorPlan)
@@ -232,7 +232,7 @@ VALUES ('plan_demo_1','step_dependent','step_both');`); err != nil {
 	}
 	summary := list.Items[0]
 	if summary.ProgressPercent != internPlan.ProgressPercent || summary.CompletedSteps != 2 ||
-		summary.BlockedSteps != 1 || summary.TotalSteps != 6 || !reflect.DeepEqual(summary.NextStepID, internPlan.NextStepID) {
+		summary.BlockedSteps != 1 || summary.TotalSteps != 22 || !reflect.DeepEqual(summary.NextStepID, internPlan.NextStepID) {
 		t.Fatal(summary)
 	}
 }
@@ -244,7 +244,7 @@ func TestPostgresConcurrentCheckpointConfirmations(t *testing.T) {
 	}
 	if _, err := db.Exec(`
 INSERT INTO onboarding_steps(id,plan_id,position,title,description,status,completion_policy)
-VALUES ('step_concurrent','plan_demo_1',1,'Вместе','','not_started','both')`); err != nil {
+VALUES ('step_concurrent','plan_demo_1',101,'Вместе','','not_started','both')`); err != nil {
 		t.Fatal(err)
 	}
 	h := requestHandler(db, Dependencies{})

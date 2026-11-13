@@ -37,7 +37,7 @@ func TestPostgresMentorAssignmentAndReadOnlyPlan(t *testing.T) {
 	if _, err := db.Exec(`UPDATE onboarding_steps SET status='completed' WHERE id='step_local_setup';
 INSERT INTO onboarding_step_confirmations(step_id,role,user_id) VALUES ('step_local_setup','intern','intern_demo_1');
 INSERT INTO onboarding_steps(id,plan_id,position,title,description,status,blocked_reason) VALUES
-('step_blocked','plan_demo_1',1,'Заблокированный шаг','Демо','blocked','Нужен доступ')`); err != nil {
+('step_blocked','plan_demo_1',100,'Заблокированный шаг','Демо','blocked','Нужен доступ')`); err != nil {
 		t.Fatal(err)
 	}
 	h := requestHandler(db, Dependencies{})
@@ -61,8 +61,8 @@ INSERT INTO onboarding_steps(id,plan_id,position,title,description,status,blocke
 		t.Fatal(err, w.Body.String())
 	}
 	got := list.Items[0]
-	if got.ID != testkit.UserID || got.ProgressPercent != 50 || got.CompletedSteps != 1 ||
-		got.BlockedSteps != 1 || got.TotalSteps != 2 || got.NextStepID != nil || got.OpenQuestions == nil || *got.OpenQuestions != 0 {
+	if got.ID != testkit.UserID || got.ProgressPercent != 5 || got.CompletedSteps != 1 ||
+		got.BlockedSteps != 1 || got.TotalSteps != 18 || got.NextStepID == nil || *got.NextStepID != "plan_demo_1:team-setup" || got.OpenQuestions == nil || *got.OpenQuestions != 0 {
 		t.Fatal(got)
 	}
 

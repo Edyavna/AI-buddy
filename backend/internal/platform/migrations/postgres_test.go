@@ -72,11 +72,12 @@ func TestPostgresUpgradePreservesCheckpointProgress(t *testing.T) {
 	if err := migrations.Apply(ctx, db, migrationsThrough(t, "000011_mentor_documents.sql")); err != nil {
 		t.Fatal(err)
 	}
-	if err := demo.Seed(ctx, db, true); err != nil {
-		t.Fatal(err)
-	}
 	if _, err := db.Exec(`
-UPDATE onboarding_steps SET status='completed' WHERE id='step_local_setup';
+INSERT INTO teams(id,name) VALUES ('team_demo_backend','Backend');
+INSERT INTO users(id,team_id,name,role,demo_account) VALUES ('intern_demo_1','team_demo_backend','Стажёр','intern',true);
+INSERT INTO onboarding_plans(id,user_id,team_id,title) VALUES ('plan_demo_1','intern_demo_1','team_demo_backend','План');
+INSERT INTO onboarding_steps(id,plan_id,position,title,description,status,resource_id,permission)
+VALUES ('step_local_setup','plan_demo_1',0,'Запустить проект','','completed','repo_demo_backend','read');
 INSERT INTO onboarding_steps(id,plan_id,position,title,description,status,blocked_reason)
 VALUES ('blocked','plan_demo_1',1,'Запрос доступа','','blocked','Ожидается доступ');
 INSERT INTO conversations(id,user_id,team_id,client_conversation_id,step_id,title)

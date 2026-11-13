@@ -120,6 +120,17 @@ func (r Record) canConfirm(completed map[string]bool) bool {
 	return r.Status != "blocked" && prerequisitesMet(r.Prerequisites, completed)
 }
 
+func (r Record) effectiveStatus(completed map[string]bool) (string, *string) {
+	if r.Status == "blocked" {
+		return r.Status, r.BlockedReason
+	}
+	if r.Status != "completed" && !prerequisitesMet(r.Prerequisites, completed) {
+		reason := "Сначала завершите предыдущий шаг"
+		return "blocked", &reason
+	}
+	return r.Status, nil
+}
+
 func prerequisitesMet(ids []string, completed map[string]bool) bool {
 	for _, id := range ids {
 		if !completed[id] {
@@ -163,10 +174,7 @@ func project(snapshot Snapshot, grants map[ports.AccessCheck]bool, actor identit
 			step.AwaitingRole = &waiting
 		}
 		canConfirm := r.canConfirm(completed) && (r.Requirement == nil || grants[*r.Requirement])
-		if step.Status != "completed" && step.Status != "blocked" && !prerequisitesMet(r.Prerequisites, completed) {
-			reason := "Сначала завершите предыдущий шаг"
-			step.Status, step.BlockedReason = "blocked", &reason
-		}
+		step.Status, step.BlockedReason = r.effectiveStatus(completed)
 		if (actor.Role == identity.Intern || actor.Role == identity.Mentor) && step.requires(actor.Role) {
 			switch author := step.confirmedBy(actor.Role); {
 			case author != "" && author == actor.UserID:
@@ -174,9 +182,6 @@ func project(snapshot Snapshot, grants map[ports.AccessCheck]bool, actor identit
 			case author == "" && canConfirm:
 				step.AllowedActions = append(step.AllowedActions, "confirm")
 			}
-		}
-		if step.Status != "blocked" {
-			step.BlockedReason = nil
 		}
 		step.AllowedStatuses = legacyStatuses(step, actor, canConfirm)
 		if step.Status == "completed" {

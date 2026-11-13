@@ -8,6 +8,7 @@ import (
 	"github.com/Edyavna/AI-buddy/backend/internal/drafts"
 	"github.com/Edyavna/AI-buddy/backend/internal/integrations"
 	"github.com/Edyavna/AI-buddy/backend/internal/knowledge"
+	"github.com/Edyavna/AI-buddy/backend/internal/onboarding"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/config"
 	"github.com/Edyavna/AI-buddy/backend/internal/providerhttp"
 )
@@ -28,7 +29,8 @@ func demoDependencies(db *sql.DB, provider *integrations.Provider, ai *config.AI
 			Model:  ai.ModelName,
 		},
 		Knowledge: k, Tasks: provider, Access: provider,
-		Drafts: drafts.New(requests), Requests: requests,
+		Checkpoints: onboarding.SQLStore{DB: db},
+		Drafts:      drafts.New(requests), Requests: requests,
 	}
 	return deps
 }
