@@ -264,3 +264,59 @@ func TestPostgresHRRevocationDuringIndexing(t *testing.T) {
 	}
 	hrResponse[any](t, h, "GET", "/documents/"+doc.ID, nil, student, 200)
 }
+
+func TestPostgresHRRevokedSpecialistReleasesClaimAndRerouteKeepsPrivateHistory(t *testing.T) {
+	db := testkit.Postgres(t)
+	_, student, conversation := prepareDraft(t, db)
+	h := requestHandler(db, Dependencies{})
+	hr1 := loginCookie(t, h, "hr_demo_1", nil)
+	hr2 := loginCookie(t, h, "hr_demo_2", nil)
+	mentor := loginCookie(t, h, "mentor_demo_1", nil)
+	var assistant string
+	if err := db.QueryRow("SELECT id FROM chat_messages WHERE conversation_id=$1 AND role='assistant'", conversation).Scan(&assistant); err != nil {
+		t.Fatal(err)
+	}
+	path := "/messages/" + assistant + "/questions"
+	op := knowledgegaps.Operation{ID: hrKey(1), Draft: knowledgegaps.Draft{Direction: "hr", Question: "Отпуск по семейной причине", Context: "Личный контекст"}}
+	hrResponse[any](t, h, "POST", path, map[string]string{"direction": "hr", "team_id": "team_demo_frontend"}, student, 422)
+	hrResponse[any](t, h, "POST", path, knowledgegaps.Operation{ID: "invalid", Draft: op.Draft}, student, 422)
+	q := hrResponse[knowledgegaps.Question](t, h, "POST", path, op, student, 200)
+	op.Question = "Другая версия"
+	hrResponse[any](t, h, "POST", path, op, student, 409)
+	hrPath := "/hr/questions/" + q.ID
+	first := knowledgegaps.HRUpdate{ID: hrKey(2), Action: "claim", Revision: 1}
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", hrPath, first, hr1, 200)
+	replayed := hrResponse[knowledgegaps.Question](t, h, "PATCH", hrPath, first, hr1, 200)
+	if replayed.Revision != q.Revision || replayed.AppliedRevision == nil || *replayed.AppliedRevision != q.Revision {
+		t.Fatal(replayed)
+	}
+	hrResponse[any](t, h, "PATCH", hrPath, knowledgegaps.HRUpdate{ID: hrKey(3), Action: "claim", Revision: 1}, hr2, 409)
+	hrResponse[any](t, h, "PATCH", hrPath, knowledgegaps.HRUpdate{ID: hrKey(4), Action: "resolve", Revision: q.Revision}, hr1, 422)
+	hrResponse[any](t, h, "PATCH", hrPath, knowledgegaps.HRUpdate{ID: hrKey(5), Action: "reopen", Revision: q.Revision}, hr1, 409)
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", hrPath, knowledgegaps.HRUpdate{ID: hrKey(6), Action: "answer", Revision: q.Revision, Resolution: "Приватный ответ HR"}, hr1, 200)
+	if err := (hrscope.Store{DB: db}).Set(t.Context(), "hr_demo_1", "team_demo_backend", false); err != nil {
+		t.Fatal(err)
+	}
+	hrResponse[any](t, h, "GET", hrPath, nil, hr1, 404)
+	hrResponse[any](t, h, "PATCH", hrPath, first, hr1, 404)
+	q = hrResponse[knowledgegaps.Question](t, h, "GET", hrPath, nil, hr2, 200)
+	if q.SpecialistID != nil || q.State != "new" {
+		t.Fatal(q)
+	}
+	revision := q.Revision
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", hrPath, knowledgegaps.HRUpdate{ID: hrKey(7), Action: "claim", Revision: revision}, hr2, 200)
+	transfer := knowledgegaps.Operation{ID: hrKey(8), Revision: revision, Draft: knowledgegaps.Draft{Direction: "mentor", Question: "Помогите с первым PR", Context: "Новый контекст"}}
+	hrResponse[any](t, h, "POST", "/questions/"+q.ID+"/reroute", transfer, student, 409)
+	transfer.Revision = q.Revision
+	hrResponse[any](t, h, "POST", "/questions/"+q.ID+"/reroute", transfer, student, 200)
+	body := apiRequest(t, h, "GET", "/api/v1/mentor/questions/"+q.ID, "", mentor, 200).Body.String()
+	for _, secret := range []string{"Личный контекст", "Приватный ответ HR", "семейной причине"} {
+		if strings.Contains(body, secret) {
+			t.Fatal("prior route leaked:", body)
+		}
+	}
+	if !strings.Contains(body, "Новый контекст") {
+		t.Fatal(body)
+	}
+	hrResponse[any](t, h, "GET", hrPath, nil, hr2, 404)
+}
