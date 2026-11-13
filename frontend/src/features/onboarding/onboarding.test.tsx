@@ -27,6 +27,28 @@ describe('onboarding plan (#4)', () => {
     expect(screen.getByText('Прогресс: 0%')).toBeInTheDocument();
   });
 
+  it('switches one visible step with arrows and status dots', async () => {
+    const user = userEvent.setup();
+    renderPlan();
+
+    expect(await screen.findByRole('heading', { name: 'Запустить проект' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Предыдущий шаг' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: /^Шаг 1:/ })).toHaveAttribute('aria-current', 'step');
+
+    await user.click(screen.getByRole('button', { name: 'Следующий шаг' }));
+    expect(screen.getByRole('heading', { name: 'Организационные моменты' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Запустить проект' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /^Шаг 2:/ })).toHaveAttribute('aria-current', 'step');
+    expect(screen.getByRole('button', { name: 'Предыдущий шаг' })).toBeEnabled();
+
+    await user.click(screen.getByRole('button', { name: /^Шаг 1:/ }));
+    expect(screen.getByRole('heading', { name: 'Запустить проект' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Предыдущий шаг' })).toBeDisabled();
+
+    await user.click(screen.getByRole('button', { name: 'Следующий шаг' }));
+    expect(screen.getByRole('heading', { name: 'Организационные моменты' })).toBeInTheDocument();
+  });
+
   it('links "Спросить помощника" to /chat with the stepId query param', async () => {
     renderPlan();
     const ask = await screen.findByRole('link', { name: 'Спросить помощника о шаге: Запустить проект' });

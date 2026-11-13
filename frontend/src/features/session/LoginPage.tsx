@@ -7,7 +7,7 @@ import styles from './LoginPage.module.css';
 
 const ROLE_LABEL: Record<User['role'], string> = {
   intern: 'Стажёр',
-  mentor: 'Наставник',
+  mentor: 'Наставник', hr: 'HR',
 };
 
 function initialsOf(name: string): string {

@@ -1,0 +1,143 @@
+{
+  "users": [
+    {
+      "id": "intern_demo_1",
+      "name": "Стажёр",
+      "role": "intern",
+      "team": {
+        "id": "team_demo_backend",
+        "name": "Backend"
+      }
+    },
+    {
+      "id": "mentor_demo_1",
+      "name": "Наставник",
+      "role": "mentor",
+      "team": {
+        "id": "team_demo_backend",
+        "name": "Backend"
+      }
+    },
+    {
+      "id": "hr_demo_1",
+      "name": "Анна",
+      "role": "hr",
+      "team": {
+        "id": "team_demo_backend",
+        "name": "Backend"
+      }
+    },
+    {
+      "id": "hr_demo_2",
+      "name": "Денис",
+      "role": "hr",
+      "team": {
+        "id": "team_demo_backend",
+        "name": "Backend"
+      }
+    },
+    {
+      "id": "intern_demo_no_hr",
+      "name": "Стажёр без HR",
+      "role": "intern",
+      "team": {
+        "id": "team_demo_no_hr",
+        "name": "Команда без HR"
+      }
+    }
+  ],
+  "scopes": {
+    "hr_demo_1": {
+      "version": "3",
+      "teams": [
+        {
+          "id": "team_demo_backend",
+          "name": "Backend"
+        },
+        {
+          "id": "team_demo_frontend",
+          "name": "Frontend"
+        }
+      ]
+    },
+    "hr_demo_2": {
+      "version": "3",
+      "teams": [
+        {
+          "id": "team_demo_backend",
+          "name": "Backend"
+        }
+      ]
+    }
+  },
+  "routing": {
+    "direction": "hr",
+    "reason": "Вопрос об отпуске",
+    "clarification": null,
+    "split": false
+  },
+  "question": {
+    "id": "87654321-1234-4321-9876-000000000001",
+    "message_id": "assistant_message",
+    "team_id": "team_demo_backend",
+    "student": {
+      "id": "intern_demo_1",
+      "name": "Стажёр"
+    },
+    "direction": "hr",
+    "original_direction": "hr",
+    "status": "new",
+    "specialist_id": null,
+    "step_id": null,
+    "revision": 1,
+    "question": "Как оформить отпуск?",
+    "context_excerpt": "Вопрос о порядке оформления.",
+    "resolution": null,
+    "document_ids": [],
+    "routing": {
+      "direction": "hr",
+      "reason": "Вопрос об отпуске",
+      "clarification": null,
+      "split": false
+    },
+    "created_at": "2026-11-13T07:50:00Z",
+    "updated_at": "2026-11-13T07:50:00Z",
+    "applied_revision": null
+  },
+  "no_hr": {
+    "items": [],
+    "drafts": [
+      {
+        "direction": "hr",
+        "question": "Как оформить отпуск?",
+        "context_excerpt": ""
+      }
+    ],
+    "available_directions": [],
+    "question": "Как оформить отпуск?",
+    "routing": null
+  },
+  "document": {
+    "id": "87654321-1234-4321-9876-000000000002",
+    "author_id": "hr_demo_1",
+    "direction": "hr",
+    "title": "Порядок отпуска",
+    "content": "# Отпуск",
+    "team_ids": [
+      "team_demo_backend"
+    ],
+    "version": 1,
+    "published_version": null,
+    "revoked": false,
+    "status": "draft",
+    "error": null,
+    "updated_at": "2026-11-13T07:50:00Z"
+  },
+  "foreign": {
+    "error": {
+      "code": "NOT_FOUND",
+      "message": "Объект не найден",
+      "trace_id": "example"
+    }
+  }
+}
