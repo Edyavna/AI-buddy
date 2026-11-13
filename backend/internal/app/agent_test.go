@@ -149,7 +149,7 @@ func agentProviderFixture(w http.ResponseWriter, r *http.Request) {
 			Model    string            `json:"model"`
 			Messages []agent.Message   `json:"messages"`
 			Format   map[string]string `json:"response_format"`
-			Tools []json.RawMessage `json:"tools"`
+			Tools    []json.RawMessage `json:"tools"`
 		}
 		if json.NewDecoder(r.Body).Decode(&input) != nil || input.Model != "test-model" {
 			w.WriteHeader(http.StatusBadRequest)
