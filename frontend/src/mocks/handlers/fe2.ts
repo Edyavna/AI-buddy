@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { createScenario } from '../fixtures/scenario';
 import { createFullCheckpointPlan } from '../fixtures/checkpoints';
 import { notFound } from './chat';
+import { mockSession } from './session-bus';
 import { userSchema } from '../../features/session/schemas';
 import { planSchema, setCheckpointConfirmationSchema } from '../../features/onboarding/schemas';
 import type { Plan, Step } from '../../features/onboarding/schemas';
@@ -69,6 +70,7 @@ export function createFe2Handlers(options: { plan?: Plan } = {}) {
       const account = accounts.find((item) => item.id === parsed.data.account_id);
       if (!account) return jsonError(404, 'NOT_FOUND', 'Тестовая учетная запись не найдена');
       currentUser = account;
+      mockSession.set(account);
       return HttpResponse.json(account);
     }),
 
@@ -76,6 +78,7 @@ export function createFe2Handlers(options: { plan?: Plan } = {}) {
 
     http.delete('*/api/v1/session', () => {
       currentUser = null;
+      mockSession.set(null);
       return new HttpResponse(null, { status: 204 });
     }),
 

@@ -4,6 +4,7 @@ import { LoginPage, RequireAuth } from '@/features/session';
 import { PlanPage } from '@/features/onboarding';
 import { ChatPage } from '@/features/chat';
 import { RoleHome, MentorGate, InternGate, MentorQuestionsPage, MentorQuestionPage, MentorDocumentsPage, MentorInternsPage, MentorInternPlanPage } from '@/features/mentor';
+import { ReviewPreparationPage, MentorReviewPreparationsPage, MentorReviewPreparationPage } from '@/features/review-preparation';
 
 export const routes: RouteObject[] = [
   {
@@ -34,6 +35,10 @@ export const routes: RouteObject[] = [
         path: 'chat/:conversationId',
         element: <InternGate><ChatPage /></InternGate>,
       },
+      {
+        path: 'review-preparation',
+        element: <InternGate><ReviewPreparationPage /></InternGate>,
+      },
       { path: 'mentor', element: <MentorGate />, children: [
         { index: true, element: <Navigate to="questions" replace /> },
         { path: 'questions', element: <MentorQuestionsPage /> },
@@ -41,6 +46,8 @@ export const routes: RouteObject[] = [
         { path: 'documents', element: <MentorDocumentsPage /> },
         { path: 'interns', element: <MentorInternsPage /> },
         { path: 'interns/:id', element: <MentorInternPlanPage /> },
+        { path: 'review-preparations', element: <MentorReviewPreparationsPage /> },
+        { path: 'review-preparations/:id', element: <MentorReviewPreparationPage /> },
       ] },
       { path: '*', element: <RoleHome /> },
     ],

@@ -13,8 +13,8 @@ export const AppShell: React.FC = () => {
   const user = me.data;
   const home = user?.role === 'mentor' ? '/mentor/questions' : '/onboarding';
   const navigation = user?.role === 'mentor'
-    ? [{ to: '/mentor/questions', text: 'Вопросы' }, { to: '/mentor/documents', text: 'Знания' }, { to: '/mentor/interns', text: 'Стажёры' }]
-    : [{ to: '/onboarding', text: 'Мой план' }, { to: '/chat', text: 'Чат' }];
+    ? [{ to: '/mentor/questions', text: 'Вопросы' }, { to: '/mentor/documents', text: 'Знания' }, { to: '/mentor/interns', text: 'Стажёры' }, { to: '/mentor/review-preparations', text: 'Ревью' }]
+    : [{ to: '/onboarding', text: 'Мой план' }, { to: '/chat', text: 'Чат' }, { to: '/review-preparation', text: 'Ревью' }];
 
   const initials = (user?.name ?? '')
     .split(/\s+/)

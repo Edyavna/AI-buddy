@@ -18,6 +18,7 @@ import (
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/config"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/httpapi"
 	"github.com/Edyavna/AI-buddy/backend/internal/ports"
+	"github.com/Edyavna/AI-buddy/backend/internal/reviewprep"
 )
 
 type Dependencies struct {
@@ -61,12 +62,17 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 		if deps.Questions == nil {
 			deps.Questions = questions
 		}
+		reviews := reviewprep.Store{DB: db}
+		if cfg.GitHubToken != "" || cfg.GitHubAPIURL != "" {
+			reviews.Provider = reviewprep.GitHubClient{Token: cfg.GitHubToken, BaseURL: cfg.GitHubAPIURL}
+		}
 		opts.Register = func(mux *http.ServeMux) {
 			session.Register(mux)
 			plans.Register(mux, session)
 			mentor.Handler{Store: mentors, Questions: deps.Questions, Access: deps.Access}.Register(mux, session)
 			checkpoints.Register(mux, session)
 			knowledgegaps.Handler{Store: questions}.Register(mux, session)
+			reviewprep.Handler{Store: reviews}.Register(mux, session)
 			uploads.Register(mux, session)
 			requests.Register(mux, session)
 			mux.Handle("GET /api/v1/documents/{document_id}", session.Require(knowledge.Handler(deps.Knowledge), true))

@@ -20,6 +20,8 @@ type Config struct {
 	SessionTTL          time.Duration
 	SessionCookieSecure bool
 	DemoChatDelay       time.Duration
+	GitHubToken         string // #59 интеграция сведений о PR; пусто — ручной режим
+	GitHubAPIURL        string
 	AI                  *AIConfig
 }
 
@@ -94,6 +96,14 @@ func Load(getenv func(string) string) (Config, error) {
 	c.AI, err = loadAI(getenv, c)
 	if err != nil {
 		return Config{}, err
+	}
+	c.GitHubToken = getenv("GITHUB_TOKEN")
+	c.GitHubAPIURL = getenv("GITHUB_API_URL")
+	if c.GitHubAPIURL != "" {
+		u, err := url.Parse(c.GitHubAPIURL)
+		if err != nil || u == nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+			return Config{}, fmt.Errorf("GITHUB_API_URL must be an HTTP URL")
+		}
 	}
 	return c, nil
 }
