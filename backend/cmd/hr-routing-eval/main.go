@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
@@ -29,14 +30,13 @@ func main() {
 		fmt.Fprintln(os.Stderr, "usage: hr-routing-eval PATH_TO_DATASET")
 		os.Exit(2)
 	}
-	if err := run(os.Args[1]); err != nil {
+	if err := run(os.Args[1], agent.FromEnv(), os.Stdout); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
 
-func run(path string) error {
-	model := agent.FromEnv()
+func run(path string, model *agent.DeepSeek, output io.Writer) error {
 	if model.Model == "" || model.Client.Key == "" || model.Client.BaseURL == "" {
 		return fmt.Errorf("set LLM_MODEL, LLM_BASE_URL and LLM_API_KEY")
 	}
@@ -90,7 +90,7 @@ func run(path string) error {
 	report := map[string]any{"model": model.Model, "utc": time.Now().UTC(), "temperature": 0, "timeout_seconds": 8,
 		"confusion_matrix": matrix, "by_category": byCategory, "clarification_rate": float64(clarified) / float64(len(data)),
 		"hr_to_mentor": unsafe, "errors": wrong, "passed": passed}
-	if err := json.NewEncoder(os.Stdout).Encode(report); err != nil {
+	if err := json.NewEncoder(output).Encode(report); err != nil {
 		return err
 	}
 	if !passed {
