@@ -24,6 +24,13 @@ import {
   type GroupWorkspace,
 } from "./api";
 import styles from "./QuestionGroups.module.css";
+import {
+  chooseGroupEdit,
+  editFields,
+  groupEdit,
+  refreshGroupEdit,
+  type EditField,
+} from "./editor-state";
 
 function useGroupAction(key: QueryKey) {
   const client = useQueryClient(),
@@ -322,6 +329,11 @@ const memberLabels = {
   closed: "Вопрос закрыт",
   failed: "Нужно повторить",
 };
+const editLabels = {
+  title: "Название темы",
+  resolution: "Общее решение",
+  questionIds: "Состав участников",
+};
 function GroupEditor({
   direction,
   group,
@@ -338,10 +350,19 @@ function GroupEditor({
   const team =
     scope.data?.teams.find((t) => t.id === group.team_id)?.name ??
     group.team_id;
-  const [title, setTitle] = useState(group.title),
-    [resolution, setResolution] = useState(group.resolution),
-    [revision, setRevision] = useState(group.revision),
-    [selected, setSelected] = useState(group.members.map((m) => m.id));
+  const [edit, setEdit] = useState(() => groupEdit(group));
+  const { title, resolution, questionIds: selected } = edit.values;
+  const { revision } = edit;
+  const hasConflicts = editFields.some((field) => edit.conflicts[field]);
+  function change<K extends EditField>(
+    field: K,
+    value: (typeof edit.values)[K],
+  ) {
+    setEdit((current) => ({
+      ...current,
+      values: { ...current.values, [field]: value },
+    }));
+  }
   const published =
     !!group.draft?.document_id ||
     !!group.published_at ||
@@ -358,12 +379,27 @@ function GroupEditor({
         !group.members.some((m) => m.id === q.id),
     ),
   ];
-  function accept(g: Group) {
+  function variant(field: EditField, server: boolean) {
+    const values = server ? edit.base : edit.values;
+    return field === "questionIds"
+      ? values.questionIds
+          .map(
+            (id) =>
+              candidates.find((q) => q.id === id)?.question ??
+              "Вопрос недоступен",
+          )
+          .join("; ") || "Нет участников"
+      : values[field];
+  }
+  function accept(g: Group, saved = false, archive = false) {
     client.setQueryData(groupKeys.detail(direction, g.id), g);
-    setRevision(g.revision);
+    setEdit((current) =>
+      saved ? groupEdit(g) : refreshGroupEdit(current, g, archive),
+    );
     void client.invalidateQueries({ queryKey: groupKeys.workspace(direction) });
   }
   function save() {
+    if (hasConflicts) return;
     const body: GroupInput = {
       operation_id: group.id,
       revision,
@@ -385,7 +421,7 @@ function GroupEditor({
           ? g
           : undefined;
       },
-      accept,
+      (g) => accept(g, true),
     );
   }
   function deliver(close: boolean) {
@@ -393,7 +429,7 @@ function GroupEditor({
       (signal) =>
         groupApi.deliver(direction, group.id, group.revision, close, signal),
       (signal) => groupApi.detail(direction, group.id, signal),
-      accept,
+      (g) => accept(g),
     );
   }
   function archive() {
@@ -411,8 +447,7 @@ function GroupEditor({
         return g.members.length === 0 ? g : undefined;
       },
       (g) => {
-        accept(g);
-        setSelected([]);
+        accept(g, false, true);
       },
     );
   }
@@ -433,21 +468,74 @@ function GroupEditor({
         }}
       >
         <h2>Состав и общее решение</h2>
+        {hasConflicts && (
+          <section aria-label="Конфликт изменений" className={styles.card}>
+            <h3>Изменения в другой вкладке</h3>
+            <p role="status">
+              Одни и те же поля изменены у вас и на сервере. Сравните варианты и
+              выберите каждый перед сохранением. Остальные поля обновлены без
+              потери ваших правок.
+            </p>
+            {editFields
+              .filter((field) => edit.conflicts[field])
+              .map((field) => (
+                <div role="group" aria-label={editLabels[field]} key={field}>
+                  <h4>{editLabels[field]}</h4>
+                  <p>Ваш вариант: {variant(field, false)}</p>
+                  <p>На сервере: {variant(field, true)}</p>
+                  {published && field !== "questionIds" && (
+                    <p>
+                      Публикация уже началась: можно принять только серверный
+                      текст. Ваш вариант остаётся здесь для копирования.
+                    </p>
+                  )}
+                  <div className={styles.row}>
+                    <Button
+                      variant="secondary"
+                      disabled={op.busy}
+                      aria-label={`${editLabels[field]}: использовать серверный вариант`}
+                      onClick={() =>
+                        setEdit((current) =>
+                          chooseGroupEdit(current, field, true),
+                        )
+                      }
+                    >
+                      Использовать серверный вариант
+                    </Button>
+                    <Button
+                      variant="secondary"
+                      disabled={
+                        op.busy || (published && field !== "questionIds")
+                      }
+                      aria-label={`${editLabels[field]}: оставить мои правки`}
+                      onClick={() =>
+                        setEdit((current) =>
+                          chooseGroupEdit(current, field, false),
+                        )
+                      }
+                    >
+                      Оставить мои правки
+                    </Button>
+                  </div>
+                </div>
+              ))}
+          </section>
+        )}
         <TextField
           label="Название темы"
           value={title}
           required
           maxLength={200}
-          disabled={published || op.busy}
-          onChange={(e) => setTitle(e.target.value)}
+          disabled={published || op.busy || edit.conflicts.title}
+          onChange={(e) => change("title", e.target.value)}
         />
         <label className={styles.field}>
           Общее решение без личных подробностей
           <textarea
             value={resolution}
             maxLength={8000}
-            disabled={published || op.busy}
-            onChange={(e) => setResolution(e.target.value)}
+            disabled={published || op.busy || edit.conflicts.resolution}
+            onChange={(e) => change("resolution", e.target.value)}
           />
         </label>
         <fieldset>
@@ -459,13 +547,15 @@ function GroupEditor({
                 checked={selected.includes(q.id)}
                 disabled={
                   op.busy ||
+                  edit.conflicts.questionIds ||
                   (published && !group.members.some((m) => m.id === q.id))
                 }
                 onChange={(e) =>
-                  setSelected((current) =>
+                  change(
+                    "questionIds",
                     e.target.checked
-                      ? [...current, q.id]
-                      : current.filter((id) => id !== q.id),
+                      ? [...selected, q.id]
+                      : selected.filter((id) => id !== q.id),
                   )
                 }
               />
@@ -484,7 +574,7 @@ function GroupEditor({
         <div className={styles.row}>
           <Button
             type="submit"
-            disabled={!selected.length || selected.length > 30}
+            disabled={hasConflicts || !selected.length || selected.length > 30}
             isLoading={op.busy}
           >
             Сохранить состав
@@ -496,10 +586,7 @@ function GroupEditor({
               op.run(
                 (signal) => groupApi.detail(direction, group.id, signal),
                 async () => undefined,
-                (g) => {
-                  accept(g);
-                  setSelected(g.members.map((m) => m.id));
-                },
+                (g) => accept(g),
               )
             }
           >
@@ -532,6 +619,7 @@ function GroupEditor({
           <Button
             disabled={
               op.busy ||
+              hasConflicts ||
               !group.members.length ||
               group.draft?.status !== "ready"
             }
@@ -541,7 +629,7 @@ function GroupEditor({
           </Button>
           <Button
             variant="secondary"
-            disabled={op.busy || !group.delivered_count}
+            disabled={op.busy || hasConflicts || !group.delivered_count}
             onClick={() => deliver(true)}
           >
             Закрыть доставленные вопросы
@@ -568,7 +656,11 @@ function GroupEditor({
           текст заново. История и доставленные ссылки сохранятся.
         </p>
         {group.members.length > 0 ? (
-          <Button variant="secondary" disabled={op.busy} onClick={archive}>
+          <Button
+            variant="secondary"
+            disabled={op.busy || hasConflicts}
+            onClick={archive}
+          >
             Архивировать состав
           </Button>
         ) : (

@@ -137,6 +137,7 @@ function start(
     }),
     http.put(`${root}/:id`, async ({ request }) => {
       const body = (await request.json()) as GroupInput;
+      if (body.revision !== state.group!.revision) return error(409);
       state.group = makeGroup({
         ...state.group,
         revision: body.revision + 1,
@@ -349,6 +350,32 @@ it("delivers partially without closing automatically and lets the specialist clo
   fireEvent.click(screen.getByText("История изменений"));
   expect(screen.getByText(/Закрыт вопрос ·/)).toBeInTheDocument();
 });
+it.each(["mentor", "hr"] as const)(
+  "refreshes untouched fields before saving the new revision for %s",
+  async (direction) => {
+    const { state } = start(true, direction);
+    await screen.findByRole("heading", { name: "Состав и общее решение" });
+    state.group = makeGroup({
+      direction,
+      revision: 2,
+      title: "Свежая тема из второй вкладки",
+      resolution: "Свежий ответ из второй вкладки",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Перечитать версию" }));
+    await waitFor(() =>
+      expect(screen.getByLabelText("Название темы")).toHaveValue(
+        state.group!.title,
+      ),
+    );
+    expect(
+      screen.getByLabelText("Общее решение без личных подробностей"),
+    ).toHaveValue("Свежий ответ из второй вкладки");
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить состав" }));
+    await waitFor(() => expect(state.group?.revision).toBe(3));
+    expect(state.group?.resolution).toBe("Свежий ответ из второй вкладки");
+    expect(state.group?.title).toBe("Свежая тема из второй вкладки");
+  },
+);
 it("preserves edits on conflict and requires explicit refresh of the group version", async () => {
   const { root, state } = start(true);
   await screen.findByRole("heading", { name: "Состав и общее решение" });
@@ -362,6 +389,238 @@ it("preserves edits on conflict and requires explicit refresh of the group versi
   fireEvent.click(screen.getByRole("button", { name: "Перечитать версию" }));
   await screen.findByText(/версия состава 2/);
   expect(screen.getByLabelText("Название темы")).toHaveValue("Мой текст");
+});
+it("merges independent local and remote edits against the last accepted version, including after polling", async () => {
+  const { state, queryClient } = start(true);
+  await screen.findByRole("heading", { name: "Состав и общее решение" });
+  fireEvent.change(screen.getByLabelText("Название темы"), {
+    target: { value: "Моя новая тема" },
+  });
+  state.group = makeGroup({
+    revision: 2,
+    resolution: "Новый ответ из другой вкладки",
+  });
+  await queryClient.invalidateQueries({
+    queryKey: groupKeys.detail("mentor", "g"),
+  });
+  expect(
+    screen.getByLabelText("Общее решение без личных подробностей"),
+  ).toHaveValue(makeGroup().resolution);
+  fireEvent.click(screen.getByRole("button", { name: "Перечитать версию" }));
+  await waitFor(() =>
+    expect(
+      screen.getByLabelText("Общее решение без личных подробностей"),
+    ).toHaveValue("Новый ответ из другой вкладки"),
+  );
+  expect(screen.getByLabelText("Название темы")).toHaveValue("Моя новая тема");
+  expect(
+    screen.queryByRole("region", { name: "Конфликт изменений" }),
+  ).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: "Сохранить состав" }));
+  await waitFor(() => expect(state.group?.revision).toBe(3));
+  expect(state.group?.title).toBe("Моя новая тема");
+  expect(state.group?.resolution).toBe("Новый ответ из другой вкладки");
+});
+
+it.each([
+  ["mentor", true],
+  ["mentor", false],
+  ["hr", true],
+  ["hr", false],
+] as const)(
+  "requires explicit field choices before overwriting a newer %s group (server=%s)",
+  async (direction, useServer) => {
+    const { state } = start(true, direction);
+    const save = vi.spyOn(groupApi, "save");
+    await screen.findByRole("heading", { name: "Состав и общее решение" });
+    fireEvent.change(screen.getByLabelText("Название темы"), {
+      target: { value: "Моя новая тема" },
+    });
+    fireEvent.change(
+      screen.getByLabelText("Общее решение без личных подробностей"),
+      { target: { value: "Мой новый ответ" } },
+    );
+    state.group = makeGroup({
+      direction,
+      revision: 2,
+      title: "Серверная тема",
+      resolution: "Серверный ответ",
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Перечитать версию" }));
+    await screen.findByRole("region", { name: "Конфликт изменений" });
+    expect(
+      screen.getByText("Ваш вариант: Мой новый ответ"),
+    ).toBeInTheDocument();
+    expect(screen.getByText("На сервере: Серверный ответ")).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Сохранить состав" }),
+    ).toBeDisabled();
+    fireEvent.submit(
+      screen
+        .getByRole("heading", { name: "Состав и общее решение" })
+        .closest("form")!,
+    );
+    expect(save).not.toHaveBeenCalled();
+    // A second refresh of the same revision cannot implicitly approve local text.
+    fireEvent.click(screen.getByRole("button", { name: "Перечитать версию" }));
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: "Перечитать версию" }),
+      ).toBeEnabled(),
+    );
+    expect(
+      screen.getByRole("button", { name: "Сохранить состав" }),
+    ).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Название темы: использовать серверный вариант",
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Сохранить состав" }),
+    ).toBeDisabled();
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: `Общее решение: ${useServer ? "использовать серверный вариант" : "оставить мои правки"}`,
+      }),
+    );
+    expect(
+      screen.queryByRole("region", { name: "Конфликт изменений" }),
+    ).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Сохранить состав" }));
+    await waitFor(() => expect(state.group?.revision).toBe(3));
+    expect(state.group?.title).toBe("Серверная тема");
+    expect(state.group?.resolution).toBe(
+      useServer ? "Серверный ответ" : "Мой новый ответ",
+    );
+    // A successful save becomes the next baseline, rather than the initial data.
+    state.group = {
+      ...state.group!,
+      revision: 4,
+      resolution: "Ещё более новый ответ",
+    };
+    fireEvent.click(screen.getByRole("button", { name: "Перечитать версию" }));
+    await waitFor(() =>
+      expect(
+        screen.getByLabelText("Общее решение без личных подробностей"),
+      ).toHaveValue("Ещё более новый ответ"),
+    );
+  },
+);
+
+it("reopens the conflict if the server changes again after a local variant was chosen", async () => {
+  const { state } = start(true);
+  await screen.findByRole("heading", { name: "Состав и общее решение" });
+  fireEvent.change(
+    screen.getByLabelText("Общее решение без личных подробностей"),
+    { target: { value: "Мой ответ" } },
+  );
+  state.group = makeGroup({ revision: 2, resolution: "Вторая версия" });
+  fireEvent.click(screen.getByRole("button", { name: "Перечитать версию" }));
+  fireEvent.click(
+    await screen.findByRole("button", {
+      name: "Общее решение: оставить мои правки",
+    }),
+  );
+  state.group = makeGroup({ revision: 3, resolution: "Третья версия" });
+  fireEvent.click(screen.getByRole("button", { name: "Сохранить состав" }));
+  await screen.findByRole("alert");
+  expect(state.group.revision).toBe(3);
+  fireEvent.click(screen.getByRole("button", { name: "Перечитать версию" }));
+  await screen.findByText("На сервере: Третья версия");
+  expect(
+    screen.getByRole("button", { name: "Сохранить состав" }),
+  ).toBeDisabled();
+  expect(
+    screen.getByLabelText("Общее решение без личных подробностей"),
+  ).toHaveValue("Мой ответ");
+});
+
+it("requires an explicit choice for conflicting membership without restoring cached private text", async () => {
+  const { state, queryClient } = start(true);
+  await screen.findByRole("heading", { name: "Состав и общее решение" });
+  fireEvent.click(screen.getByRole("checkbox", { name: /Нужен доступ/ }));
+  state.group = makeGroup({
+    revision: 2,
+    members: makeGroup().members.slice(1),
+  });
+  await queryClient.invalidateQueries({
+    queryKey: groupKeys.workspace("mentor"),
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Перечитать версию" }));
+  await screen.findByRole("group", { name: "Состав участников" });
+  expect(
+    screen.getByText("Ваш вариант: Вопрос недоступен"),
+  ).toBeInTheDocument();
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Состав участников: использовать серверный вариант",
+    }),
+  );
+  fireEvent.click(screen.getByRole("button", { name: "Сохранить состав" }));
+  await waitFor(() => expect(state.group?.revision).toBe(3));
+  expect(state.group?.members.map((m) => m.id)).toEqual(["q2"]);
+});
+
+it("accepts a converged local/remote value without a conflict and respects publication locks", async () => {
+  const { state } = start(true);
+  await screen.findByRole("heading", { name: "Состав и общее решение" });
+  fireEvent.change(screen.getByLabelText("Название темы"), {
+    target: { value: "Одинаковая тема" },
+  });
+  fireEvent.change(
+    screen.getByLabelText("Общее решение без личных подробностей"),
+    { target: { value: "Мой ответ" } },
+  );
+  state.group = makeGroup({
+    revision: 2,
+    title: "Одинаковая тема",
+    resolution: "Опубликованный ответ",
+    published_at: "2026-11-13T12:01:00Z",
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Перечитать версию" }));
+  await screen.findByRole("region", { name: "Конфликт изменений" });
+  expect(
+    screen.queryByRole("button", {
+      name: "Название темы: использовать серверный вариант",
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    screen.getByRole("button", { name: "Общее решение: оставить мои правки" }),
+  ).toBeDisabled();
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Общее решение: использовать серверный вариант",
+    }),
+  );
+  expect(
+    screen.getByLabelText("Общее решение без личных подробностей"),
+  ).toHaveValue("Опубликованный ответ");
+});
+
+it("keeps an explicitly chosen empty local composition editable before saving", async () => {
+  const { state } = start(true);
+  await screen.findByRole("heading", { name: "Состав и общее решение" });
+  for (const checkbox of screen.getAllByRole("checkbox"))
+    fireEvent.click(checkbox);
+  state.group = makeGroup({
+    revision: 2,
+    members: makeGroup().members.slice(1),
+  });
+  fireEvent.click(screen.getByRole("button", { name: "Перечитать версию" }));
+  await screen.findByText("Ваш вариант: Нет участников");
+  fireEvent.click(
+    screen.getByRole("button", {
+      name: "Состав участников: оставить мои правки",
+    }),
+  );
+  expect(
+    screen.getByRole("button", { name: "Сохранить состав" }),
+  ).toBeDisabled();
+  fireEvent.click(screen.getByRole("checkbox", { name: /Нужен доступ/ }));
+  fireEvent.click(screen.getByRole("button", { name: "Сохранить состав" }));
+  await waitFor(() => expect(state.group?.revision).toBe(3));
+  expect(state.group?.members.map((m) => m.id)).toEqual(["q2"]);
 });
 it.each([401, 403, 404])(
   "hides private group details after %i, including a subsequent 503",
