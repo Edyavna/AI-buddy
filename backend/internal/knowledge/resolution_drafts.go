@@ -203,7 +203,7 @@ func (s Uploads) SaveResolution(ctx context.Context, id string, in ResolutionInp
 		return out, err
 	}
 	in.Title = strings.TrimSpace(in.Title)
-	if in.Revision < 0 || in.Title == "" || utf8.RuneCountInString(in.Title) > 200 || !validText(in.Title+in.Content) || len(in.Content) > MaxMarkdownBytes || (in.TargetID == nil) != (in.BaseVersion == nil) {
+	if in.Revision < 0 || in.Title == "" || utf8.RuneCountInString(in.Title) > 200 || !validText(in.Title+in.Content) || len(in.Content) > MaxMarkdownBytes || (in.TargetID == nil) != (in.BaseVersion == nil) || (in.BaseVersion != nil && *in.BaseVersion < 1) {
 		return out, ports.ErrInvalid
 	}
 	err = database.WithinTx(ctx, s.DB, func(tx *sql.Tx) error {

@@ -1,6 +1,7 @@
 package knowledge
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/Edyavna/AI-buddy/backend/internal/auth"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/httpapi"
@@ -32,9 +33,9 @@ func (s Uploads) RegisterResolutions(mux *http.ServeMux, session auth.Handler, g
 			resolutionReply(w, r, result, err)
 		}))
 		mux.Handle("PUT "+root, wrap(func(w http.ResponseWriter, r *http.Request) {
-			var in ResolutionInput
-			if err := httpapi.DecodeJSONLimit(w, r, &in, 8*MaxMarkdownBytes+16384); err != nil {
-				httpapi.WriteError(w, r, err)
+			in, decodeErr := decodeResolutionInput(w, r)
+			if decodeErr != nil {
+				httpapi.WriteError(w, r, decodeErr)
 				return
 			}
 			result, err := s.SaveResolution(r.Context(), r.PathValue("question_id"), in)
@@ -59,6 +60,27 @@ func (s Uploads) RegisterResolutions(mux *http.ServeMux, session auth.Handler, g
 			}))
 		}
 	}
+}
+
+func decodeResolutionInput(w http.ResponseWriter, r *http.Request) (ResolutionInput, *httpapi.Error) {
+	var fields map[string]json.RawMessage
+	if err := httpapi.DecodeJSONLimit(w, r, &fields, 8*MaxMarkdownBytes+16384); err != nil {
+		return ResolutionInput{}, err
+	}
+	if len(fields) != 5 {
+		return ResolutionInput{}, httpapi.ValidationError(nil)
+	}
+	for _, key := range []string{"revision", "title", "content", "target_document_id", "base_version"} {
+		if len(fields[key]) == 0 || (key != "target_document_id" && key != "base_version" && string(fields[key]) == "null") {
+			return ResolutionInput{}, httpapi.ValidationError(nil)
+		}
+	}
+	raw, _ := json.Marshal(fields)
+	var in ResolutionInput
+	if json.Unmarshal(raw, &in) != nil {
+		return in, httpapi.ValidationError(nil)
+	}
+	return in, nil
 }
 func resolutionPrincipal(r *http.Request, direction string) (bool, error) {
 	p, err := identity.Require(r.Context())

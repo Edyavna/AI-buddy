@@ -320,6 +320,15 @@ func TestPostgresResolutionValidationAndRevocation(t *testing.T) {
 			for _, action := range []string{"publish", "retry"} {
 				hrResponse[any](t, f.h, "POST", f.path+"/"+action, map[string]any{"revision": 1, "reviewed": true}, f.owner, 404)
 			}
+			for _, body := range []map[string]any{
+				{"title": "Текст", "content": "x", "target_document_id": nil, "base_version": nil},
+				{"revision": nil, "title": "Текст", "content": "x", "target_document_id": nil, "base_version": nil},
+				{"revision": 0, "title": "Текст", "content": "x", "target_document_id": hrKey(5678), "base_version": 0},
+				{"revision": 0, "title": "Текст", "content": "x", "target_document_id": 123, "base_version": 1},
+				{"revision": 0, "title": "Текст", "content": "x", "base_version": nil, "extra": "bad"},
+			} {
+				hrResponse[any](t, f.h, "PUT", f.path, body, f.owner, 422)
+			}
 			hrResponse[any](t, f.h, "PUT", f.path, map[string]any{"revision": 0, "title": "test", "content": "x", "extra": "bad"}, f.owner, 422)
 			hrResponse[any](t, f.h, "POST", f.path+"/publish", map[string]any{"revision": "wrong"}, f.owner, 422)
 			in := knowledge.ResolutionInput{Title: "Ручной текст", Content: "token=secret-value"}
