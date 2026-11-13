@@ -709,6 +709,13 @@ export interface components {
             clarification: string | null;
             split: boolean;
         };
+        NullableRoutingSuggestion: {
+            /** @enum {string} */
+            direction: "mentor" | "hr" | "needs_clarification";
+            reason: string;
+            clarification: string | null;
+            split: boolean;
+        } | null;
         AccessScope: {
             version: string;
             teams: {
@@ -735,7 +742,7 @@ export interface components {
             context_excerpt: string;
             resolution: string | null;
             document_ids: string[];
-            routing: components["schemas"]["RoutingSuggestion"] | null;
+            routing: components["schemas"]["NullableRoutingSuggestion"];
             /** Format: date-time */
             created_at: string;
             /** Format: date-time */
@@ -756,7 +763,7 @@ export interface components {
             drafts: components["schemas"]["QuestionDraft"][];
             question: string;
             available_directions: components["schemas"]["QuestionDirection"][];
-            routing: components["schemas"]["RoutingSuggestion"] | null;
+            routing: components["schemas"]["NullableRoutingSuggestion"];
         };
         QuestionHistory: {
             question: components["schemas"]["RoutedQuestion"];
@@ -1235,6 +1242,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     listMessageQuestions: {
@@ -1264,6 +1272,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     createRoutedQuestion: {
@@ -1297,6 +1306,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     saveQuestionDraft: {
@@ -1331,6 +1341,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     getOwnQuestion: {
@@ -1360,6 +1371,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     rerouteQuestion: {
@@ -1393,6 +1405,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     listHRQuestions: {
@@ -1426,6 +1439,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     getHRQuestion: {
@@ -1455,6 +1469,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     updateHRQuestion: {
@@ -1488,6 +1503,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     listHRDocuments: {
@@ -1517,6 +1533,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     createHRDocument: {
@@ -1548,6 +1565,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     getHRDocument: {
@@ -1577,6 +1595,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     editHRDocument: {
@@ -1610,6 +1629,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     publishHRDocument: {
@@ -1643,6 +1663,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     retryHRDocument: {
@@ -1676,6 +1697,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     revokeHRDocument: {
@@ -1709,6 +1731,7 @@ export interface operations {
             409: components["responses"]["Error"];
             422: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
         };
     };
     listDemoAccounts: {

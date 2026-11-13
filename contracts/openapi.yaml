@@ -49,6 +49,8 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /messages/{id}/questions:
     parameters:
       - in: path
@@ -81,6 +83,8 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
     post:
       tags:
         - HR
@@ -111,6 +115,8 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '503':
+          $ref: '#/components/responses/Error'
+        default:
           $ref: '#/components/responses/Error'
   /messages/{id}/question-drafts/{direction}:
     parameters:
@@ -155,6 +161,8 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /questions/{id}:
     parameters:
       - in: path
@@ -186,6 +194,8 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '503':
+          $ref: '#/components/responses/Error'
+        default:
           $ref: '#/components/responses/Error'
   /questions/{id}/reroute:
     parameters:
@@ -225,6 +235,8 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /hr/questions:
     get:
       tags:
@@ -257,6 +269,8 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '503':
+          $ref: '#/components/responses/Error'
+        default:
           $ref: '#/components/responses/Error'
       parameters:
         - in: query
@@ -303,6 +317,8 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
     patch:
       tags:
         - HR
@@ -333,6 +349,8 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '503':
+          $ref: '#/components/responses/Error'
+        default:
           $ref: '#/components/responses/Error'
   /hr/documents:
     get:
@@ -367,6 +385,8 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
     post:
       tags:
         - HR
@@ -397,6 +417,8 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '503':
+          $ref: '#/components/responses/Error'
+        default:
           $ref: '#/components/responses/Error'
   /hr/documents/{id}:
     parameters:
@@ -430,6 +452,8 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
     patch:
       tags:
         - HR
@@ -460,6 +484,8 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '503':
+          $ref: '#/components/responses/Error'
+        default:
           $ref: '#/components/responses/Error'
   /hr/documents/{id}/publish:
     parameters:
@@ -499,6 +525,8 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /hr/documents/{id}/retry:
     parameters:
       - in: path
@@ -537,6 +565,8 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /hr/documents/{id}/revoke:
     parameters:
       - in: path
@@ -574,6 +604,8 @@ paths:
         '409':
           $ref: '#/components/responses/Error'
         '503':
+          $ref: '#/components/responses/Error'
+        default:
           $ref: '#/components/responses/Error'
   /demo/accounts:
     get:
@@ -1785,6 +1817,28 @@ components:
           nullable: true
         split:
           type: boolean
+    NullableRoutingSuggestion:
+      type: object
+      nullable: true
+      required:
+        - direction
+        - reason
+        - clarification
+        - split
+      properties:
+        direction:
+          type: string
+          enum:
+            - mentor
+            - hr
+            - needs_clarification
+        reason:
+          type: string
+        clarification:
+          type: string
+          nullable: true
+        split:
+          type: boolean
     AccessScope:
       type: object
       required:
@@ -1871,10 +1925,7 @@ components:
           items:
             type: string
         routing:
-          type: object
-          nullable: true
-          allOf:
-            - $ref: '#/components/schemas/RoutingSuggestion'
+          $ref: '#/components/schemas/NullableRoutingSuggestion'
         created_at:
           type: string
           format: date-time
@@ -1932,10 +1983,7 @@ components:
           items:
             $ref: '#/components/schemas/QuestionDirection'
         routing:
-          type: object
-          nullable: true
-          allOf:
-            - $ref: '#/components/schemas/RoutingSuggestion'
+          $ref: '#/components/schemas/NullableRoutingSuggestion'
     QuestionHistory:
       type: object
       required:
