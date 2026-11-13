@@ -112,11 +112,11 @@ func TestReviewPreparationHTTPFlow(t *testing.T) {
 		t.Fatalf("assistant must report missing items: %s", w.Body.String())
 	}
 
-	if w := api.do("POST", "/api/v1/review-preparations/"+prep.ID+"/submit", `{"revision":1}`, intern, "http://localhost:5173"); w.Code != 200 {
+	if w := api.do("POST", "/api/v1/review-preparations/"+prep.ID+"/submit", `{"revision":2}`, intern, "http://localhost:5173"); w.Code != 200 {
 		t.Fatalf("submit: %d %s", w.Code, w.Body.String())
 	}
 	// Повторная отправка со старой ревизией защищена конфликтом.
-	if w := api.do("POST", "/api/v1/review-preparations/"+prep.ID+"/submit", `{"revision":1}`, intern, "http://localhost:5173"); w.Code != 409 {
+	if w := api.do("POST", "/api/v1/review-preparations/"+prep.ID+"/submit", `{"revision":2}`, intern, "http://localhost:5173"); w.Code != 409 {
 		t.Fatalf("repeat submit must be 409, got %d", w.Code)
 	}
 
@@ -125,7 +125,7 @@ func TestReviewPreparationHTTPFlow(t *testing.T) {
 		t.Fatalf("mentor list: %d %s", w.Code, w.Body.String())
 	}
 	w = api.do("GET", "/api/v1/mentor/review-preparations/"+prep.ID, "", mentor, "")
-	if w.Code != 200 || !strings.Contains(w.Body.String(), `"history":[{"revision":1`) {
+	if w.Code != 200 || !strings.Contains(w.Body.String(), `"history":[{"revision":2`) {
 		t.Fatalf("mentor detail: %d %s", w.Code, w.Body.String())
 	}
 	// Ручной режим: обновление сведений из GitHub недоступно.

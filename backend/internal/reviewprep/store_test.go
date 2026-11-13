@@ -202,11 +202,16 @@ func TestUpdateSubmitHistoryAndRestart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if updated.Revision != prep.Revision || len(updated.Checks) != 1 || updated.Checks[0].Source != "intern" {
+	if updated.Revision != prep.Revision+1 || len(updated.Checks) != 1 || updated.Checks[0].Source != "intern" {
 		t.Fatalf("unexpected update %+v", updated)
 	}
 	if _, err := store.Update(ctx, prep.ID, update); !errors.Is(err, reviewprep.ErrChanged) {
 		t.Fatalf("stale revision must fail, got %v", err)
+	}
+	update.Revision = updated.Revision
+	unchanged, err := store.Update(ctx, prep.ID, update)
+	if err != nil || unchanged.Revision != updated.Revision {
+		t.Fatalf("unchanged update must keep the revision: %d, %v", unchanged.Revision, err)
 	}
 	bad := update
 	bad.Revision = updated.Revision
@@ -303,6 +308,7 @@ func TestMentorVisibility(t *testing.T) {
 func TestRefreshBindsChecksToHeadCommit(t *testing.T) {
 	db := testDB(t)
 	provider := &fakeProvider{responses: []reviewprep.PRInfo{
+		{Title: "Фича", HeadSHA: "sha1"}, // Create already fetches PR metadata.
 		{Title: "Фича", HeadSHA: "sha1", Checks: []reviewprep.CheckUpdate{{Name: "ci", Status: "passed"}}},
 		{Title: "Фича v2", HeadSHA: "sha2", Checks: []reviewprep.CheckUpdate{{Name: "ci", Status: "failed"}}},
 	}}

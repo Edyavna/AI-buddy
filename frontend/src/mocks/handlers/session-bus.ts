@@ -1,11 +1,8 @@
+import type { User } from '../../shared/api';
+
 // Shared identity for MSW handler groups: fe2 and mentor mocks publish demo
 // logins here, role-aware handlers (review preparation) read the current user.
-export type MockUser = {
-  id: string;
-  name: string;
-  role: 'intern' | 'mentor';
-  team: { id: string; name: string };
-} | null;
+export type MockUser = User | null;
 
 let current: MockUser = null;
 let lastIntern: MockUser = null;

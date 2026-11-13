@@ -147,13 +147,21 @@ export function createReviewPreparationHandlers() {
       const body = updateSchema.safeParse(await request.json().catch(() => null));
       if (!body.success) return jsonError(422, 'VALIDATION_ERROR', 'Проверьте поля запроса');
       if (body.data.revision !== prep.revision) return changed();
-      if (prep.status === 'submitted') {
-        prep.history = [...prep.history, { revision: prep.revision, submitted_at: prep.submitted_at ?? now() }];
+      const manualChecks = body.data.checks.filter(check => check.name.trim());
+      const existingChecks = prep.checks.filter(check => check.source === 'intern');
+      const sameChecks = manualChecks.length === existingChecks.length && manualChecks.every((check, index) => {
+        const existing = existingChecks[index];
+        return check.name === existing.name && check.status === existing.status && check.detail === existing.detail;
+      });
+      if (prep.description === body.data.description &&
+          JSON.stringify(prep.answers) === JSON.stringify(body.data.answers) && sameChecks) {
+        return HttpResponse.json(prep);
       }
+      prep.revision += 1;
       prep.description = body.data.description;
       prep.answers = body.data.answers;
       prep.checks = [...prep.checks.filter(c => c.source === 'ci'),
-        ...body.data.checks.filter(c => c.name.trim()).map((check, index) => ({ id: `manual_${prep.revision}_${index}`, name: check.name, status: check.status, source: 'intern' as const, detail: check.detail, created_at: now() }))];
+        ...manualChecks.map((check, index) => ({ id: `manual_${prep.revision}_${index}`, name: check.name, status: check.status, source: 'intern' as const, detail: check.detail, created_at: now() }))];
       prep.updated_at = now();
       return HttpResponse.json(prep);
     }),

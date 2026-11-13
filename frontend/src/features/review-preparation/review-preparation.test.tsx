@@ -43,7 +43,7 @@ describe('ReviewPreparationPage — сценарий стажёра', () => {
     await user.click(screen.getByRole('button', { name: 'Отправить на ревью' }));
     await user.click(screen.getByRole('button', { name: 'Подтвердить отправку на ревью' }));
     expect(await screen.findByText('Отправлено на ревью')).toBeInTheDocument();
-    expect(screen.getByText(/ревизия 2/)).toBeInTheDocument();
+    expect(screen.getByText(/ревизия 3/)).toBeInTheDocument();
   });
 
   it('отклоняет неподдерживаемый адрес PR', async () => {
@@ -110,7 +110,7 @@ describe('ReviewPreparationPage — сценарий стажёра', () => {
     expect(await screen.findByText('Черновик сохранён.')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Отправить обновление' }));
     await user.click(await screen.findByRole('button', { name: 'Подтвердить отправку на ревью' }));
-    expect(await screen.findByText(/ревизия 3/)).toBeInTheDocument();
+    expect(await screen.findByText(/ревизия 5/)).toBeInTheDocument();
     expect(screen.getByText(/Итоговое принятие результата/)).toBeInTheDocument();
   });
   it('сбой отправки показывает ошибку, повтор со старой ревизией — конфликт', async () => {
@@ -164,7 +164,7 @@ describe('MentorReviewPreparationsPage — сценарий наставника
     });
     expect(save.status).toBe(200);
     const submit = await fetch(`/api/v1/review-preparations/${prep.id}/submit`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revision: 1 }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ revision: 2 }),
     });
     expect(submit.status).toBe(200);
     await logout();
@@ -187,7 +187,7 @@ describe('MentorReviewPreparationsPage — сценарий наставника
     expect(screen.getByText('go build')).toBeInTheDocument();
     expect(screen.getAllByText('CI').length).toBeGreaterThan(0);
     expect(screen.getAllByText('вручную').length).toBeGreaterThan(0);
-    expect(screen.getByText(/Ревизия 1 — отправлено/)).toBeInTheDocument();
+    expect(screen.getByText(/Ревизия 2 — отправлено/)).toBeInTheDocument();
     expect(screen.getAllByText(/коммит a1b2c3d/).length).toBeGreaterThan(0);
   });
 });

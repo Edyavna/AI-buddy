@@ -287,8 +287,7 @@ func lockOwnPrep(ctx context.Context, tx *sql.Tx, p identity.Principal, id strin
 	return prep, nil
 }
 
-// Update сохраняет черновик. Для отправленной подготовки создаёт видимую историю:
-// снимок предыдущей ревизии остаётся в review_preparation_history.
+// Update saves changed content and increments its revision.
 func (s Store) Update(ctx context.Context, id string, in Update) (Preparation, error) {
 	p, err := principal(ctx, identity.Intern)
 	if err != nil {
@@ -326,12 +325,7 @@ func (s Store) Update(ctx context.Context, id string, in Update) (Preparation, e
 			prep = current
 			return nil
 		}
-		if current.Status == "submitted" {
-			if err := writeHistory(ctx, tx, current); err != nil {
-				return err
-			}
-		}
-		if _, err := tx.ExecContext(ctx, `UPDATE review_preparations SET description=$2,answers=$3,updated_at=clock_timestamp() WHERE id::text=$1`,
+		if _, err := tx.ExecContext(ctx, `UPDATE review_preparations SET description=$2,answers=$3,revision=revision+1,updated_at=clock_timestamp() WHERE id::text=$1`,
 			id, description, payload); err != nil {
 			return err
 		}
