@@ -71,23 +71,35 @@ afterEach(() => {
 });
 
 describe('checkpoint catalog and policies (#46)', () => {
-  it('renders the technical step and all 16 catalog rows with unique keys and full instructions', async () => {
+  it('renders every catalog step through the switcher with unique keys and full instructions', async () => {
+    const user = userEvent.setup();
     renderPlan();
 
+    await screen.findByRole('heading', { name: 'Запустить проект' });
+    const dots = screen.getAllByRole('button', { name: /^Шаг \d+:/ });
+    expect(dots).toHaveLength(17);
+
+    const stepIds: string[] = [];
+    for (const dot of dots) {
+      await user.click(dot);
+      const card = document.querySelector<HTMLElement>('article[data-step-id]');
+      expect(card).toBeInTheDocument();
+      stepIds.push(card!.dataset.stepId!);
+    }
+    expect(new Set(stepIds).size).toBe(17);
+
+    await user.click(dots[1]!);
     const organization = await screen.findByRole('heading', { name: 'Организационные моменты' });
-    const cards = document.querySelectorAll<HTMLElement>('article[data-step-id]');
-    expect(cards).toHaveLength(17);
-    expect(new Set(Array.from(cards, (card) => card.dataset.stepId)).size).toBe(17);
     expect(organization.closest('article')).toHaveAttribute('data-step-id', 'step_organization');
     expect(within(organization.closest('article')!).getByText(/Добавь стажёра во все необходимые чаты/)).toBeInTheDocument();
     expect(within(organization.closest('article')!).getByText(/Обсуди цели и план на период адаптации/)).toBeInTheDocument();
-    expect(screen.getAllByRole('heading', { name: 'Экваторная встреча' })).toHaveLength(2);
-    expect(document.querySelector('article[data-step-id="step_midpoint_intern"]')).toBeInTheDocument();
-    expect(document.querySelector('article[data-step-id="step_midpoint_mentor"]')).toBeInTheDocument();
-    expect(screen.getAllByText('Пройди опрос о том, как прошла стажировка').length).toBeGreaterThanOrEqual(2);
-    expect(screen.getByRole('heading', { name: /Изучи все необходимые документы и мануалы по работе в своей команде/ })).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /: Экваторная встреча,/ })).toHaveLength(2);
+    expect(screen.getAllByRole('button', { name: /: Пройди опрос о том, как прошла стажировка,/ }).length).toBeGreaterThanOrEqual(2);
     expect(within(organization.closest('article')!).getByRole('link', { name: /Спросить помощника/ }))
       .toHaveAttribute('href', '/chat?stepId=step_organization');
+
+    await user.click(screen.getByRole('button', { name: /^Шаг \d+: Изучи все необходимые документы/ }));
+    expect(screen.getByRole('heading', { name: /Изучи все необходимые документы и мануалы по работе в своей команде/ })).toBeInTheDocument();
   });
 
   it('keeps legacy plans compatible and applies checkpoint defaults at the runtime boundary', () => {
