@@ -23,6 +23,558 @@ tags:
 - name: Requests
 - name: Mentor
 paths:
+  /me/access-scope:
+    get:
+      tags:
+        - HR
+      operationId: getAccessScope
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessScope'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /messages/{id}/questions:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - HR
+      operationId: listMessageQuestions
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutedQuestions'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+    post:
+      tags:
+        - HR
+      operationId: createRoutedQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateRoutedQuestion'
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutedQuestion'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /messages/{id}/question-drafts/{direction}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: direction
+        required: true
+        schema:
+          $ref: '#/components/schemas/QuestionDirection'
+    put:
+      tags:
+        - HR
+      operationId: saveQuestionDraft
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuestionDraftInput'
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionDraft'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /questions/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - HR
+      operationId: getOwnQuestion
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionHistory'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /questions/{id}/reroute:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - HR
+      operationId: rerouteQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RerouteQuestion'
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutedQuestion'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /hr/questions:
+    get:
+      tags:
+        - HR
+      operationId: listHRQuestions
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/RoutedQuestion'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+      parameters:
+        - in: query
+          name: team_id
+          schema:
+            type: string
+        - in: query
+          name: status
+          schema:
+            $ref: '#/components/schemas/QuestionStatus'
+        - in: query
+          name: q
+          schema:
+            type: string
+  /hr/questions/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - HR
+      operationId: getHRQuestion
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutedQuestion'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+    patch:
+      tags:
+        - HR
+      operationId: updateHRQuestion
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateHRQuestion'
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RoutedQuestion'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /hr/documents:
+    get:
+      tags:
+        - HR
+      operationId: listHRDocuments
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - items
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/HRDocument'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+    post:
+      tags:
+        - HR
+      operationId: createHRDocument
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateHRDocument'
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HRDocument'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /hr/documents/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - HR
+      operationId: getHRDocument
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HRDocument'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+    patch:
+      tags:
+        - HR
+      operationId: editHRDocument
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditHRDocument'
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HRDocument'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /hr/documents/{id}/publish:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - HR
+      operationId: publishHRDocument
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HRDocumentVersion'
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HRDocument'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /hr/documents/{id}/retry:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - HR
+      operationId: retryHRDocument
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HRDocumentVersion'
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HRDocument'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+  /hr/documents/{id}/revoke:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - HR
+      operationId: revokeHRDocument
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/HRDocumentVersion'
+      responses:
+        '200':
+          description: Результат операции
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HRDocument'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
   /demo/accounts:
     get:
       tags:
@@ -1201,6 +1753,376 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
   schemas:
+    QuestionDirection:
+      type: string
+      enum:
+        - mentor
+        - hr
+    QuestionStatus:
+      type: string
+      enum:
+        - new
+        - in_progress
+        - resolved
+    RoutingSuggestion:
+      type: object
+      required:
+        - direction
+        - reason
+        - clarification
+        - split
+      properties:
+        direction:
+          type: string
+          enum:
+            - mentor
+            - hr
+            - needs_clarification
+        reason:
+          type: string
+        clarification:
+          type: string
+          nullable: true
+        split:
+          type: boolean
+    AccessScope:
+      type: object
+      required:
+        - version
+        - teams
+      properties:
+        version:
+          type: string
+        teams:
+          type: array
+          items:
+            type: object
+            required:
+              - id
+              - name
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+    RoutedQuestion:
+      type: object
+      required:
+        - id
+        - message_id
+        - team_id
+        - direction
+        - original_direction
+        - student
+        - specialist_id
+        - step_id
+        - status
+        - revision
+        - question
+        - context_excerpt
+        - resolution
+        - document_ids
+        - routing
+        - created_at
+        - updated_at
+        - applied_revision
+      properties:
+        id:
+          type: string
+          format: uuid
+        message_id:
+          type: string
+        team_id:
+          type: string
+        direction:
+          $ref: '#/components/schemas/QuestionDirection'
+        original_direction:
+          $ref: '#/components/schemas/QuestionDirection'
+        student:
+          type: object
+          required:
+            - id
+            - name
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        specialist_id:
+          type: string
+          nullable: true
+        step_id:
+          type: string
+          nullable: true
+        status:
+          $ref: '#/components/schemas/QuestionStatus'
+        revision:
+          type: integer
+          minimum: 1
+        question:
+          type: string
+        context_excerpt:
+          type: string
+        resolution:
+          type: string
+          nullable: true
+        document_ids:
+          type: array
+          items:
+            type: string
+        routing:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/RoutingSuggestion'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        applied_revision:
+          type: integer
+          minimum: 1
+          nullable: true
+    QuestionDraft:
+      type: object
+      required:
+        - direction
+        - question
+        - context_excerpt
+      properties:
+        direction:
+          $ref: '#/components/schemas/QuestionDirection'
+        question:
+          type: string
+        context_excerpt:
+          type: string
+    QuestionDraftInput:
+      type: object
+      required:
+        - question
+        - context_excerpt
+      properties:
+        question:
+          type: string
+        context_excerpt:
+          type: string
+    RoutedQuestions:
+      type: object
+      required:
+        - items
+        - drafts
+        - question
+        - available_directions
+        - routing
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/RoutedQuestion'
+        drafts:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionDraft'
+        question:
+          type: string
+        available_directions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionDirection'
+        routing:
+          type: object
+          nullable: true
+          allOf:
+            - $ref: '#/components/schemas/RoutingSuggestion'
+    QuestionHistory:
+      type: object
+      required:
+        - question
+        - history
+      properties:
+        question:
+          $ref: '#/components/schemas/RoutedQuestion'
+        history:
+          type: array
+          items:
+            type: object
+            required:
+              - revision
+              - snapshot
+            properties:
+              revision:
+                type: integer
+                minimum: 1
+              snapshot:
+                type: object
+                additionalProperties: true
+    CreateRoutedQuestion:
+      type: object
+      required:
+        - operation_id
+        - direction
+        - question
+        - context_excerpt
+      properties:
+        operation_id:
+          type: string
+          format: uuid
+        direction:
+          $ref: '#/components/schemas/QuestionDirection'
+        question:
+          type: string
+        context_excerpt:
+          type: string
+    RerouteQuestion:
+      type: object
+      required:
+        - operation_id
+        - revision
+        - direction
+        - question
+        - context_excerpt
+      properties:
+        operation_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          minimum: 1
+        direction:
+          $ref: '#/components/schemas/QuestionDirection'
+        question:
+          type: string
+        context_excerpt:
+          type: string
+    UpdateHRQuestion:
+      type: object
+      required:
+        - operation_id
+        - revision
+        - action
+      properties:
+        operation_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          minimum: 1
+        action:
+          type: string
+          enum:
+            - claim
+            - answer
+            - resolve
+            - reopen
+        resolution:
+          type: string
+        document_ids:
+          type: array
+          items:
+            type: string
+    HRDocument:
+      type: object
+      required:
+        - id
+        - author_id
+        - direction
+        - title
+        - content
+        - team_ids
+        - version
+        - published_version
+        - revoked
+        - status
+        - error
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        author_id:
+          type: string
+        direction:
+          type: string
+          enum:
+            - hr
+        title:
+          type: string
+        content:
+          type: string
+        team_ids:
+          type: array
+          items:
+            type: string
+        version:
+          type: integer
+          minimum: 1
+        published_version:
+          type: integer
+          minimum: 1
+          nullable: true
+        revoked:
+          type: boolean
+        status:
+          type: string
+          enum:
+            - draft
+            - indexing
+            - ready
+            - failed
+        error:
+          type: string
+          nullable: true
+        updated_at:
+          type: string
+          format: date-time
+    CreateHRDocument:
+      type: object
+      required:
+        - operation_id
+        - title
+        - content
+        - team_ids
+      properties:
+        operation_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        content:
+          type: string
+        team_ids:
+          type: array
+          items:
+            type: string
+    EditHRDocument:
+      type: object
+      required:
+        - version
+        - title
+        - content
+        - team_ids
+      properties:
+        version:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+        content:
+          type: string
+        team_ids:
+          type: array
+          items:
+            type: string
+    HRDocumentVersion:
+      type: object
+      required:
+        - version
+      properties:
+        version:
+          type: integer
+          minimum: 1
     ApiError:
       type: object
       required:
@@ -1245,6 +2167,7 @@ components:
           enum:
           - intern
           - mentor
+          - hr
         team:
           type: object
           required:
@@ -1457,6 +2380,14 @@ components:
           type: string
         excerpt:
           type: string
+        direction:
+          $ref: "#/components/schemas/QuestionDirection"
+        version:
+          type: integer
+          minimum: 1
+        updated_at:
+          type: string
+          format: date-time
     Message:
       type: object
       required:
@@ -1492,6 +2423,8 @@ components:
           - completed
           - failed
           - interrupted
+        routing:
+          $ref: "#/components/schemas/RoutingSuggestion"
         outcome:
           type: string
           enum: [unknown, answered, needs_clarification, knowledge_gap]

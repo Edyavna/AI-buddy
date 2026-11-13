@@ -4,7 +4,7 @@ import { z } from 'zod';
 export const userSchema = z.object({
   id: z.string(),
   name: z.string(),
-  role: z.enum(['intern', 'mentor']),
+  role: z.enum(['intern', 'mentor', 'hr']),
   team: z.object({ id: z.string(), name: z.string() }),
 });
 
