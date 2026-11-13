@@ -39,7 +39,7 @@
 
 ## БД
 
-Миграция `000013_review_preparation.sql`: `review_checklist_templates`,
+Миграция `000017_review_preparation.sql`: `review_checklist_templates`,
 `review_preparations` (+ частичный уникальный индекс одного черновика),
 `review_preparation_checks`, `review_preparation_history`.
 

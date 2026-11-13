@@ -1,0 +1,20 @@
+services:
+  api:
+    environment:
+      AI_MODE: live
+      LLM_BASE_URL: http://127.0.0.1:55662
+      LLM_MODEL: hr-test-fixture
+      LLM_API_KEY: hr-test-fixture
+      EMBEDDING_BASE_URL: http://127.0.0.1:55662
+      EMBEDDING_API_KEY: hr-test-fixture
+  hr-fixture:
+    image: node:24.15.0-alpine
+    network_mode: service:api
+    volumes:
+      - ./scripts/hr-provider-fixture.mjs:/fixture.mjs:ro
+    command: ["node", "/fixture.mjs"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:55662/ready').then(r=>{if(!r.ok)process.exit(1)},()=>process.exit(1))"]
+      interval: 1s
+      timeout: 2s
+      retries: 20

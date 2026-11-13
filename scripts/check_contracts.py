@@ -19,6 +19,9 @@ def check(schema, value):
                    format_checker=FormatChecker()).validate(value)
 
 f = json.loads((ROOT / 'contracts/examples/scenario.json').read_text(encoding='utf-8'))
+resolution = json.loads((ROOT / 'contracts/examples/resolution-drafts.json').read_text(encoding='utf-8'))
+for key, schema in [('save', 'SaveResolutionDraft'), ('workspace', 'ResolutionWorkspace'), ('empty', 'ResolutionWorkspace'), ('publish', 'PublishResolutionDraft')]:
+    check(schema, resolution[key])
 mapping = {'user':'User', 'create_conversation':'CreateConversation', 'conversation':'Conversation',
            'send_message':'SendMessage', 'confirm':'ConfirmRequest', 'error':'ApiError',
            'failed_event':'ChatEvent'}

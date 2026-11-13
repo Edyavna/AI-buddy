@@ -1,7 +1,8 @@
 import { useRef, type KeyboardEvent } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { z } from 'zod';
 import { apiRequest, ClientError, queryKeys } from '@/shared/api';
+import { queryRequestSignal, revokeQueryAccess } from '@/shared/api/query-access';
 import { Drawer, InlineError, Spinner } from '@/shared/ui';
 import { MarkdownContent } from './MarkdownContent';
 import styles from './DocumentDrawer.module.css';
@@ -11,12 +12,25 @@ export type DocumentDrawerProps = { documentId: string | null; onClose: () => vo
 
 export function DocumentDrawer({ documentId, onClose }: DocumentDrawerProps) {
   const root = useRef<HTMLDivElement>(null);
+  const client = useQueryClient();
+  const key = queryKeys.document(documentId ?? '');
   const query = useQuery({
-    queryKey: queryKeys.document(documentId ?? ''), enabled: documentId !== null,
+    queryKey: key, enabled: documentId !== null,
     queryFn: async ({ signal }) => {
-      const result = await apiRequest(`/documents/${encodeURIComponent(documentId!)}`, documentSchema, { signal });
-      if (!result.data) throw new ClientError('protocol', 'Документ не получен');
-      return result.data;
+      const scope = queryRequestSignal(client, key, signal);
+      try {
+        const result = await apiRequest(`/documents/${encodeURIComponent(documentId!)}`, documentSchema, { signal: scope });
+        scope.throwIfAborted();
+        if (!result.data) throw new ClientError('protocol', 'Документ не получен');
+        return result.data;
+      } catch (error) {
+        scope.throwIfAborted();
+        if (error instanceof ClientError && [401, 403, 404].includes(error.status ?? 0)) {
+          revokeQueryAccess(client, key);
+          client.setQueryData(key, null);
+        }
+        throw error;
+      }
     },
   });
   // Keep the shared Drawer; complete keyboard containment locally for this modal.

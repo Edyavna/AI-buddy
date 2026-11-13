@@ -13,6 +13,7 @@ import (
 )
 
 func (s Uploads) Register(mux *http.ServeMux, session auth.Handler) {
+	s.registerHR(mux, session)
 	mux.Handle("GET /api/v1/mentor/documents", session.Require(http.HandlerFunc(s.listHTTP), false))
 	mux.Handle("POST /api/v1/mentor/documents", session.Require(http.HandlerFunc(s.createHTTP), false))
 	mux.Handle("GET /api/v1/mentor/documents/{id}", session.Require(http.HandlerFunc(s.getHTTP), false))

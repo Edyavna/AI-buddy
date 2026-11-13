@@ -1,0 +1,62 @@
+{
+  "save": {
+    "revision": 0,
+    "title": "Настройка сервиса",
+    "content": "## Настройка\nПроверьте конфигурацию.",
+    "target_document_id": null,
+    "base_version": null
+  },
+  "workspace": {
+    "source": {
+      "id": "87654321-1234-4321-9876-000000000001",
+      "direction": "mentor",
+      "team_id": "team_demo_backend",
+      "question": "Как настроить сервис?",
+      "resolution": "Проверьте конфигурацию.",
+      "step_id": null,
+      "revision": 2
+    },
+    "draft": {
+      "revision": 1,
+      "title": "Настройка сервиса",
+      "content": "## Настройка\nПроверьте конфигурацию.",
+      "target_document_id": null,
+      "base_version": null,
+      "source": {
+        "id": "87654321-1234-4321-9876-000000000001",
+        "direction": "mentor",
+        "team_id": "team_demo_backend",
+        "question": "Как настроить сервис?",
+        "resolution": "Проверьте конфигурацию.",
+        "step_id": null,
+        "revision": 2
+      },
+      "base_content": "",
+      "document_id": null,
+      "document_version": null,
+      "status": "draft",
+      "error": null,
+      "team_ids": [
+        "team_demo_backend"
+      ]
+    },
+    "targets": []
+  },
+  "empty": {
+    "source": {
+      "id": "87654321-1234-4321-9876-000000000001",
+      "direction": "mentor",
+      "team_id": "team_demo_backend",
+      "question": "Как настроить сервис?",
+      "resolution": "Проверьте конфигурацию.",
+      "step_id": null,
+      "revision": 2
+    },
+    "draft": null,
+    "targets": []
+  },
+  "publish": {
+    "revision": 1,
+    "reviewed": true
+  }
+}

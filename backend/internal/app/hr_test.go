@@ -1,0 +1,640 @@
+package app
+
+import (
+	"context"
+	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"net/http"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/Edyavna/AI-buddy/backend/internal/chat"
+	"github.com/Edyavna/AI-buddy/backend/internal/demo"
+	"github.com/Edyavna/AI-buddy/backend/internal/hrscope"
+	"github.com/Edyavna/AI-buddy/backend/internal/knowledge"
+	"github.com/Edyavna/AI-buddy/backend/internal/knowledgegaps"
+	"github.com/Edyavna/AI-buddy/backend/internal/platform/identity"
+	"github.com/Edyavna/AI-buddy/backend/internal/ports"
+	"github.com/Edyavna/AI-buddy/backend/internal/testkit"
+)
+
+func hrResponse[T any](t *testing.T, h http.Handler, method, path string, body any, cookie *http.Cookie, status int) T {
+	t.Helper()
+	input := ""
+	if body != nil {
+		raw, err := json.Marshal(body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		input = string(raw)
+	}
+	rec := apiRequest(t, h, method, "/api/v1"+path, input, cookie, status)
+	var out T
+	if status == 200 {
+		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
+			t.Fatal(err, rec.Body.String())
+		}
+	}
+	return out
+}
+
+func hrKey(number int) string { return fmt.Sprintf("87654321-1234-4321-9876-%012d", number) }
+
+func TestPostgresHRLifecycle(t *testing.T) {
+	db := testkit.Postgres(t)
+	_, student, conversation := prepareDraft(t, db)
+	var assistant string
+	if err := db.QueryRow(`UPDATE chat_messages SET routing='{"direction":"hr","reason":"Приватная тема отпуска","clarification":null,"split":false}' WHERE conversation_id=$1 AND role='assistant' RETURNING id`, conversation).Scan(&assistant); err != nil {
+		t.Fatal(err)
+	}
+	service := &knowledge.Service{DB: db, Embedder: uploadEmbedder{}}
+	h := requestHandler(db, Dependencies{Knowledge: service})
+	hr1 := loginCookie(t, h, "hr_demo_1", nil)
+	hr2 := loginCookie(t, h, "hr_demo_2", nil)
+	mentor := loginCookie(t, h, "mentor_demo_1", nil)
+	scope := hrResponse[hrscope.Scope](t, h, "GET", "/me/access-scope", nil, hr1, 200)
+	if len(scope.Teams) != 2 {
+		t.Fatal(scope)
+	}
+	hrResponse[any](t, h, "GET", "/hr/questions?team_id=team_demo_frontend", nil, hr2, 404)
+	hrResponse[any](t, h, "GET", "/hr/questions", nil, mentor, 403)
+	hrResponse[any](t, h, "PUT", "/onboarding/steps/step_local_setup/confirmation", map[string]any{"confirmed": true, "revision": 1}, hr1, 403)
+	path := "/messages/" + assistant + "/questions"
+	other := loginCookie(t, h, "intern_demo_other", nil)
+	hrResponse[any](t, h, "GET", path, nil, other, 404)
+	create := knowledgegaps.Operation{ID: hrKey(1), Draft: knowledgegaps.Draft{Direction: "hr", Question: "Как оформить отпуск?", Context: "Согласованный контекст"}}
+	q := hrResponse[knowledgegaps.Question](t, h, "POST", path, create, student, 200)
+	if q.Direction != "hr" || q.SpecialistID != nil || q.Revision != 1 {
+		t.Fatal(q)
+	}
+	if replay := hrResponse[knowledgegaps.Question](t, h, "POST", path, create, student, 200); replay.ID != q.ID {
+		t.Fatal(replay)
+	}
+	create.ID = hrKey(2)
+	create.Direction = "mentor"
+	create.Question = "Как открыть pull request?"
+	work := hrResponse[knowledgegaps.Question](t, h, "POST", path, create, student, 200)
+	hrResponse[any](t, h, "GET", "/mentor/questions/"+q.ID, nil, mentor, 404)
+	hrResponse[any](t, h, "GET", "/hr/questions/"+work.ID, nil, hr1, 404)
+	list := hrResponse[struct{ Items []knowledgegaps.Question }](t, h, "GET", "/hr/questions?status=new&q=отпуск", nil, hr1, 200)
+	if len(list.Items) != 1 {
+		t.Fatal(list)
+	}
+	store := knowledgegaps.Store{DB: db, Documents: knowledge.Uploads{DB: db}, Knowledge: service}
+	var wg sync.WaitGroup
+	result := make(chan knowledgegaps.Question, 2)
+	for i, id := range []string{"hr_demo_1", "hr_demo_2"} {
+		wg.Go(func() {
+			ctx := identity.WithPrincipal(t.Context(), identity.Principal{UserID: id, Role: identity.HR, TeamID: "team_demo_backend"})
+			claimed, err := store.HRPatch(ctx, q.ID, knowledgegaps.HRUpdate{ID: hrKey(3 + i), Action: "claim", Revision: 1})
+			if err == nil {
+				result <- claimed
+			}
+		})
+	}
+	wg.Wait()
+	close(result)
+	if len(result) != 1 {
+		t.Fatalf("claims = %d", len(result))
+	}
+	claimed := <-result
+	owner := hr1
+	if *claimed.SpecialistID == "hr_demo_2" {
+		owner = hr2
+	}
+	docInput := knowledge.HRDocumentInput{Operation: hrKey(10), Title: "Порядок отпуска", Content: "# Отпуск\nЗаявление подаётся заранее.", Teams: []string{"team_demo_backend"}}
+	doc := hrResponse[knowledge.HRDocument](t, h, "POST", "/hr/documents", docInput, hr1, 200)
+	docPath := "/hr/documents/" + doc.ID
+	readPath := "/documents/" + doc.ID
+	hrResponse[any](t, h, "GET", readPath, nil, student, 404)
+	hrResponse[any](t, h, "POST", docPath+"/publish", map[string]any{"version": 1}, hr2, 200)
+	failed := knowledge.UploadWorker{Knowledge: &knowledge.Service{DB: db, Embedder: uploadEmbedder{fail: true}}}
+	if processed, err := failed.RunOne(t.Context()); !processed || err != nil {
+		t.Fatal(processed, err)
+	}
+	hrResponse[any](t, h, "POST", docPath+"/retry", map[string]any{"version": 1}, hr2, 200)
+	worker := knowledge.UploadWorker{Knowledge: service}
+	if processed, err := worker.RunOne(t.Context()); !processed || err != nil {
+		t.Fatal(processed, err)
+	}
+	hrResponse[any](t, h, "GET", readPath, nil, student, 200)
+	hrResponse[any](t, h, "GET", readPath, nil, other, 404)
+	hrResponse[any](t, h, "GET", readPath, nil, mentor, 404)
+	citation := []chat.Source{{ID: "source", DocumentID: doc.ID, Title: doc.Title, Direction: "hr", Version: 1, Excerpt: "Цитата версии 1"}}
+	sources, err := json.Marshal(citation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec("UPDATE chat_messages SET sources=$2,text=$3 WHERE id=$1", assistant, sources, "Ответ по версии 1"); err != nil {
+		t.Fatal(err)
+	}
+	historyPath := "/conversations/" + conversation + "/messages"
+	if messages := hrResponse[[]chat.Message](t, h, "GET", historyPath, nil, student, 200); len(messages[1].Sources) != 1 || messages[1].Text != "Ответ по версии 1" {
+		t.Fatal(messages)
+	}
+	qPath := "/hr/questions/" + q.ID
+	update := knowledgegaps.HRUpdate{ID: hrKey(12), Revision: claimed.Revision, Action: "answer", Resolution: "Следуйте инструкции", Documents: []string{doc.ID}}
+	answered := hrResponse[knowledgegaps.Question](t, h, "PATCH", qPath, update, owner, 200)
+	update.ID, update.Revision, update.Action = hrKey(13), answered.Revision, "resolve"
+	resolved := hrResponse[knowledgegaps.Question](t, h, "PATCH", qPath, update, owner, 200)
+	if resolved.State != "resolved" {
+		t.Fatal(resolved)
+	}
+	h = requestHandler(db, Dependencies{Knowledge: service})
+	history := hrResponse[knowledgegaps.History](t, h, "GET", "/questions/"+q.ID, nil, student, 200)
+	if len(history.Question.DocumentIDs) != 1 || len(history.Entries) != 3 {
+		t.Fatal(history)
+	}
+	docInput.Operation, docInput.Version, docInput.Content = "", 1, "Обновлённая инструкция"
+	edit := hrResponse[knowledge.HRDocument](t, h, "PATCH", docPath, docInput, hr2, 200)
+	if edit.Version != 2 || edit.Published == nil || *edit.Published != 1 {
+		t.Fatal(edit)
+	}
+	hrResponse[any](t, h, "PATCH", docPath, docInput, hr1, 409)
+	hrResponse[any](t, h, "POST", docPath+"/publish", map[string]any{"version": 2}, hr2, 200)
+	if processed, err := worker.RunOne(t.Context()); !processed || err != nil {
+		t.Fatal(processed, err)
+	}
+	if current := hrResponse[map[string]any](t, h, "GET", readPath, nil, student, 200); current["content"] != docInput.Content {
+		t.Fatal(current)
+	}
+	if messages := hrResponse[[]chat.Message](t, h, "GET", historyPath, nil, student, 200); len(messages[1].Sources) != 0 || strings.Contains(messages[1].Text, "Ответ по версии 1") {
+		t.Fatal(messages)
+	}
+	hrResponse[any](t, h, "POST", docPath+"/revoke", map[string]any{"version": 2}, hr2, 200)
+	hrResponse[any](t, h, "GET", readPath, nil, student, 404)
+	if history := hrResponse[knowledgegaps.History](t, h, "GET", "/questions/"+q.ID, nil, student, 200); len(history.Question.DocumentIDs) != 0 {
+		t.Fatal(history)
+	}
+	reroute := knowledgegaps.Operation{ID: hrKey(20), Revision: resolved.Revision, Draft: knowledgegaps.Draft{Direction: "mentor", Question: "Как оформить код-ревью?"}}
+	newQ := hrResponse[knowledgegaps.Question](t, h, "POST", "/questions/"+q.ID+"/reroute", reroute, student, 200)
+	if newQ.ID != q.ID || newQ.Resolution != nil || newQ.State != "new" {
+		t.Fatal(newQ)
+	}
+	hrResponse[any](t, h, "POST", "/questions/"+q.ID+"/reroute", reroute, student, 200)
+	hrResponse[any](t, h, "GET", qPath, nil, owner, 404)
+	hrResponse[any](t, h, "GET", "/mentor/questions/"+q.ID, nil, mentor, 200)
+
+	assignments := hrscope.Store{DB: db}
+	if err := assignments.Set(t.Context(), "hr_demo_1", "team_demo_backend", false); err != nil {
+		t.Fatal(err)
+	}
+	if err := demo.Seed(t.Context(), db, true); err != nil {
+		t.Fatal(err)
+	}
+	now := hrResponse[hrscope.Scope](t, h, "GET", "/me/access-scope", nil, hr1, 200)
+	if len(now.Teams) != 1 || now.Version == scope.Version {
+		t.Fatal(now)
+	}
+	hrResponse[any](t, h, "GET", docPath, nil, hr1, 404)
+	hrResponse[any](t, h, "GET", "/hr/documents", nil, hr2, 200)
+	hrResponse[any](t, h, "GET", docPath, nil, hr2, 200)
+	hrResponse[any](t, h, "GET", "/hr/documents", nil, mentor, 403)
+	hrResponse[any](t, h, "GET", "/hr/documents/not-a-uuid", nil, hr2, 404)
+	hrResponse[any](t, h, "POST", "/hr/documents", map[string]any{"title": "Без аудитории"}, hr2, 422)
+	hrResponse[any](t, h, "POST", docPath+"/invalid", map[string]any{"version": 2}, hr2, 422)
+	ctx := identity.WithPrincipal(context.Background(), identity.Principal{UserID: "intern_demo_1", Role: identity.Intern, TeamID: "team_demo_backend"})
+	if hits, err := service.SearchDirection(ctx, "Отпуск", "hr"); err != nil || len(hits) != 0 {
+		t.Fatal(hits, err)
+	}
+}
+
+func TestPostgresHRDraftWithoutRecipient(t *testing.T) {
+	db := testkit.Postgres(t)
+	_, student, conversation := prepareDraft(t, db)
+	var assistant string
+	if err := db.QueryRow("SELECT id FROM chat_messages WHERE conversation_id=$1 AND role='assistant'", conversation).Scan(&assistant); err != nil {
+		t.Fatal(err)
+	}
+	scope := hrscope.Store{DB: db}
+	for _, hr := range []string{"hr_demo_1", "hr_demo_2"} {
+		if err := scope.Set(t.Context(), hr, "team_demo_backend", false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	h := requestHandler(db, Dependencies{})
+	path := "/messages/" + assistant
+	draft := map[string]string{"question": "Когда выходить?", "context_excerpt": "Согласовано"}
+	hrResponse[any](t, h, "PUT", path+"/question-drafts/hr", draft, student, 200)
+	op := knowledgegaps.Operation{ID: hrKey(1), Draft: knowledgegaps.Draft{Direction: "hr", Question: "Отпуск", Context: "Изменённый текст"}}
+	hrResponse[any](t, h, "POST", path+"/questions", op, student, 409)
+	result := hrResponse[knowledgegaps.MessageQuestions](t, h, "GET", path+"/questions", nil, student, 200)
+	if len(result.Items) != 0 || len(result.Drafts) != 1 || !strings.Contains(result.Drafts[0].Context, "Изменённый") {
+		t.Fatal(result)
+	}
+	if err := scope.Set(t.Context(), "hr_demo_1", "team_demo_backend", true); err != nil {
+		t.Fatal(err)
+	}
+	hrResponse[any](t, h, "POST", path+"/questions", op, student, 200)
+}
+
+func TestPostgresHRRevocationDuringIndexing(t *testing.T) {
+	db := testkit.Postgres(t)
+	if err := demo.Seed(t.Context(), db, true); err != nil {
+		t.Fatal(err)
+	}
+	service := &knowledge.Service{DB: db, Embedder: uploadEmbedder{}}
+	h := requestHandler(db, Dependencies{Knowledge: service})
+	hr1 := loginCookie(t, h, "hr_demo_1", nil)
+	hr2 := loginCookie(t, h, "hr_demo_2", nil)
+	student := loginCookie(t, h, "intern_demo_other", nil)
+	doc := hrResponse[knowledge.HRDocument](t, h, "POST", "/hr/documents", knowledge.HRDocumentInput{
+		Operation: hrKey(23), Title: "Две команды", Content: "# Кадровая инструкция", Teams: []string{"team_demo_backend", "team_demo_frontend"}}, hr1, 200)
+	path := "/hr/documents/" + doc.ID
+	version := map[string]int{"version": 1}
+	hrResponse[any](t, h, "GET", path, nil, hr2, 404)
+	hrResponse[any](t, h, "POST", path+"/publish", version, hr2, 404)
+	hrResponse[any](t, h, "POST", path+"/publish", version, hr1, 200)
+	entered, release := make(chan struct{}), make(chan struct{})
+	worker := knowledge.UploadWorker{Knowledge: &knowledge.Service{DB: db, Embedder: uploadEmbedder{entered: entered, release: release}}}
+	done := make(chan error, 1)
+	go func() { _, err := worker.RunOne(t.Context()); done <- err }()
+	select {
+	case <-entered:
+	case <-t.Context().Done():
+		t.Fatal(t.Context().Err())
+	case <-time.After(5 * time.Second):
+		t.Fatal("worker did not start")
+	}
+	scope := hrscope.Store{DB: db}
+	if err := scope.Set(t.Context(), "hr_demo_1", "team_demo_frontend", false); err != nil {
+		close(release)
+		t.Fatal(err)
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	hrResponse[any](t, h, "GET", "/documents/"+doc.ID, nil, student, 404)
+	if err := scope.Set(t.Context(), "hr_demo_1", "team_demo_frontend", true); err != nil {
+		t.Fatal(err)
+	}
+	current := hrResponse[knowledge.HRDocument](t, h, "GET", path, nil, hr1, 200)
+	if current.Status != "failed" || current.Published != nil {
+		t.Fatal(current)
+	}
+	hrResponse[any](t, h, "POST", path+"/retry", version, hr1, 200)
+	if processed, err := (knowledge.UploadWorker{Knowledge: service}).RunOne(t.Context()); !processed || err != nil {
+		t.Fatal(processed, err)
+	}
+	hrResponse[any](t, h, "GET", "/documents/"+doc.ID, nil, student, 200)
+}
+
+func TestPostgresHRRevokedSpecialistReleasesClaimAndRerouteKeepsPrivateHistory(t *testing.T) {
+	db := testkit.Postgres(t)
+	_, student, conversation := prepareDraft(t, db)
+	h := requestHandler(db, Dependencies{})
+	hr1 := loginCookie(t, h, "hr_demo_1", nil)
+	hr2 := loginCookie(t, h, "hr_demo_2", nil)
+	mentor := loginCookie(t, h, "mentor_demo_1", nil)
+	var assistant string
+	if err := db.QueryRow("SELECT id FROM chat_messages WHERE conversation_id=$1 AND role='assistant'", conversation).Scan(&assistant); err != nil {
+		t.Fatal(err)
+	}
+	path := "/messages/" + assistant + "/questions"
+	op := knowledgegaps.Operation{ID: hrKey(1), Draft: knowledgegaps.Draft{Direction: "hr", Question: "Отпуск по семейной причине", Context: "Личный контекст"}}
+	hrResponse[any](t, h, "POST", path, map[string]string{"direction": "hr", "team_id": "team_demo_frontend"}, student, 422)
+	hrResponse[any](t, h, "POST", path, knowledgegaps.Operation{ID: "invalid", Draft: op.Draft}, student, 422)
+	q := hrResponse[knowledgegaps.Question](t, h, "POST", path, op, student, 200)
+	op.Question = "Другая версия"
+	hrResponse[any](t, h, "POST", path, op, student, 409)
+	hrPath := "/hr/questions/" + q.ID
+	first := knowledgegaps.HRUpdate{ID: hrKey(2), Action: "claim", Revision: 1}
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", hrPath, first, hr1, 200)
+	replayed := hrResponse[knowledgegaps.Question](t, h, "PATCH", hrPath, first, hr1, 200)
+	if replayed.Revision != q.Revision || replayed.AppliedRevision == nil || *replayed.AppliedRevision != q.Revision {
+		t.Fatal(replayed)
+	}
+	hrResponse[any](t, h, "PATCH", hrPath, knowledgegaps.HRUpdate{ID: hrKey(3), Action: "claim", Revision: 1}, hr2, 409)
+	hrResponse[any](t, h, "PATCH", hrPath, knowledgegaps.HRUpdate{ID: hrKey(4), Action: "resolve", Revision: q.Revision}, hr1, 422)
+	hrResponse[any](t, h, "PATCH", hrPath, knowledgegaps.HRUpdate{ID: hrKey(5), Action: "reopen", Revision: q.Revision}, hr1, 409)
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", hrPath, knowledgegaps.HRUpdate{ID: hrKey(6), Action: "answer", Revision: q.Revision, Resolution: "Приватный ответ HR"}, hr1, 200)
+	if err := (hrscope.Store{DB: db}).Set(t.Context(), "hr_demo_1", "team_demo_backend", false); err != nil {
+		t.Fatal(err)
+	}
+	hrResponse[any](t, h, "GET", hrPath, nil, hr1, 404)
+	hrResponse[any](t, h, "PATCH", hrPath, first, hr1, 404)
+	q = hrResponse[knowledgegaps.Question](t, h, "GET", hrPath, nil, hr2, 200)
+	if q.SpecialistID != nil || q.State != "new" {
+		t.Fatal(q)
+	}
+	revision := q.Revision
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", hrPath, knowledgegaps.HRUpdate{ID: hrKey(7), Action: "claim", Revision: revision}, hr2, 200)
+	transfer := knowledgegaps.Operation{ID: hrKey(8), Revision: revision, Draft: knowledgegaps.Draft{Direction: "mentor", Question: "Помогите с первым PR", Context: "Новый контекст"}}
+	hrResponse[any](t, h, "POST", "/questions/"+q.ID+"/reroute", transfer, student, 409)
+	transfer.Revision = q.Revision
+	hrResponse[any](t, h, "POST", "/questions/"+q.ID+"/reroute", transfer, student, 200)
+	body := apiRequest(t, h, "GET", "/api/v1/mentor/questions/"+q.ID, "", mentor, 200).Body.String()
+	for _, secret := range []string{"Личный контекст", "Приватный ответ HR", "семейной причине", "Приватная тема отпуска"} {
+		if strings.Contains(body, secret) {
+			t.Fatal("prior route leaked:", body)
+		}
+	}
+	if !strings.Contains(body, "Новый контекст") {
+		t.Fatal(body)
+	}
+	hrResponse[any](t, h, "GET", hrPath, nil, hr2, 404)
+}
+
+func TestPostgresHRRejectsForbiddenTransitionsAndMalformedRequests(t *testing.T) {
+	db := testkit.Postgres(t)
+	_, student, conversation := prepareDraft(t, db)
+	h := requestHandler(db, Dependencies{})
+	hr := loginCookie(t, h, "hr_demo_1", nil)
+	mentor := loginCookie(t, h, "mentor_demo_1", nil)
+	var assistant string
+	if err := db.QueryRow("SELECT id FROM chat_messages WHERE conversation_id=$1 AND role='assistant'", conversation).Scan(&assistant); err != nil {
+		t.Fatal(err)
+	}
+	path := "/messages/" + assistant
+	for _, req := range []struct{ method, path, body string }{
+		{"PUT", path + "/question-drafts/hr", "[]"},
+		{"POST", "/questions/foreign/reroute", "[]"},
+		{"PATCH", "/hr/questions/foreign", "[]"},
+		{"POST", "/hr/documents/foreign/publish", "[]"},
+	} {
+		cookie := student
+		if strings.HasPrefix(req.path, "/hr/") {
+			cookie = hr
+		}
+		apiRequest(t, h, req.method, "/api/v1"+req.path, req.body, cookie, 422)
+	}
+	hrResponse[any](t, h, "GET", "/hr/questions?status=unknown", nil, hr, 422)
+	hrResponse[any](t, h, "GET", "/hr/questions/foreign", nil, mentor, 403)
+	hrResponse[any](t, h, "GET", "/questions/foreign", nil, student, 404)
+	hrResponse[any](t, h, "PUT", path+"/question-drafts/bad", map[string]string{"question": "x"}, student, 422)
+	hrResponse[any](t, h, "PUT", "/messages/foreign/question-drafts/hr", map[string]string{"question": "x"}, student, 404)
+	draft := knowledgegaps.Draft{Direction: "hr", Question: "Куда подать заявление?"}
+	q := hrResponse[knowledgegaps.Question](t, h, "POST", path+"/questions", knowledgegaps.Operation{ID: hrKey(1), Draft: draft}, student, 200)
+	qpath := "/hr/questions/" + q.ID
+	hrResponse[any](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(2), Action: "answer", Resolution: "Ответ", Revision: 1}, hr, 409)
+	hrResponse[any](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(3), Action: "fake", Revision: 1}, hr, 422)
+	hrResponse[any](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(4), Action: "claim", Revision: 0}, hr, 422)
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(5), Action: "claim", Revision: 1}, hr, 200)
+	hrResponse[any](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(6), Action: "claim", Revision: q.Revision}, hr, 409)
+	hrResponse[any](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(7), Action: "resolve", Revision: q.Revision, Resolution: "Ответ", Documents: []string{"foreign"}}, hr, 409)
+	hrResponse[any](t, h, "POST", "/questions/"+q.ID+"/reroute", knowledgegaps.Operation{ID: hrKey(8), Revision: q.Revision, Draft: draft}, student, 409)
+	hrResponse[any](t, h, "POST", "/questions/"+q.ID+"/reroute", knowledgegaps.Operation{ID: hrKey(9), Draft: draft}, student, 422)
+	hrResponse[any](t, h, "POST", path+"/questions", knowledgegaps.Operation{ID: hrKey(10), Draft: draft}, student, 409)
+
+	doc := knowledge.HRDocumentInput{Operation: hrKey(11), Title: "Инструкция", Content: "# Текст", Teams: []string{"team_demo_backend"}}
+	saved := hrResponse[knowledge.HRDocument](t, h, "POST", "/hr/documents", doc, hr, 200)
+	if replay := hrResponse[knowledge.HRDocument](t, h, "POST", "/hr/documents", doc, hr, 200); replay.ID != saved.ID {
+		t.Fatal(replay)
+	}
+	doc.Title = "Другой документ"
+	hrResponse[any](t, h, "POST", "/hr/documents", doc, hr, 409)
+	doc.Operation = "not-a-uuid"
+	hrResponse[any](t, h, "POST", "/hr/documents", doc, hr, 422)
+	doc.Operation = hrKey(12)
+	doc.Teams = []string{"team_demo_no_hr"}
+	hrResponse[any](t, h, "POST", "/hr/documents", doc, hr, 404)
+	dpath := "/hr/documents/" + saved.ID
+	hrResponse[any](t, h, "POST", dpath+"/retry", map[string]int{"version": 1}, hr, 409)
+	hrResponse[any](t, h, "POST", dpath+"/publish", map[string]int{"version": 7}, hr, 409)
+	hrResponse[any](t, h, "POST", "/hr/documents/bad/publish", map[string]int{"version": 1}, hr, 404)
+	hrResponse[any](t, h, "POST", dpath+"/revoke", map[string]int{"version": 1}, student, 403)
+}
+
+func TestPostgresHRDatabaseUnavailable(t *testing.T) {
+	db := testkit.Postgres(t)
+	// A closed DB reliably exercises the same service errors as losing the connection.
+	if err := db.Close(); err != nil {
+		t.Fatal(err)
+	}
+	hr := identity.WithPrincipal(t.Context(), identity.Principal{UserID: "hr", TeamID: "team", Role: identity.HR})
+	intern := identity.WithPrincipal(t.Context(), identity.Principal{UserID: "intern", TeamID: "team", Role: identity.Intern})
+	anonymous := t.Context()
+	scope := hrscope.Store{DB: db}
+	questions := knowledgegaps.Store{DB: db}
+	docs := knowledge.Uploads{DB: db}
+	worker := knowledge.UploadWorker{Knowledge: &knowledge.Service{DB: db, Embedder: uploadEmbedder{}}}
+	operation := knowledgegaps.Operation{ID: hrKey(1), Revision: 1, Draft: knowledgegaps.Draft{Direction: "hr", Question: "Вопрос"}}
+	for name, check := range map[string]func() error{
+		"scope":                   func() error { _, err := scope.Current(hr); return err },
+		"scope anonymous":         func() error { _, err := scope.Current(anonymous); return err },
+		"scope list":              func() error { _, err := scope.List(hr); return err },
+		"scope set":               func() error { return scope.Set(hr, "hr", "team", true) },
+		"message":                 func() error { _, err := questions.MessageQuestions(intern, "message"); return err },
+		"message forbidden":       func() error { _, err := questions.MessageQuestions(hr, "message"); return err },
+		"draft forbidden":         func() error { _, err := questions.SaveDraft(hr, "message", operation.Draft); return err },
+		"create forbidden":        func() error { _, err := questions.Create(hr, "message", operation); return err },
+		"reroute forbidden":       func() error { _, err := questions.Reroute(hr, "question", operation); return err },
+		"history forbidden":       func() error { _, err := questions.History(hr, "question"); return err },
+		"queue":                   func() error { _, err := questions.HRList(hr, "", "", ""); return err },
+		"queue filtered":          func() error { _, err := questions.HRList(hr, "team", "", ""); return err },
+		"question":                func() error { _, err := questions.HRGet(hr, "question"); return err },
+		"patch forbidden":         func() error { _, err := questions.HRPatch(intern, "question", knowledgegaps.HRUpdate{}); return err },
+		"document list":           func() error { _, err := docs.HRList(hr); return err },
+		"document get":            func() error { _, err := docs.HRGet(hr, hrKey(2)); return err },
+		"document get forbidden":  func() error { _, err := docs.HRGet(intern, hrKey(2)); return err },
+		"document save forbidden": func() error { _, err := docs.HRSave(intern, "", knowledge.HRDocumentInput{}); return err },
+		"worker":                  func() error { _, err := worker.RunOne(hr); return err },
+		"recovery":                func() error { return worker.Recover(hr) },
+		"search":                  func() error { _, err := worker.Knowledge.SearchDirection(intern, "вопрос", "hr"); return err },
+	} {
+		t.Run(name, func(t *testing.T) {
+			if err := check(); err == nil {
+				t.Fatal("expected denial or unavailable database")
+			}
+		})
+	}
+}
+
+func TestPostgresHRReopensWhenFormerSpecialistLosesAccess(t *testing.T) {
+	db := testkit.Postgres(t)
+	_, student, conversation := prepareDraft(t, db)
+	h := requestHandler(db, Dependencies{})
+	hr1 := loginCookie(t, h, "hr_demo_1", nil)
+	hr2 := loginCookie(t, h, "hr_demo_2", nil)
+	var assistant string
+	if err := db.QueryRow("SELECT id FROM chat_messages WHERE conversation_id=$1 AND role='assistant'", conversation).Scan(&assistant); err != nil {
+		t.Fatal(err)
+	}
+	path := "/messages/" + assistant + "/questions"
+	draft := knowledgegaps.Draft{Direction: "hr", Question: "Как оформить кадровые документы?"}
+	q := hrResponse[knowledgegaps.Question](t, h, "POST", path, knowledgegaps.Operation{ID: hrKey(1), Draft: draft}, student, 200)
+	qpath := "/hr/questions/" + q.ID
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(2), Action: "claim", Revision: q.Revision}, hr1, 200)
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(3), Action: "resolve", Resolution: "Ответ", Revision: q.Revision}, hr1, 200)
+	reopen := knowledgegaps.HRUpdate{ID: hrKey(4), Action: "reopen", Revision: q.Revision}
+	hrResponse[any](t, h, "PATCH", qpath, reopen, hr2, 409)
+	scope := hrscope.Store{DB: db}
+	if err := scope.Set(t.Context(), "hr_demo_1", "team_demo_backend", false); err != nil {
+		t.Fatal(err)
+	}
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", qpath, reopen, hr2, 200)
+	if q.State != "in_progress" || q.SpecialistID == nil || *q.SpecialistID != "hr_demo_2" {
+		t.Fatal(q)
+	}
+	list := hrResponse[knowledgegaps.MessageQuestions](t, h, "GET", path, nil, student, 200)
+	if len(list.Items) != 1 || len(list.Available) != 2 {
+		t.Fatal(list)
+	}
+	if _, err := db.Exec("DELETE FROM mentor_assignments WHERE intern_id='intern_demo_1'"); err != nil {
+		t.Fatal(err)
+	}
+	draft.Direction = "mentor"
+	hrResponse[any](t, h, "POST", path, knowledgegaps.Operation{ID: hrKey(5), Draft: draft}, student, 409)
+	hrResponse[any](t, h, "POST", "/questions/"+q.ID+"/reroute", knowledgegaps.Operation{ID: hrKey(6), Revision: q.Revision, Draft: draft}, student, 409)
+}
+
+func TestPostgresHRDocumentAudienceAndPublicationRetries(t *testing.T) {
+	db := testkit.Postgres(t)
+	if err := demo.Seed(t.Context(), db, true); err != nil {
+		t.Fatal(err)
+	}
+	service := &knowledge.Service{DB: db, Embedder: uploadEmbedder{}}
+	h := requestHandler(db, Dependencies{Knowledge: service})
+	hr := loginCookie(t, h, "hr_demo_1", nil)
+	backend := loginCookie(t, h, "intern_demo_1", nil)
+	frontend := loginCookie(t, h, "intern_demo_other", nil)
+	input := knowledge.HRDocumentInput{Operation: hrKey(1), Title: "Политика", Content: "Версия 1", Teams: []string{"team_demo_backend", "team_demo_frontend"}}
+	d := hrResponse[knowledge.HRDocument](t, h, "POST", "/hr/documents", input, hr, 200)
+	path := "/hr/documents/" + d.ID
+	read := "/documents/" + d.ID
+	v1 := map[string]int{"version": 1}
+	hrResponse[any](t, h, "POST", path+"/publish", v1, hr, 200)
+	hrResponse[any](t, h, "POST", path+"/publish", v1, hr, 200)
+	worker := knowledge.UploadWorker{Knowledge: service}
+	if processed, err := worker.RunOne(t.Context()); !processed || err != nil {
+		t.Fatal(processed, err)
+	}
+	hrResponse[any](t, h, "POST", path+"/publish", v1, hr, 200)
+	hrResponse[any](t, h, "GET", read, nil, frontend, 200)
+	input.Version, input.Teams, input.Content = 1, []string{"team_demo_backend"}, "Версия 2"
+	hrResponse[any](t, h, "PATCH", path, input, hr, 200)
+	hrResponse[any](t, h, "GET", read, nil, frontend, 200)
+	v2 := map[string]int{"version": 2}
+	hrResponse[any](t, h, "POST", path+"/publish", v2, hr, 200)
+	if _, err := db.Exec("UPDATE hr_document_versions SET claim=gen_random_uuid(),lease_until=now()+interval '1 hour' WHERE document_id=$1 AND version=2", d.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := worker.Recover(t.Context()); err != nil {
+		t.Fatal(err)
+	}
+	if processed, err := worker.RunOne(t.Context()); !processed || err != nil {
+		t.Fatal(processed, err)
+	}
+	hrResponse[any](t, h, "GET", read, nil, frontend, 404)
+	if doc := hrResponse[map[string]any](t, h, "GET", read, nil, backend, 200); doc["content"] != "Версия 2" {
+		t.Fatal(doc)
+	}
+	hrResponse[any](t, h, "POST", path+"/revoke", v2, hr, 200)
+	hrResponse[any](t, h, "POST", path+"/revoke", v2, hr, 200)
+	hrResponse[any](t, h, "GET", read, nil, backend, 404)
+	hrResponse[any](t, h, "POST", path+"/publish", v2, hr, 200)
+	if processed, err := worker.RunOne(t.Context()); !processed || err != nil {
+		t.Fatal(processed, err)
+	}
+	hrResponse[any](t, h, "GET", read, nil, backend, 200)
+}
+
+func TestPostgresHRRevokingDuringPublicationPreventsStaleCommit(t *testing.T) {
+	db := testkit.Postgres(t)
+	if err := demo.Seed(t.Context(), db, true); err != nil {
+		t.Fatal(err)
+	}
+	h := requestHandler(db, Dependencies{})
+	hr := loginCookie(t, h, "hr_demo_1", nil)
+	student := loginCookie(t, h, "intern_demo_1", nil)
+	input := knowledge.HRDocumentInput{Operation: hrKey(1), Title: "Инструкция", Content: "Версия 1", Teams: []string{"team_demo_backend"}}
+	d := hrResponse[knowledge.HRDocument](t, h, "POST", "/hr/documents", input, hr, 200)
+	path := "/hr/documents/" + d.ID
+	version := map[string]int{"version": 1}
+	hrResponse[any](t, h, "POST", path+"/publish", version, hr, 200)
+	entered, release := make(chan struct{}), make(chan struct{})
+	worker := knowledge.UploadWorker{Knowledge: &knowledge.Service{DB: db, Embedder: uploadEmbedder{entered: entered, release: release}}}
+	result := make(chan error, 1)
+	go func() { _, err := worker.RunOne(t.Context()); result <- err }()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("indexing did not start")
+	}
+	hrResponse[any](t, h, "POST", path+"/revoke", version, hr, 200)
+	close(release)
+	if err := <-result; err != nil {
+		t.Fatal(err)
+	}
+	hrResponse[any](t, h, "GET", "/documents/"+d.ID, nil, student, 404)
+	state := hrResponse[knowledge.HRDocument](t, h, "GET", path, nil, hr, 200)
+	if state.Published != nil || state.Status != "draft" || !state.Revoked {
+		t.Fatal(state)
+	}
+}
+
+type failingHRDocuments struct{}
+
+func (failingHRDocuments) CheckReady(context.Context, *sql.Tx, identity.Principal, identity.Principal, []string) error {
+	return ports.ErrUnavailable
+}
+
+type failingHRKnowledge struct{}
+
+func (failingHRKnowledge) Search(context.Context, string) ([]ports.Source, error) {
+	return nil, ports.ErrUnavailable
+}
+func (failingHRKnowledge) Read(context.Context, string) (ports.Document, error) {
+	return ports.Document{}, ports.ErrUnavailable
+}
+
+func TestPostgresHRLinkLookupErrorsPreserveQuestion(t *testing.T) {
+	db := testkit.Postgres(t)
+	_, student, conversation := prepareDraft(t, db)
+	h := requestHandler(db, Dependencies{})
+	hr := loginCookie(t, h, "hr_demo_1", nil)
+	var assistant string
+	if err := db.QueryRow("SELECT id FROM chat_messages WHERE conversation_id=$1 AND role='assistant'", conversation).Scan(&assistant); err != nil {
+		t.Fatal(err)
+	}
+	path := "/messages/" + assistant + "/questions"
+	draft := knowledgegaps.Draft{Direction: "hr", Question: "Отпуск"}
+	create := knowledgegaps.Operation{ID: hrKey(1), Draft: draft}
+	q := hrResponse[knowledgegaps.Question](t, h, "POST", path, create, student, 200)
+	qpath := "/hr/questions/" + q.ID
+	claim := knowledgegaps.HRUpdate{ID: hrKey(2), Action: "claim", Revision: q.Revision}
+	q = hrResponse[knowledgegaps.Question](t, h, "PATCH", qpath, claim, hr, 200)
+	hrResponse[any](t, h, "PATCH", qpath, knowledgegaps.HRUpdate{ID: hrKey(3), Action: "answer", Revision: 1, Resolution: "Просроченная ревизия"}, hr, 409)
+	p := identity.WithPrincipal(t.Context(), identity.Principal{UserID: "hr_demo_1", TeamID: "team_demo_backend", Role: identity.HR})
+	resolve := knowledgegaps.HRUpdate{ID: hrKey(4), Action: "resolve", Revision: q.Revision, Resolution: "Ответ", Documents: []string{hrKey(5)}}
+	store := knowledgegaps.Store{DB: db}
+	if _, err := store.HRPatch(p, q.ID, resolve); !errors.Is(err, ports.ErrUnavailable) {
+		t.Fatal(err)
+	}
+	store.Documents = failingHRDocuments{}
+	if _, err := store.HRPatch(p, q.ID, resolve); !errors.Is(err, ports.ErrUnavailable) {
+		t.Fatal(err)
+	}
+	current := hrResponse[knowledgegaps.Question](t, h, "GET", qpath, nil, hr, 200)
+	if current.Revision != q.Revision || current.State != "in_progress" || current.Resolution != nil {
+		t.Fatal(current)
+	}
+	if _, err := db.Exec("UPDATE knowledge_gaps SET document_ids=$2 WHERE id=$1", q.ID, `["synthetic-link"]`); err != nil {
+		t.Fatal(err)
+	}
+	h = requestHandler(db, Dependencies{Knowledge: failingHRKnowledge{}})
+	hrResponse[any](t, h, "GET", path, nil, student, 503)
+	hrResponse[any](t, h, "GET", "/questions/"+q.ID, nil, student, 503)
+	hrResponse[any](t, h, "GET", "/hr/questions", nil, hr, 503)
+	hrResponse[any](t, h, "POST", path, create, student, 503)
+	hrResponse[any](t, h, "PATCH", qpath, claim, hr, 503)
+}
+
+func TestPostgresHRScopeFailsClosedWithoutVersion(t *testing.T) {
+	db := testkit.Postgres(t)
+	if err := demo.Seed(t.Context(), db, true); err != nil {
+		t.Fatal(err)
+	}
+	h := requestHandler(db, Dependencies{})
+	hr := loginCookie(t, h, "hr_demo_1", nil)
+	hrResponse[any](t, h, "GET", "/me/access-scope", nil, hr, 200)
+	if _, err := db.Exec("DELETE FROM access_scope"); err != nil {
+		t.Fatal(err)
+	}
+	hrResponse[any](t, h, "GET", "/me/access-scope", nil, hr, 503)
+}

@@ -41,6 +41,7 @@ type CheckpointReader interface {
 
 type Agent struct {
 	Model         Model
+	Classifier    Classifier
 	Knowledge     ports.Knowledge
 	Tasks         ports.TaskProvider
 	Checkpoints   CheckpointReader
@@ -74,6 +75,24 @@ func (a *Agent) Run(ctx context.Context, in ports.AgentInput, emit ports.Emit) (
 	}
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
+	if a.Classifier != nil {
+		if route, err := a.Classifier.Classify(ctx, in.Text); err == nil {
+			out.Routing = &route
+			switch route.Direction {
+			case "hr":
+				err = a.hrAnswer(ctx, in.Text, emit, &out)
+				return out, err
+			case "needs_clarification":
+				if route.Clarification == nil {
+					break
+				}
+				out.Outcome = ports.OutcomeNeedsClarification
+				return out, emit(ctx, ports.AgentEvent{Kind: "answer.delta", Text: *route.Clarification})
+			}
+		} else {
+			return out, emit(ctx, ports.AgentEvent{Kind: "answer.delta", Text: "Не удалось определить адресата. Выберите специалиста вручную."})
+		}
+	}
 	rounds := a.Rounds
 	if rounds <= 0 {
 		rounds = 8
@@ -302,7 +321,7 @@ func (a *Agent) execute(ctx context.Context, in ports.AgentInput, checkpoint *on
 	}
 	switch f.Name {
 	case "search_knowledge":
-		s, e := a.Knowledge.Search(ctx, v.Query)
+		s, e := a.searchWork(ctx, v.Query)
 		for _, x := range s {
 			if _, exists := known[x.DocumentID]; !exists {
 				known[x.DocumentID] = x
@@ -314,10 +333,14 @@ func (a *Agent) execute(ctx context.Context, in ports.AgentInput, checkpoint *on
 		if e != nil {
 			return nil, e
 		}
+		if d.Direction == "hr" {
+			return nil, ports.ErrNotFound
+		}
 		s, ok := known[d.ID]
 		if !ok {
-			s = ports.Source{ID: d.ID + ":read", DocumentID: d.ID, Title: d.Title, Excerpt: string([]rune(d.Content)[:min(1200, len([]rune(d.Content)))])}
+			s = ports.Source{ID: d.ID + ":read", DocumentID: d.ID, Title: d.Title, Excerpt: string([]rune(d.Content)[:min(1200, len([]rune(d.Content)))]), Direction: d.Direction, Version: d.Version, UpdatedAt: d.UpdatedAt}
 		}
+		s.Direction, s.Version, s.UpdatedAt = d.Direction, d.Version, d.UpdatedAt
 		found := false
 		for _, x := range out.Sources {
 			if x.DocumentID == d.ID {
@@ -422,4 +445,13 @@ func sameStep(a, b *string) bool {
 		return a == b
 	}
 	return *a == *b
+}
+
+func (a *Agent) searchWork(ctx context.Context, query string) ([]ports.Source, error) {
+	if search, ok := a.Knowledge.(interface {
+		SearchDirection(context.Context, string, string) ([]ports.Source, error)
+	}); ok {
+		return search.SearchDirection(ctx, query, "mentor")
+	}
+	return a.Knowledge.Search(ctx, query)
 }

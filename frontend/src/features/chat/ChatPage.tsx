@@ -8,6 +8,7 @@ import { getConversation, getData, listConversations, listMessages } from './api
 import { userSchema } from './schemas';
 import { usePlan } from '@/features/onboarding';
 import { ChatController } from './controller';
+import { QuestionComposer } from '@/features/hr';
 import { canEscalateMessage, MentorQuestionPanel } from '@/features/mentor-questions';
 import { AccessRequestPanel } from '@/features/access-requests';
 import { DocumentDrawer, MarkdownContent } from '@/features/documents';
@@ -121,13 +122,16 @@ export function ChatPage() {
               {message.sources.map(source => <li key={source.id}>
                 <button type="button" className={styles.source} onClick={() => setDocumentId(source.document_id)}>
                   <strong>{source.title}</strong><span>{source.excerpt}</span>
+                  {source.version && source.direction === 'hr' && <span>Версия {source.version}{source.updated_at && ` · ${new Date(source.updated_at).toLocaleDateString('ru-RU')}`}</span>}
                 </button>
               </li>)}
             </ul>}
             {[...new Set(message.request_ids)].map(requestId => <div className={styles.request} key={requestId}>
               <AccessRequestPanel requestId={requestId} onDiscuss={focusComposer} />
             </div>)}
-            {canEscalate && me.data &&
+            {message.role === 'assistant' && message.in_reply_to_message_id && message.status !== 'generating' &&
+              <QuestionComposer messageId={message.id} onOpenDocument={setDocumentId} />}
+            {canEscalate && !message.routing && me.data &&
               <MentorQuestionPanel key={me.data.id} messageId={message.id} onOpenDocument={setDocumentId}
                 canEscalate={canEscalate} isChatBusy={busy} canRepeatQuestion={!!original && contextReady && !contextInvalid && !error}
                 onRepeatQuestion={() => {

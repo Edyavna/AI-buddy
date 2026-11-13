@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ClientError, queryKeys } from '@/shared/api';
 import type { User } from '@/shared/api';
 import { sessionApi } from './api';
+import { roleHome } from './roles';
 import { resetSessionState } from './session-state';
 
 function requireUser(data: User | undefined): User {
@@ -36,7 +37,7 @@ export function useLogin() {
     onSuccess: async (user) => {
       await resetSessionState(queryClient);
       queryClient.setQueryData(queryKeys.me(), user);
-      navigate(user.role === 'mentor' ? '/mentor/questions' : '/onboarding', { replace: true });
+      navigate(roleHome[user.role], { replace: true });
     },
   });
 }

@@ -111,6 +111,7 @@ VALUES ('plan_demo_1', 'plan_demo_1:meet-team', 'step_local_setup')`); err != ni
 	}
 	deps := demoDependencies(db, integrations.New(db), &config.AIConfig{})
 	a := deps.Agent.(*agent.Agent)
+	a.Classifier = nil
 	h := requestHandler(db, deps)
 	intern := loginCookie(t, h, testkit.UserID, nil)
 	foreign := `{"client_conversation_id":"99999999-1111-4444-8888-000000000049","step_id":"plan_demo_2:meet-team"}`

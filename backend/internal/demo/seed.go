@@ -21,14 +21,19 @@ func Seed(ctx context.Context, db *sql.DB, enabled bool) error {
 	}
 	err := database.WithinTx(ctx, db, func(tx *sql.Tx) error {
 		statements := []string{
-			`INSERT INTO teams(id,name) VALUES ('team_demo_backend','Тестовая backend-команда'),('team_demo_frontend','Тестовая frontend-команда') ON CONFLICT DO NOTHING`,
+			`INSERT INTO teams(id,name) VALUES ('team_demo_backend','Тестовая backend-команда'),('team_demo_frontend','Тестовая frontend-команда'),('team_demo_no_hr','Команда без HR') ON CONFLICT DO NOTHING`,
 			`INSERT INTO users(id,team_id,name,role,demo_account) VALUES
     ('intern_demo_1','team_demo_backend','Тестовый стажер','intern',true),
     ('intern_demo_2','team_demo_backend','Второй стажер','intern',true),
     ('intern_demo_unassigned','team_demo_backend','Свободный стажёр','intern',true),
     ('intern_demo_other','team_demo_frontend','Стажер другой команды','intern',true),
     ('mentor_demo_1','team_demo_backend','Тестовый наставник','mentor',true),
-    ('mentor_demo_2','team_demo_backend','Второй наставник','mentor',true) ON CONFLICT DO NOTHING`,
+    ('mentor_demo_2','team_demo_backend','Второй наставник','mentor',true),
+    ('hr_demo_1','team_demo_backend','Анна, HR','hr',true),
+    ('hr_demo_2','team_demo_backend','Денис, HR','hr',true),
+    ('intern_demo_no_hr','team_demo_no_hr','Стажёр без HR','intern',true) ON CONFLICT DO NOTHING`,
+			`INSERT INTO hr_team_assignments(hr_user_id,team_id) VALUES
+    ('hr_demo_1','team_demo_backend'),('hr_demo_1','team_demo_frontend'),('hr_demo_2','team_demo_backend') ON CONFLICT DO NOTHING`,
 			`INSERT INTO mentor_assignments(intern_id,mentor_id,team_id) VALUES
     ('intern_demo_1','mentor_demo_1','team_demo_backend'),
     ('intern_demo_2','mentor_demo_2','team_demo_backend') ON CONFLICT DO NOTHING`,
@@ -36,7 +41,8 @@ func Seed(ctx context.Context, db *sql.DB, enabled bool) error {
     ('plan_demo_1','intern_demo_1','team_demo_backend','Подготовка к первой задаче'),
     ('plan_demo_2','intern_demo_2','team_demo_backend','Подготовка к первой задаче'),
     ('plan_demo_unassigned','intern_demo_unassigned','team_demo_backend','План адаптации'),
-    ('plan_demo_other','intern_demo_other','team_demo_frontend','Подготовка к первой задаче') ON CONFLICT DO NOTHING`,
+    ('plan_demo_other','intern_demo_other','team_demo_frontend','Подготовка к первой задаче'),
+    ('plan_demo_no_hr','intern_demo_no_hr','team_demo_no_hr','План адаптации') ON CONFLICT DO NOTHING`,
 			`INSERT INTO onboarding_steps(id,plan_id,position,title,description,status,resource_id,permission) VALUES
     ('step_local_setup','plan_demo_1',0,'Запустить проект','Тестовый шаг настройки окружения','in_progress','repo_demo_backend','read'),
     ('step_local_setup_2','plan_demo_2',0,'Запустить проект','Тестовый шаг настройки окружения','in_progress','repo_demo_backend','read'),

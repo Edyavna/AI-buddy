@@ -22,11 +22,15 @@ func (e *Error) Error() string { return e.Code }
 // DecodeJSON distinguishes broken JSON (400) from shape/field violations (422).
 // Semantic validation belongs to each handler and returns ValidationError.
 func DecodeJSON(w http.ResponseWriter, r *http.Request, dst any) *Error {
+	return DecodeJSONLimit(w, r, dst, 1<<20)
+}
+
+func DecodeJSONLimit(w http.ResponseWriter, r *http.Request, dst any, limit int64) *Error {
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mediaType != "application/json" {
 		return badRequest("Ожидается application/json")
 	}
-	r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
+	r.Body = http.MaxBytesReader(w, r.Body, limit)
 	decoder := json.NewDecoder(r.Body)
 	var raw json.RawMessage
 	if err := decoder.Decode(&raw); err != nil {
