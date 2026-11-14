@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
-import { screen } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { createScenario } from '@/mocks/fixtures/scenario';
 import { renderWithQuery } from '@/test/render';
@@ -34,4 +34,25 @@ it('restores a mentor draft and downloads the text of each completed version', a
     '# Версия 1', '# Версия 2\n\nОбновлено',
   ]);
   expect(screen.queryByRole('link', { name: 'Открыть мой план' })).not.toBeInTheDocument();
+});
+
+it('clears unsent text when switching between new chats without a saved draft', async () => {
+  const fixture = createScenario();
+  server.use(http.get('*/api/v1/me', () => HttpResponse.json({ ...fixture.user, role: 'mentor' })));
+  renderWithQuery(
+    <MemoryRouter initialEntries={['/mentor/chat']}>
+      <Link to="/mentor/chat?mode=markdown">Открыть Markdown</Link>
+      <Routes><Route path="/mentor/chat/:conversationId?" element={<ChatPage mentor />} /></Routes>
+    </MemoryRouter>,
+  );
+  const input = screen.getByRole('textbox', { name: 'Ваш вопрос' });
+  await screen.findByRole('link', { name: fixture.conversation.title });
+  fireEvent.change(input, { target: { value: 'Обычный вопрос' } });
+  fireEvent.click(screen.getByRole('link', { name: 'Открыть Markdown' }));
+  await screen.findByRole('heading', { name: 'Подготовка Markdown-инструкции' });
+  await waitFor(() => expect(input).toHaveValue(''));
+  fireEvent.change(input, { target: { value: 'Текст для инструкции' } });
+  fireEvent.click(screen.getByRole('link', { name: 'Новый диалог' }));
+  await screen.findByRole('heading', { name: 'Помощник наставника' });
+  await waitFor(() => expect(input).toHaveValue(''));
 });

@@ -74,8 +74,9 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
       const restored = controller.restore(me.data.id, newMarkdown);
       if (restored) setText(restored.text);
       else if (step) setText(previous => previous || `Помоги выполнить шаг: ${step.title}`);
+      else if (mentor) setText('');
     }
-  }, [controller, conversationId, me.data, step, newMarkdown]);
+  }, [controller, conversationId, me.data, step, newMarkdown, mentor]);
   useEffect(() => {
     if (history.data && !busy && controller.state.messages.length === 0) {
       controller.update({ messages: history.data });
