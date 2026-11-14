@@ -1,12 +1,16 @@
 import { apiRequest } from '@/shared/api';
-import { planSchema, setCheckpointConfirmationSchema, updateStepSchema } from './schemas';
-import type { StepTarget } from './schemas';
+import { planSchema, recommendationSchema, setCheckpointConfirmationSchema, updateStepSchema } from './schemas';
+import type { Recommendation, StepTarget } from './schemas';
 
-export type { StepTarget };
+export type { Recommendation, StepTarget };
 
 export const onboardingApi = {
   getMyPlan(signal: AbortSignal) {
     return apiRequest('/onboarding/plan', planSchema, { signal });
+  },
+
+  getMyRecommendation(signal: AbortSignal) {
+    return apiRequest('/onboarding/recommendation', recommendationSchema, { signal });
   },
 
   updateStep(stepId: string, status: StepTarget, signal: AbortSignal) {

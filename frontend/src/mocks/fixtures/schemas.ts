@@ -41,8 +41,63 @@ export const requestFixtureSchema = z.object({
   if (['failed', 'rejected'].includes(r.status) && !r.failure_reason)
     ctx.addIssue({ code: 'custom', message: 'Missing failure reason' });
 });
+export const recommendationHelpActionFixtureSchema = z.object({
+  direction: z.enum(['mentor', 'hr']),
+  label: z.string(),
+  url: z.string(),
+  available: z.boolean(),
+});
+
+export const waitingStepFixtureSchema = z.object({
+  step_id: z.string(),
+  title: z.string(),
+  period: z.string().nullable(),
+  reason: z.string(),
+  state: z.enum([
+    'action_available',
+    'waiting_mentor',
+    'waiting_access',
+    'blocked_dependencies',
+    'blocked',
+    'completed',
+    'empty_plan',
+  ]),
+  awaiting_role: z.enum(['intern', 'mentor']).nullable(),
+  help_direction: z.enum(['mentor', 'hr']).nullable(),
+  blocked_at: date.nullable(),
+  waiting_duration_seconds: z.number().int().nullable(),
+});
+
+export const recommendationTargetFixtureSchema = z.object({
+  step_id: z.string(),
+  route: z.string(),
+  action: z.enum(['open_card', 'open_instructions', 'open_chat']),
+});
+
+export const recommendationFixtureSchema = z.object({
+  state: z.enum([
+    'action_available',
+    'waiting_mentor',
+    'waiting_access',
+    'blocked_dependencies',
+    'blocked',
+    'completed',
+    'empty_plan',
+  ]),
+  step_id: z.string().nullable(),
+  title: z.string().nullable(),
+  period: z.string().nullable(),
+  reason: z.string(),
+  action_type: z.enum(['confirm', 'read_instructions', 'assistant', 'view_step']).nullable(),
+  action_label: z.string().nullable(),
+  target: recommendationTargetFixtureSchema.nullable(),
+  waiting_step: waitingStepFixtureSchema.nullable(),
+  help_action: recommendationHelpActionFixtureSchema.nullable(),
+});
+
 export const planFixtureSchema = z.object({
   id: z.string(), title: z.string(), progress_percent: z.number().int().min(0).max(100), next_step_id: z.string().nullable(),
+  recommendation: recommendationFixtureSchema,
   steps: z.array(z.object({
     id: z.string(), title: z.string(), description: z.string(),
     status: z.enum(['not_started', 'in_progress', 'blocked', 'completed']), request_ids: z.array(z.string()),
