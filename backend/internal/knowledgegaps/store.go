@@ -62,6 +62,7 @@ type Question struct {
 	StepID            *string                  `json:"step_id"`
 	Question          string                   `json:"question"`
 	ContextExcerpt    string                   `json:"context_excerpt"`
+	ContextSnapshot   *ContextSnapshot         `json:"context_snapshot,omitempty"`
 }
 
 type Update struct {
@@ -72,7 +73,7 @@ type Update struct {
 }
 
 const columns = `q.id::text,q.message_id,q.status,q.revision,q.resolution,q.document_ids,q.created_at,q.updated_at,
- q.student_id,u.name,q.step_id,q.question,q.context_excerpt,q.team_id,q.direction,q.original_direction,CASE WHEN q.direction='hr' THEN q.hr_id ELSE (SELECT a.mentor_id FROM mentor_assignments a WHERE a.intern_id=q.student_id AND a.team_id=q.team_id) END,q.routing`
+ q.student_id,u.name,q.step_id,q.question,q.context_excerpt,q.team_id,q.direction,q.original_direction,CASE WHEN q.direction='hr' THEN q.hr_id ELSE (SELECT a.mentor_id FROM mentor_assignments a WHERE a.intern_id=q.student_id AND a.team_id=q.team_id) END,q.routing,q.context_snapshot`
 const joined = ` FROM knowledge_gaps q JOIN users u ON u.id=q.student_id AND u.team_id=q.team_id `
 const assigned = ` q.direction='mentor' AND q.team_id=$2 AND EXISTS (
  SELECT 1 FROM mentor_assignments a WHERE a.intern_id=q.student_id AND a.mentor_id=$1 AND a.team_id=q.team_id)`
@@ -81,13 +82,18 @@ type scanner interface{ Scan(...any) error }
 
 func scan(row scanner) (Question, error) {
 	var q Question
-	var documents, routing []byte
+	var documents, routing, snapshot []byte
 	err := row.Scan(&q.ID, &q.MessageID, &q.State, &q.Revision, &q.Resolution, &documents, &q.CreatedAt, &q.UpdatedAt,
-		&q.Student.ID, &q.Student.Name, &q.StepID, &q.Question, &q.ContextExcerpt, &q.TeamID, &q.Direction, &q.OriginalDirection, &q.SpecialistID, &routing)
+		&q.Student.ID, &q.Student.Name, &q.StepID, &q.Question, &q.ContextExcerpt, &q.TeamID, &q.Direction, &q.OriginalDirection, &q.SpecialistID, &routing, &snapshot)
 	if err != nil {
 		return q, err
 	}
 	q.CreatedAt, q.UpdatedAt = q.CreatedAt.UTC(), q.UpdatedAt.UTC()
+	if len(snapshot) > 0 {
+		if err := json.Unmarshal(snapshot, &q.ContextSnapshot); err != nil {
+			return q, err
+		}
+	}
 	if len(routing) > 0 {
 		if err := json.Unmarshal(routing, &q.Routing); err != nil {
 			return q, err
@@ -111,7 +117,7 @@ func mapped(err error) error {
 	case errors.Is(err, sql.ErrNoRows):
 		return ports.ErrNotFound
 	case errors.Is(err, ports.ErrNotFound), errors.Is(err, ports.ErrInvalid), errors.Is(err, ports.ErrMentorUnassigned),
-		errors.Is(err, ErrHRUnassigned), errors.Is(err, ErrClaimed), errors.Is(err, ports.ErrConflict), errors.Is(err, ErrChanged), errors.Is(err, ErrDocument), errors.Is(err, ErrOutcome), errors.Is(err, ErrTransition):
+		errors.Is(err, ErrHRUnassigned), errors.Is(err, ErrClaimed), errors.Is(err, ports.ErrConflict), errors.Is(err, ErrChanged), errors.Is(err, ErrContextChanged), errors.Is(err, ErrDocument), errors.Is(err, ErrOutcome), errors.Is(err, ErrTransition):
 		return err
 	default:
 		return fmt.Errorf("%w: %w", ports.ErrUnavailable, err)
@@ -204,16 +210,25 @@ func (s Store) List(ctx context.Context, status string) ([]Question, error) {
 	if err != nil {
 		return nil, mapped(err)
 	}
-	defer rows.Close()
 	result := []Question{}
 	for rows.Next() {
 		q, err := scan(rows)
 		if err != nil {
+			rows.Close()
 			return nil, mapped(err)
 		}
 		result = append(result, specialistView(q))
 	}
-	return result, mapped(rows.Err())
+	err = rows.Err()
+	rows.Close()
+	if err == nil {
+		for i := range result {
+			if err = s.filterContext(ctx, p, &result[i]); err != nil {
+				break
+			}
+		}
+	}
+	return result, mapped(err)
 }
 
 func (s Store) Get(ctx context.Context, id string) (Question, error) {
@@ -222,6 +237,9 @@ func (s Store) Get(ctx context.Context, id string) (Question, error) {
 		return Question{}, err
 	}
 	q, err := scan(s.DB.QueryRowContext(ctx, `SELECT `+columns+joined+`WHERE `+assigned+` AND q.id::text=$3`, p.UserID, p.TeamID, id))
+	if err == nil {
+		err = s.filterContext(ctx, p, &q)
+	}
 	return specialistView(q), mapped(err)
 }
 
@@ -325,5 +343,8 @@ func (s Store) Patch(ctx context.Context, id string, in Update) (Question, error
 		result, err = scan(tx.QueryRowContext(ctx, `SELECT `+columns+joined+`WHERE q.id::text=$1`, id))
 		return err
 	})
+	if err == nil {
+		err = s.filterContext(ctx, p, &result)
+	}
 	return specialistView(result), mapped(err)
 }
