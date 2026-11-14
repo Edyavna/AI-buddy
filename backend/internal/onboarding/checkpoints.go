@@ -94,6 +94,9 @@ func (s Checkpoints) Set(ctx context.Context, role identity.Role, internID, step
 				}
 			}
 
+			if err := writeConfirmation(ctx, tx, step.ID, actor, change.Confirmed); err != nil {
+				return err
+			}
 			if step.Status != "blocked" {
 				status := "in_progress"
 				if change.Confirmed && (step.CompletionPolicy != "both" || len(step.Confirmations) == 1) {
@@ -102,9 +105,6 @@ func (s Checkpoints) Set(ctx context.Context, role identity.Role, internID, step
 				if err := saveStepStatus(ctx, tx, step.ID, status); err != nil {
 					return err
 				}
-			}
-			if err := writeConfirmation(ctx, tx, step.ID, actor, change.Confirmed); err != nil {
-				return err
 			}
 			if err := advanceRevision(ctx, tx, &snapshot); err != nil {
 				return err
