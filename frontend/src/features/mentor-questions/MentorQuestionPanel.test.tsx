@@ -16,6 +16,12 @@ import type { MentorQuestion } from './schemas';
 
 const MESSAGE_ID = 'message_gap';
 const URL = '*/api/v1/messages/:id/knowledge-gap';
+it('keeps the legacy status panel read-only when escalation uses the context preview',async()=>{
+ server.use(http.get(URL,()=>HttpResponse.json({question:null})));
+ renderWithQuery(<MentorQuestionPanel messageId={MESSAGE_ID} canEscalate existingOnly onOpenDocument={()=>{}} onRepeatQuestion={()=>{}}/>);
+ await waitFor(()=>expect(screen.queryByRole('status',{name:'Загрузка вопроса наставнику'})).not.toBeInTheDocument());
+ expect(screen.queryByRole('button',{name:'Передать наставнику'})).not.toBeInTheDocument();
+});
 const baseQuestion: MentorQuestion = {
   id: 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa',
   message_id: MESSAGE_ID,

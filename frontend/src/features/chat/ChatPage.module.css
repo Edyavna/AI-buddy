@@ -8,6 +8,9 @@
 .messages { height: min(52vh,600px); min-height: 200px; overflow-y: auto; overscroll-behavior: contain; padding: var(--space-4); }
 .messageContent { display: flex; flex-direction: column; gap: var(--space-4); min-height: 100%; min-width: 0; }
 .messageContent > article { max-width: 90%; min-width: 0; flex-shrink: 0; padding: var(--space-4); border-radius: var(--radius-md); overflow-wrap: anywhere; }
+/* An expanded context form needs the page's width and normal page scrolling. */
+.messages:has([aria-label='Контекст перед отправкой']) { height: auto; }
+.messageContent > .assistant:has([aria-label='Контекст перед отправкой']) { max-width: 100%; width: 100%; padding-inline: 0; }
 .messages p { white-space: pre-wrap; }
 .user { align-self: flex-end; background: var(--color-surface-sunken); }
 .assistant { align-self: flex-start; }

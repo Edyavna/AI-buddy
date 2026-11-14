@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { apiRequest, ClientError } from '@/shared/api';
 import type { RequestOptions } from '@/shared/api/client';
+import { contextInputSchema, contextSchema } from '@/features/question-context/api';
 
 export const directionSchema = z.enum(['mentor', 'hr']);
 export const questionStatusSchema = z.enum(['new', 'in_progress', 'resolved']);
@@ -10,8 +11,9 @@ export const routingSchema = z.object({
   clarification: z.string().nullable(),
   split: z.boolean(),
 });
-const draftSchema = z.object({ direction: directionSchema, question: z.string(), context_excerpt: z.string() });
+const draftSchema = z.object({ direction: directionSchema, question: z.string(), context_excerpt: z.string(),context_snapshot:contextInputSchema.optional() });
 const questionSchema = draftSchema.extend({
+  context_snapshot:contextSchema.optional(),
   id: z.string(), message_id: z.string(), team_id: z.string(),
   original_direction: directionSchema,
   student: z.object({ id: z.string(), name: z.string() }),

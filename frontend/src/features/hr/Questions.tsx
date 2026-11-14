@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { ContextSnapshot } from '@/features/question-context/ContextSnapshot';
 import { Link, useParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, InlineError } from '@/shared/ui';
@@ -87,6 +88,7 @@ function QuestionDetail({ item }: { item: RoutedQuestion }) {
     <h1>{item.question}</h1>
     <p>{item.student.name} · {names?.find(t => t.id === item.team_id)?.name ?? item.team_id} · {questionStatus[item.status]}</p>
     {item.context_excerpt && <div className={styles.card}><strong>Контекст</strong><p>{item.context_excerpt}</p></div>}
+    <ContextSnapshot snapshot={item.context_snapshot} direction="hr" questionId={item.id}/>
     {item.resolution && <div className={styles.card}><strong>Ответ</strong><p>{item.resolution}</p>
       {item.document_ids.map(id => <Button key={id} variant="secondary" onClick={() => setOpenDocument(id)}>Открыть инструкцию</Button>)}
     </div>}
