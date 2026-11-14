@@ -3,6 +3,8 @@ import { AppShell } from './AppShell';
 import { LoginPage, RequireAuth, useMe } from '@/features/session';
 import { PlanPage } from '@/features/onboarding';
 import { ChatPage } from '@/features/chat';
+import { MeetingsPage } from '@/features/onboarding-operations/MeetingsPage';
+import { CuratorPage } from '@/features/onboarding-operations/CuratorPage';
 import { ResolutionDraftPage } from '@/features/resolution-drafts/ResolutionDraftPage';
 import { QuestionGroupsPage,QuestionGroupPage } from '@/features/question-groups/QuestionGroupsPage';
 import { RoleHome, MentorGate, InternGate, MentorQuestionsPage, MentorQuestionPage, MentorDocumentsPage, MentorInternsPage, MentorInternPlanPage } from '@/features/mentor';
@@ -36,6 +38,8 @@ export const routes: RouteObject[] = [
         path: 'onboarding',
         element: <InternGate><PlanPage /></InternGate>,
       },
+      { path: 'meetings', element: <InternGate><MeetingsPage /></InternGate> },
+      { path: 'curator', element: <CuratorPage /> },
       {
         path: 'chat',
         element: <InternGate><ChatPage /></InternGate>,
@@ -59,6 +63,7 @@ export const routes: RouteObject[] = [
         { path: 'documents', element: <MentorDocumentsPage /> },
         { path: 'interns', element: <MentorInternsPage /> },
         { path: 'interns/:id', element: <MentorInternPlanPage /> },
+        { path: 'meetings', element: <MeetingsPage /> },
         { path: 'review-preparations', element: <MentorReviewPreparationsPage /> },
         { path: 'review-preparations/:id', element: <MentorReviewPreparationPage /> },
       ] },

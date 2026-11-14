@@ -23,6 +23,95 @@ tags:
 - name: Requests
 - name: Mentor
 paths:
+  /meetings:
+    get:
+      operationId: listMeetings
+      description: Встречи 1:1 и договорённости действующих участников.
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MeetingWorkspace'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      operationId: changeMeeting
+      description: Изменение встречи, темы или договорённости с проверкой ревизии.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MeetingChange'
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationRevision'
+        default:
+          $ref: '#/components/responses/Error'
+  /curator:
+    get:
+      operationId: getCuratorWorkspace
+      description: Обзор системных проблем и шаблонов в назначенных командах.
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CuratorWorkspace'
+        default:
+          $ref: '#/components/responses/Error'
+      parameters:
+      - in: query
+        name: team_id
+        schema:
+          type: string
+      - in: query
+        name: kind
+        schema:
+          type: string
+      - in: query
+        name: direction
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: from
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: to
+        schema:
+          type: string
+          format: date-time
+    post:
+      operationId: changeCuratorWorkspace
+      description: Сохранение проблемы или публикация шаблона с проверкой ревизии.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CuratorChange'
+      responses:
+        '200':
+          description: Успешный результат
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationRevision'
+        default:
+          $ref: '#/components/responses/Error'
   /mentor/question-groups:
     get:
       tags:
@@ -3439,6 +3528,495 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
   schemas:
+    MeetingAgreementInput:
+      type: object
+      required:
+      - content
+      - owner_id
+      properties:
+        content:
+          type: string
+          maxLength: 2000
+        owner_id:
+          type: string
+        due_at:
+          type: string
+          format: date-time
+          nullable: true
+        step_id:
+          type: string
+          nullable: true
+    MeetingChange:
+      type: object
+      required:
+      - id
+      - action
+      properties:
+        id:
+          type: string
+          format: uuid
+        action:
+          type: string
+          enum:
+          - create
+          - reschedule
+          - cancel
+          - topic
+          - complete
+          - agreement-complete
+          - agreement-reschedule
+        revision:
+          type: integer
+        intern_id:
+          type: string
+        scheduled_at:
+          type: string
+          format: date-time
+        timezone:
+          type: string
+        topic_id:
+          type: string
+          format: uuid
+        content:
+          type: string
+          maxLength: 4000
+        private:
+          type: boolean
+        agreements:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/MeetingAgreementInput'
+        due_at:
+          type: string
+          format: date-time
+          nullable: true
+    CuratorStep:
+      type: object
+      required:
+      - key
+      - title
+      - description
+      properties:
+        key:
+          type: string
+          maxLength: 80
+        title:
+          type: string
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 4000
+    CuratorEvidence:
+      type: object
+      required:
+      - kind
+      - id
+      properties:
+        kind:
+          type: string
+          enum:
+          - access
+          - blocked
+          - knowledge
+        id:
+          type: string
+    CuratorChange:
+      type: object
+      required:
+      - action
+      - id
+      - team_id
+      - revision
+      properties:
+        action:
+          type: string
+          enum:
+          - save-problem
+          - publish-template
+        id:
+          type: string
+          format: uuid
+        team_id:
+          type: string
+        kind:
+          type: string
+          enum:
+          - access
+          - blocked
+          - knowledge
+        direction:
+          type: string
+          enum:
+          - mentor
+          - hr
+        title:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+          enum:
+          - open
+          - in_progress
+          - resolved
+        owner_id:
+          type: string
+          nullable: true
+        due_at:
+          type: string
+          nullable: true
+          format: date-time
+        resolution:
+          type: string
+        document_id:
+          type: string
+          nullable: true
+        template_version:
+          type: integer
+          nullable: true
+        revision:
+          type: integer
+          minimum: 0
+        merge_from:
+          type: string
+          format: uuid
+        merge_revision:
+          type: integer
+        evidence:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/CuratorEvidence'
+        steps:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/CuratorStep'
+        existing_plans:
+          type: boolean
+    OperationRevision:
+      type: object
+      required:
+      - revision
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+    MeetingWorkspace:
+      type: object
+      required:
+      - participants
+      - meetings
+      properties:
+        participants:
+          type: array
+          items:
+            type: object
+            required:
+            - intern_id
+            - mentor_id
+            - team_id
+            properties:
+              intern_id:
+                type: string
+              mentor_id:
+                type: string
+              team_id:
+                type: string
+        meetings:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - intern_id
+            - mentor_id
+            - previous_id
+            - scheduled_at
+            - timezone
+            - status
+            - revision
+            - result
+            - topics
+            - agenda
+            - agreements
+            properties:
+              id:
+                type: string
+              intern_id:
+                type: string
+              mentor_id:
+                type: string
+              previous_id:
+                type: string
+                nullable: true
+              scheduled_at:
+                type: string
+                format: date-time
+              timezone:
+                type: string
+              status:
+                type: string
+                enum:
+                - scheduled
+                - completed
+                - cancelled
+              revision:
+                type: integer
+              result:
+                type: string
+              topics:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - id
+                  - author_id
+                  - content
+                  - private
+                  properties:
+                    id:
+                      type: string
+                    author_id:
+                      type: string
+                    content:
+                      type: string
+                    private:
+                      type: boolean
+              agenda:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - kind
+                  - text
+                  - step_id
+                  - state
+                  properties:
+                    kind:
+                      type: string
+                    text:
+                      type: string
+                    step_id:
+                      type: string
+                      nullable: true
+                    state:
+                      type: string
+                    reason:
+                      type: string
+                      nullable: true
+              agreements:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - id
+                  - owner_id
+                  - content
+                  - due_at
+                  - step_id
+                  - completed_at
+                  - revision
+                  properties:
+                    id:
+                      type: string
+                    owner_id:
+                      type: string
+                    content:
+                      type: string
+                    due_at:
+                      type: string
+                      nullable: true
+                      format: date-time
+                    step_id:
+                      type: string
+                      nullable: true
+                    completed_at:
+                      type: string
+                      nullable: true
+                      format: date-time
+                    revision:
+                      type: integer
+    CuratorWorkspace:
+      type: object
+      required:
+      - teams
+      - owners
+      - plan_count
+      - template
+      - summaries
+      - problems
+      properties:
+        teams:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - name
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+        owners:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - name
+            - role
+            properties:
+              id:
+                type: string
+              name:
+                type: string
+              role:
+                type: string
+        plan_count:
+          type: integer
+        template:
+          type: object
+          required:
+          - version
+          - steps
+          properties:
+            version:
+              type: integer
+            steps:
+              type: array
+              items:
+                $ref: '#/components/schemas/CuratorStep'
+          nullable: true
+        summaries:
+          type: array
+          items:
+            type: object
+            required:
+            - kind
+            - direction
+            - topic
+            - events
+            - interns
+            - average_hours
+            - earlier_events
+            - later_events
+            - source_ids
+            properties:
+              kind:
+                type: string
+              direction:
+                type: string
+              topic:
+                type: string
+              events:
+                type: integer
+              interns:
+                type: integer
+              average_hours:
+                type: number
+                nullable: true
+              earlier_events:
+                type: integer
+              later_events:
+                type: integer
+              source_ids:
+                type: array
+                items:
+                  type: string
+        problems:
+          type: array
+          items:
+            type: object
+            required:
+            - id
+            - kind
+            - direction
+            - team_id
+            - title
+            - description
+            - status
+            - owner_id
+            - due_at
+            - resolution
+            - document_id
+            - template_version
+            - merged_into
+            - revision
+            - updated_at
+            - evidence
+            - history
+            properties:
+              id:
+                type: string
+              kind:
+                type: string
+              direction:
+                type: string
+              team_id:
+                type: string
+              title:
+                type: string
+              description:
+                type: string
+              status:
+                type: string
+              owner_id:
+                type: string
+                nullable: true
+              due_at:
+                type: string
+                nullable: true
+                format: date-time
+              resolution:
+                type: string
+              document_id:
+                type: string
+                nullable: true
+              template_version:
+                type: integer
+                nullable: true
+              merged_into:
+                type: string
+                nullable: true
+              revision:
+                type: integer
+              updated_at:
+                type: string
+                format: date-time
+              evidence:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CuratorEvidence'
+              history:
+                type: array
+                items:
+                  type: object
+                  required:
+                  - revision
+                  - actor_id
+                  - changed_at
+                  - snapshot
+                  properties:
+                    revision:
+                      type: integer
+                    actor_id:
+                      type: string
+                    changed_at:
+                      type: string
+                      format: date-time
+                    snapshot:
+                      type: object
+                      required:
+                      - title
+                      - status
+                      properties:
+                        title:
+                          type: string
+                        status:
+                          type: string
     GroupQuestion:
       type: object
       required:

@@ -4,6 +4,42 @@
  */
 
 export interface paths {
+    "/meetings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Встречи 1:1 и договорённости действующих участников. */
+        get: operations["listMeetings"];
+        put?: never;
+        /** @description Изменение встречи, темы или договорённости с проверкой ревизии. */
+        post: operations["changeMeeting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Обзор системных проблем и шаблонов в назначенных командах. */
+        get: operations["getCuratorWorkspace"];
+        put?: never;
+        /** @description Сохранение проблемы или публикация шаблона с проверкой ревизии. */
+        post: operations["changeCuratorWorkspace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mentor/question-groups": {
         parameters: {
             query?: never;
@@ -1351,6 +1387,173 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        MeetingAgreementInput: {
+            content: string;
+            owner_id: string;
+            /** Format: date-time */
+            due_at?: string | null;
+            step_id?: string | null;
+        };
+        MeetingChange: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            action: "create" | "reschedule" | "cancel" | "topic" | "complete" | "agreement-complete" | "agreement-reschedule";
+            revision?: number;
+            intern_id?: string;
+            /** Format: date-time */
+            scheduled_at?: string;
+            timezone?: string;
+            /** Format: uuid */
+            topic_id?: string;
+            content?: string;
+            private?: boolean;
+            agreements?: components["schemas"]["MeetingAgreementInput"][];
+            /** Format: date-time */
+            due_at?: string | null;
+        };
+        CuratorStep: {
+            key: string;
+            title: string;
+            description: string;
+        };
+        CuratorEvidence: {
+            /** @enum {string} */
+            kind: "access" | "blocked" | "knowledge";
+            id: string;
+        };
+        CuratorChange: {
+            /** @enum {string} */
+            action: "save-problem" | "publish-template";
+            /** Format: uuid */
+            id: string;
+            team_id: string;
+            /** @enum {string} */
+            kind?: "access" | "blocked" | "knowledge";
+            /** @enum {string} */
+            direction?: "mentor" | "hr";
+            title?: string;
+            description?: string;
+            /** @enum {string} */
+            status?: "open" | "in_progress" | "resolved";
+            owner_id?: string | null;
+            /** Format: date-time */
+            due_at?: string | null;
+            resolution?: string;
+            document_id?: string | null;
+            template_version?: number | null;
+            revision: number;
+            /** Format: uuid */
+            merge_from?: string;
+            merge_revision?: number;
+            evidence?: components["schemas"]["CuratorEvidence"][];
+            steps?: components["schemas"]["CuratorStep"][];
+            existing_plans?: boolean;
+        };
+        OperationRevision: {
+            revision: number;
+        };
+        MeetingWorkspace: {
+            participants: {
+                intern_id: string;
+                mentor_id: string;
+                team_id: string;
+            }[];
+            meetings: {
+                id: string;
+                intern_id: string;
+                mentor_id: string;
+                previous_id: string | null;
+                /** Format: date-time */
+                scheduled_at: string;
+                timezone: string;
+                /** @enum {string} */
+                status: "scheduled" | "completed" | "cancelled";
+                revision: number;
+                result: string;
+                topics: {
+                    id: string;
+                    author_id: string;
+                    content: string;
+                    private: boolean;
+                }[];
+                agenda: {
+                    kind: string;
+                    text: string;
+                    step_id: string | null;
+                    state: string;
+                    reason?: string | null;
+                }[];
+                agreements: {
+                    id: string;
+                    owner_id: string;
+                    content: string;
+                    /** Format: date-time */
+                    due_at: string | null;
+                    step_id: string | null;
+                    /** Format: date-time */
+                    completed_at: string | null;
+                    revision: number;
+                }[];
+            }[];
+        };
+        CuratorWorkspace: {
+            teams: {
+                id: string;
+                name: string;
+            }[];
+            owners: {
+                id: string;
+                name: string;
+                role: string;
+            }[];
+            plan_count: number;
+            template: {
+                version: number;
+                steps: components["schemas"]["CuratorStep"][];
+            } | null;
+            summaries: {
+                kind: string;
+                direction: string;
+                topic: string;
+                events: number;
+                interns: number;
+                average_hours: number | null;
+                earlier_events: number;
+                later_events: number;
+                source_ids: string[];
+            }[];
+            problems: {
+                id: string;
+                kind: string;
+                direction: string;
+                team_id: string;
+                title: string;
+                description: string;
+                status: string;
+                owner_id: string | null;
+                /** Format: date-time */
+                due_at: string | null;
+                resolution: string;
+                document_id: string | null;
+                template_version: number | null;
+                merged_into: string | null;
+                revision: number;
+                /** Format: date-time */
+                updated_at: string;
+                evidence: components["schemas"]["CuratorEvidence"][];
+                history: {
+                    revision: number;
+                    actor_id: string;
+                    /** Format: date-time */
+                    changed_at: string;
+                    snapshot: {
+                        title: string;
+                        status: string;
+                    };
+                }[];
+            }[];
+        };
         GroupQuestion: {
             id: string;
             team_id: string;
@@ -2142,6 +2345,105 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listMeetings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Успешный результат */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingWorkspace"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    changeMeeting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetingChange"];
+            };
+        };
+        responses: {
+            /** @description Успешный результат */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationRevision"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getCuratorWorkspace: {
+        parameters: {
+            query?: {
+                team_id?: string;
+                kind?: string;
+                direction?: string;
+                status?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Успешный результат */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CuratorWorkspace"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    changeCuratorWorkspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CuratorChange"];
+            };
+        };
+        responses: {
+            /** @description Успешный результат */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationRevision"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
     mentorQuestionGroups: {
         parameters: {
             query?: never;
