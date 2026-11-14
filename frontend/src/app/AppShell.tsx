@@ -6,8 +6,8 @@ import { roleHome, roleLabel, useAccessScopeRefresh, useLogout, useMe } from '@/
 import styles from './AppShell.module.css';
 
 const navigationByRole = {
- intern: [{ to: '/onboarding', text: 'Мой план' }, { to: '/chat', text: 'Чат' }, { to: '/review-preparation', text: 'Ревью' }],
- mentor: [{ to: '/mentor/questions', text: 'Вопросы' }, { to: '/mentor/documents', text: 'Знания' }, { to: '/mentor/interns', text: 'Стажёры' }, { to: '/mentor/review-preparations', text: 'Ревью' }],
+ intern: [{ to: '/onboarding', text: 'Мой план' }, { to: '/chat', text: 'Чат' }, { to: '/review-preparation', text: 'Ревью' }, { to: '/meetings', text: 'Встречи 1:1' }],
+ mentor: [{ to: '/mentor/questions', text: 'Вопросы' }, { to: '/mentor/documents', text: 'Знания' }, { to: '/mentor/interns', text: 'Стажёры' }, { to: '/mentor/review-preparations', text: 'Ревью' }, { to: '/mentor/meetings', text: 'Встречи 1:1' }, { to: '/curator', text: 'Обзор адаптации' }],
  hr: [{ to: '/hr/questions', text: 'Обращения' }, { to: '/hr/documents', text: 'Инструкции' }],
 };
 

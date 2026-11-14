@@ -51,7 +51,7 @@ jobs:
           set -o pipefail
           go run ../scripts/go_line_coverage.go coverage.out | tee -a line-coverage.txt "$GITHUB_STEP_SUMMARY"
       - name: Changed backend lines above 90 percent
-        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/62-hr') || startsWith(github.head_ref, 'feature/resolution-knowledge-drafts') || startsWith(github.head_ref, 'feature/shared-question-resolutions'))
+        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/62-hr') || startsWith(github.head_ref, 'feature/resolution-knowledge-drafts') || startsWith(github.head_ref, 'feature/shared-question-resolutions') || github.head_ref == 'feat/meetings-and-curator')
         shell: bash
         env:
           COVERAGE_BASE: ${{ github.event.pull_request.base.sha }}
@@ -126,6 +126,35 @@ jobs:
         run: |
           docker compose up -d --wait --wait-timeout 120 api
           python scripts/smoke_chat.py recover
+      - if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down
+
+  onboarding-operations-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    if: github.event_name == 'pull_request' && github.head_ref == 'feat/meetings-and-curator'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.node-version
+      - run: npm install --no-save --package-lock=false playwright-core@1.60.0
+      - run: npx playwright-core install --with-deps chromium
+      - run: docker compose up --build --wait --wait-timeout 180 frontend
+      - run: docker compose --profile demo run --rm seed
+      - run: node scripts/onboarding-operations-browser.mjs
+      - name: Verify persisted records after restarting Go
+        run: |
+          docker compose restart api
+          docker compose up -d --wait api
+          node scripts/onboarding-operations-browser.mjs --verify
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: onboarding-operations-browser
+          path: tmp/onboarding-operations-browser/
       - if: failure()
         run: docker compose logs
       - if: always()
