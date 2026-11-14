@@ -64,6 +64,26 @@ services:
         condition: service_completed_successfully
     restart: "no"
 
+  playbook-import:
+    <<: *backend
+    image: ai-buddy-playbook-import:dev
+    build:
+      context: .
+      target: playbook-import
+    command: []
+    profiles: ["playbook"]
+    volumes:
+      - type: bind
+        source: ${PLAYBOOK_REPO:-../AvitoTech-playbook}
+        target: /playbook
+        read_only: true
+        bind:
+          create_host_path: false
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    restart: "no"
+
   api:
     <<: *backend
     depends_on:

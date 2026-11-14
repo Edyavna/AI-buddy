@@ -288,3 +288,72 @@ func TestPostgresCuratorHidesRedirectedEvidence(t *testing.T) {
 		t.Fatal("redirected evidence remained visible or its card disappeared")
 	}
 }
+
+func TestPostgresMeetingHRLinkIsPrivate(t *testing.T) {
+	f, _, _ := prepareQuestionContext(t, "hr")
+	var question string
+	if err := f.db.QueryRow(`INSERT INTO knowledge_gaps(message_id,student_id,team_id,direction,original_direction,question,context_excerpt)
+ VALUES($1,'intern_demo_1','team_demo_backend','hr','hr','Private HR subject','') RETURNING id::text`, f.question.MessageID).Scan(&question); err != nil {
+		t.Fatal(err)
+	}
+	mentor := loginCookie(t, f.h, "mentor_demo_1", nil)
+	path := "/api/v1/meetings"
+	id := "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa"
+	apiRequest(t, f.h, "POST", path, `{"id":"`+id+`","action":"create","intern_id":"intern_demo_1","scheduled_at":"2030-04-15T12:00:00Z","timezone":"UTC"}`, f.student, 200)
+	finish := `{"id":"` + id + `","action":"complete","revision":1,"content":"Summary","agreements":[{"owner_id":"intern_demo_1","content":"Follow up","hr_question_id":"` + question + `"}]}`
+	apiRequest(t, f.h, "POST", path, finish, mentor, 422)
+	apiRequest(t, f.h, "POST", path, strings.Replace(finish, question, id, 1), f.student, 422)
+	apiRequest(t, f.h, "POST", path, finish, f.student, 200)
+	for _, v := range []struct {
+		cookie  *http.Cookie
+		visible bool
+	}{{f.student, true}, {mentor, false}, {f.foreign, false}} {
+		body := apiRequest(t, f.h, "GET", path, "", v.cookie, 200).Body.String()
+		if strings.Contains(body, question) != v.visible || strings.Contains(body, "Private HR subject") != v.visible {
+			t.Fatal(body)
+		}
+	}
+}
+
+func TestPostgresCuratorAggregatesAtScale(t *testing.T) {
+	db := testkit.Postgres(t)
+	if err := demo.Seed(t.Context(), db, true); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := db.Exec(`
+ INSERT INTO curator_team_assignments(curator_id,team_id) VALUES('mentor_demo_1','team_demo_backend') ON CONFLICT DO NOTHING;
+ INSERT INTO users(id,team_id,name,role) SELECT 'load-i-'||i,'team_demo_backend','Load intern','intern' FROM generate_series(1,500) i;
+ INSERT INTO onboarding_plans(id,user_id,team_id,title) SELECT 'load-p-'||i,'load-i-'||i,'team_demo_backend','Load plan' FROM generate_series(1,500) i;
+ INSERT INTO onboarding_steps(id,plan_id,position,title,description,status,blocked_reason,template_key)
+ SELECT 'load-s-'||i||'-'||n,'load-p-'||i,n,'Load step','Load test','blocked','Waiting','load-topic-'||n
+ FROM generate_series(1,500) i CROSS JOIN generate_series(1,20) n;`); err != nil {
+		t.Fatal(err)
+	}
+	h := NewHandler(config.Config{DemoMode: true, SessionTTL: time.Hour, AllowedOrigins: []string{"http://localhost:5173"}}, db, slog.New(slog.NewTextHandler(io.Discard, nil)), nil, Dependencies{})
+	curator := loginCookie(t, h, "mentor_demo_1", nil)
+	start := time.Now()
+	w := apiRequest(t, h, "GET", "/api/v1/curator?team_id=team_demo_backend&kind=blocked", "", curator, 200)
+	t.Logf("aggregated 10000 blocked steps in %v", time.Since(start))
+	var result struct {
+		Summaries []struct {
+			Topic           string
+			Events, Interns int
+			SourceIDs       []string `json:"source_ids"`
+		}
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &result); err != nil {
+		t.Fatal(err)
+	}
+	matched := 0
+	for _, s := range result.Summaries {
+		if strings.HasPrefix(s.Topic, "load-topic-") {
+			matched++
+			if s.Events != 500 || s.Interns != 500 || len(s.SourceIDs) != 50 {
+				t.Fatal(s)
+			}
+		}
+	}
+	if matched != 20 {
+		t.Fatal(matched)
+	}
+}

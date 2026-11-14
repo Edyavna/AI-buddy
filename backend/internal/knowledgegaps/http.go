@@ -13,6 +13,7 @@ type Handler struct{ Store Store }
 
 func (h Handler) Register(mux *http.ServeMux, session auth.Handler) {
 	h.registerRouting(mux, session)
+	h.registerContext(mux, session)
 	mux.Handle("GET /api/v1/messages/{id}/knowledge-gap", session.Require(http.HandlerFunc(h.intern), true))
 	mux.Handle("POST /api/v1/messages/{id}/knowledge-gap", session.Require(http.HandlerFunc(h.intern), true))
 	mux.Handle("GET /api/v1/mentor/questions", session.Require(http.HandlerFunc(h.list), false))
@@ -89,6 +90,8 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 		result = &httpapi.Error{Status: 409, Code: "IDEMPOTENCY_CONFLICT", Message: "Обращение или операция уже существуют"}
 	case errors.Is(err, ErrChanged):
 		result = &httpapi.Error{Status: 409, Code: "QUESTION_CHANGED", Message: "Вопрос уже изменился"}
+	case errors.Is(err, ErrContextChanged):
+		result = &httpapi.Error{Status: 409, Code: "CONTEXT_CHANGED", Message: "Фрагмент, чекпоинт или версия источника недоступны. Перечитайте контекст и исключите недоступные элементы перед повтором."}
 	case errors.Is(err, ErrDocument):
 		result = &httpapi.Error{Status: 409, Code: "DOCUMENT_NOT_READY", Message: "Для решения добавьте комментарий и доступный готовый документ"}
 	case errors.Is(err, ErrOutcome):

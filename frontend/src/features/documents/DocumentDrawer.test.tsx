@@ -19,6 +19,7 @@ it('loads only when opened, traps keyboard focus and restores focus on Escape', 
   expect(queryClient.getQueryData(['documents', 'doc_local_setup'])).toBeUndefined();
   await user.click(screen.getByRole('button', { name: 'Открыть источник' }));
   expect(await screen.findByText(/Синтетическая инструкция/)).toBeInTheDocument();
+  expect(screen.queryByRole('link', { name: 'Открыть в GitHub' })).not.toBeInTheDocument();
   const close = screen.getByRole('button', { name: 'Закрыть панель' });
   await waitFor(() => expect(close).toHaveFocus());
   await user.tab({ shift: true });
@@ -27,6 +28,21 @@ it('loads only when opened, traps keyboard focus and restores focus on Escape', 
   await user.keyboard('{Escape}');
   expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
   expect(screen.getByRole('button', { name: 'Открыть источник' })).toHaveFocus();
+});
+
+it('keeps the Playbook text in the drawer and links to the cited GitHub commit', async () => {
+  const url = 'https://github.com/avito-tech/playbook/blob/0c1d2aa1501ca6889357908f54b12695f0534e48/processes-and-standards.md';
+  server.use(http.get('*/api/v1/documents/:id', () => HttpResponse.json({
+    id: 'playbook-part', title: 'AvitoTech Playbook · Процессы', content: '## Scrum',
+    updated_at: '2026-11-09T12:00:00Z', original_url: url,
+  })));
+  renderWithQuery(<Harness id="playbook-part" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Открыть источник' }));
+  expect(await screen.findByRole('heading', { name: 'Scrum' })).toBeInTheDocument();
+  const link = screen.getByRole('link', { name: 'Открыть в GitHub' });
+  expect(link).toHaveAttribute('href', url);
+  expect(link).toHaveAttribute('target', '_blank');
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer');
 });
 it('reports 404 without showing stale content', async () => {
   renderWithQuery(<Harness id="missing" />);

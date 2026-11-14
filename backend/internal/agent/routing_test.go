@@ -44,6 +44,7 @@ type routeKnowledge struct {
 	readError   error
 	revoked     bool
 	readCount   int
+	playbook    bool
 }
 
 func (k *routeKnowledge) SearchDirection(_ context.Context, _, direction string) ([]ports.Source, error) {
@@ -60,7 +61,60 @@ func (k *routeKnowledge) Read(_ context.Context, id string) (ports.Document, err
 	if id != "hr-doc" || (k.revoked && k.readCount >= 3) {
 		return ports.Document{}, ports.ErrNotFound
 	}
+	if k.playbook {
+		return ports.Document{ID: id, Version: 2, Title: "AvitoTech Playbook · Академия", Content: "Приём на курс 2021–2022 открывался в июне 2021.",
+			OriginalURL: "https://github.com/avito-tech/playbook/blob/0c1d2aa1501ca6889357908f54b12695f0534e48/students.md"}, k.readError
+	}
 	return ports.Document{ID: id, Direction: "hr", Version: 2, Content: "Заявление подают заранее.", Title: "Порядок отпуска", UpdatedAt: time.Unix(0, 0)}, k.readError
+}
+
+func TestHRPlaybookAnswer(t *testing.T) {
+	for _, tc := range []struct {
+		name, question, reply string
+		answered              bool
+	}{
+		{"historical", "Когда открывался набор 2021 года?", `{"answer":"Набор открывался в июне 2021 года.","document_id":"hr-doc"}`, true},
+		{"current", "Когда очередной набор?", `{"answer":"","document_id":""}`, false},
+		{"personal", "Одобрите мой отпуск на следующей неделе", `{"answer":"","document_id":""}`, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			model := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var in struct{ Messages []Message }
+				if err := json.NewDecoder(r.Body).Decode(&in); err != nil || len(in.Messages) != 2 {
+					t.Error("invalid HR model request", err)
+					w.WriteHeader(http.StatusBadRequest)
+					return
+				}
+				if !strings.Contains(in.Messages[0].Content, "персональное решение") ||
+					!strings.Contains(in.Messages[0].Content, "исторические") ||
+					!strings.Contains(in.Messages[1].Content, "students.md") {
+					t.Error("Playbook provenance or HR guard missing from the model request")
+				}
+				reply, _ := json.Marshal(tc.reply)
+				_, _ = io.WriteString(w, `{"choices":[{"finish_reason":"stop","message":{"content":`+string(reply)+`}}]}`)
+			}))
+			defer model.Close()
+			a := Agent{
+				Model:     &DeepSeek{Model: "test", Client: providerhttp.Client{BaseURL: model.URL, Key: "test"}},
+				Knowledge: &routeKnowledge{playbook: true},
+			}
+			var out ports.AgentResult
+			var text string
+			if err := a.hrAnswer(t.Context(), tc.question, func(_ context.Context, e ports.AgentEvent) error {
+				text += e.Text
+				return nil
+			}, &out); err != nil {
+				t.Fatal(err)
+			}
+			if tc.answered {
+				if out.Outcome != ports.OutcomeAnswered || !strings.Contains(out.PrivateAnswer, "AvitoTech Playbook") || len(out.Sources) != 1 || out.Sources[0].DocumentID != "hr-doc" {
+					t.Fatal(out)
+				}
+			} else if out.Outcome != ports.OutcomeKnowledgeGap || out.PrivateAnswer != "" || len(out.Sources) != 0 || !strings.Contains(text, "недостаточно данных") {
+				t.Fatal(out, text)
+			}
+		})
+	}
 }
 
 func TestRoutingAndGroundedAnswer(t *testing.T) {

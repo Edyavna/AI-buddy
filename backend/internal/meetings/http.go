@@ -23,10 +23,11 @@ import (
 
 type Store struct{ DB *sql.DB }
 type agreement struct {
-	Content string     `json:"content"`
-	Owner   string     `json:"owner_id"`
-	Due     *time.Time `json:"due_at"`
-	Step    *string    `json:"step_id"`
+	Content    string     `json:"content"`
+	Owner      string     `json:"owner_id"`
+	Due        *time.Time `json:"due_at"`
+	Step       *string    `json:"step_id"`
+	HRQuestion *string    `json:"hr_question_id,omitempty"`
 }
 type change struct {
 	ID         string      `json:"id"`
@@ -55,7 +56,7 @@ const meetingJSON = `jsonb_build_object('id',m.id,'intern_id',m.intern_id,'mento
  'scheduled_at',m.scheduled_at,'timezone',m.timezone,'status',m.status,'revision',m.revision,'result',m.result,
  'topics',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',t.id,'author_id',t.author_id,'content',t.content,'private',t.private) ORDER BY t.id)
  FROM onboarding_meeting_topics t WHERE t.meeting_id=m.id AND (NOT t.private OR t.author_id=$1)),'[]'::jsonb),
- 'agreements',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',g.id,'owner_id',g.owner_id,'content',g.content,'due_at',g.due_at,'step_id',g.step_id,'completed_at',g.completed_at,'revision',g.revision) ORDER BY g.id)
+ 'agreements',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',g.id,'owner_id',g.owner_id,'content',g.content,'due_at',g.due_at,'step_id',g.step_id,'completed_at',g.completed_at,'revision',g.revision,'hr_question_id',CASE WHEN $3='intern' AND EXISTS(SELECT 1 FROM knowledge_gaps q WHERE q.id=g.hr_question_id AND q.student_id=m.intern_id AND q.team_id=m.team_id AND q.direction='hr') THEN g.hr_question_id END) ORDER BY g.id)
  FROM onboarding_agreements g WHERE g.meeting_id=m.id),'[]'::jsonb),
  'agenda',COALESCE((SELECT jsonb_agg(item ORDER BY priority, key) FROM (
  SELECT 1 priority,s.id key,jsonb_build_object('kind','checkpoint','text',s.title,'step_id',s.id,'state',s.status,'reason',s.blocked_reason) item
@@ -86,6 +87,12 @@ func (s Store) list(w http.ResponseWriter, r *http.Request) {
 	var result json.RawMessage
 	err = s.DB.QueryRowContext(r.Context(), `SELECT jsonb_build_object(
  'participants',COALESCE((SELECT jsonb_agg(row_to_json(a)) FROM (`+participants+`) a),'[]'::jsonb),
+ 'hr_questions',COALESCE((SELECT jsonb_agg(row_to_json(q)) FROM (
+ SELECT q.id,left(q.question,160) AS title,m.conversation_id,m.id AS message_id
+ FROM knowledge_gaps q JOIN chat_messages m ON m.id=q.message_id
+ JOIN conversations c ON c.id=m.conversation_id AND c.user_id=$1 AND c.team_id=$2
+ WHERE $3='intern' AND q.student_id=$1 AND q.team_id=$2 AND q.direction='hr'
+ ORDER BY q.created_at DESC,q.id LIMIT 50) q),'[]'::jsonb),
  'meetings',COALESCE((SELECT jsonb_agg(item) FROM (SELECT `+meetingJSON+` item`+visible+`
  LEFT JOIN LATERAL (`+previousMeeting+`) latest ON m.status='scheduled'
  LEFT JOIN onboarding_meetings prev ON prev.id=CASE WHEN m.status='scheduled' THEN latest.id ELSE m.previous_id END
@@ -215,7 +222,7 @@ WHERE id=$1`, in.ID, in.At, in.Zone, intern, mentor, team)
 			}
 		}
 	case "complete":
-		err = complete(ctx, tx, in, intern, mentor, team)
+		err = complete(ctx, tx, in, intern, mentor, team, p.UserID)
 	}
 	if err != nil {
 		return 0, err
@@ -269,7 +276,7 @@ func record(ctx context.Context, tx *sql.Tx, id, actor, action string, revision 
 	_, err = tx.ExecContext(ctx, `INSERT INTO onboarding_meeting_history(meeting_id,revision,actor_id,action) VALUES($1,$2,$3,$4)`, id, revision, actor, action)
 	return err
 }
-func complete(ctx context.Context, tx *sql.Tx, in change, intern, mentor, team string) error {
+func complete(ctx context.Context, tx *sql.Tx, in change, intern, mentor, team, actor string) error {
 	for _, a := range in.Agreements {
 		if a.Owner != intern && a.Owner != mentor {
 			return ports.ErrInvalid
@@ -284,7 +291,20 @@ func complete(ctx context.Context, tx *sql.Tx, in change, intern, mentor, team s
 				return ports.ErrInvalid
 			}
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT INTO onboarding_agreements(meeting_id,owner_id,content,due_at,step_id) VALUES($1,$2,$3,$4,$5)`, in.ID, a.Owner, a.Content, a.Due, a.Step); err != nil {
+		if a.HRQuestion != nil {
+			if actor != intern || !uuid(*a.HRQuestion) {
+				return ports.ErrInvalid
+			}
+			var id string
+			err := tx.QueryRowContext(ctx, `SELECT id::text FROM knowledge_gaps WHERE id=$1 AND student_id=$2 AND team_id=$3 AND direction='hr' FOR SHARE`, *a.HRQuestion, intern, team).Scan(&id)
+			if errors.Is(err, sql.ErrNoRows) {
+				return ports.ErrInvalid
+			}
+			if err != nil {
+				return err
+			}
+		}
+		if _, err := tx.ExecContext(ctx, `INSERT INTO onboarding_agreements(meeting_id,owner_id,content,due_at,step_id,hr_question_id) VALUES($1,$2,$3,$4,$5,$6)`, in.ID, a.Owner, a.Content, a.Due, a.Step, a.HRQuestion); err != nil {
 			return err
 		}
 	}

@@ -30,6 +30,7 @@ CREATE TABLE onboarding_agreements (
     due_at timestamptz,
     step_id text REFERENCES onboarding_steps(id),
     completed_at timestamptz,
+    hr_question_id uuid REFERENCES knowledge_gaps(id),
     revision bigint NOT NULL DEFAULT 1
 );
 CREATE TABLE onboarding_meeting_history (

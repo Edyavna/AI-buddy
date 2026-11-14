@@ -1,0 +1,55 @@
+Issue #57, feature/question-context-preview, base dev 740c3da
+Local acceptance: 2026-11-14. All checks below passed.
+
+Frontend (Node from frontend/.node-version, npm dependencies from lockfile):
+  npm run typecheck
+  npm run lint
+  npm run test:coverage: 47 files, 397 tests
+    lines: 95.37% (2043/2142)
+    statements: 92.58% (2486/2685)
+  node ../scripts/hr-coverage.mjs 740c3da frontend
+    changed executable lines: 93.33% (168/180), strictly >90%
+  npm run test:e2e: 1 test passed
+  npm run build
+  npm run check:api
+  Existing build warning: JavaScript bundle >500 kB; no thresholds disabled.
+
+Backend (Go 1.26.5 Linux container, PostgreSQL 17 with pgvector 0.8.7):
+  TEST_DATABASE_URL points to a dedicated synthetic database.
+  go test -race -p 1 -count=1 -timeout=2m -coverpkg=./... -coverprofile=coverage.out ./...
+  go vet ./...
+  go build ./...
+  go run ../scripts/go_line_coverage.go coverage.out
+    all instrumented source lines: 85.41% (5259/6157), existing >=80% gate preserved
+  go run ../scripts/go_line_coverage.go --lines coverage.out > coverage/lines.tsv
+  node ../scripts/hr-coverage.mjs 740c3da backend
+    changed executable lines: 94.17% (404/429), strictly >90%
+
+Changed-line file/line lists: frontend-lines.txt and backend-lines.txt.
+Normal Go/LCOV instrumentation is used. Test/generated/mock/vendor sources are
+excluded by the existing hr-coverage.mjs rules; runtime feature logic is included.
+CI calculates against github.event.pull_request.base.sha, not a fixed local SHA.
+
+Contracts:
+  python -m pip install -r contracts/requirements-check.txt
+  python scripts/check_contracts.py
+    PASS: OpenAPI 0.2.0; 99 operations; fixtures, SSE schemas, negative cases, references
+
+Browser:
+  node scripts/question-context-browser.mjs
+    mentor + HR on 360/768/1440 px, ordinary routes, actual SSE, real Go/PostgreSQL,
+    successful source render ACK, removed fragment, edited quote, manual attempts,
+    optional checkpoint, durable draft/reload, explicit approval, permitted recipient,
+    document drawer, focus containment/restore, keyboard, private chat isolation.
+  Restart API, repeat demo seed without resetting data.
+  node scripts/question-context-browser.mjs --verify
+    mentor + HR persisted snapshots/documents restored successfully.
+  Local browser: Chrome via Playwright core 1.60.0; Vite frontend and actual Go API.
+  CI: pinned Ubuntu 24.04 + Playwright core 1.60.0, production Nginx SPA via Compose,
+    same browser script, API restart/reseed, uploaded screenshots/report artifacts.
+
+Model boundary:
+  External classifier/answer provider is deterministic scripts/hr-provider-fixture.mjs.
+  The N57 fixture actually requests the agent's search_knowledge/read_document tools.
+  Context draft extraction is local, source-grounded and does not call an LLM.
+  No live external model verification is claimed.

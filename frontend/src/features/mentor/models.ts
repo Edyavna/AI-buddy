@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import type { components } from '@/shared/api/generated/schema';
+import { contextSchema } from '@/features/question-context/api';
 
 type Schemas = components['schemas'];
 const assignmentPerson = z.object({ id: z.string().min(1), name: z.string().min(1) });
@@ -10,11 +11,12 @@ const person = z.object({ id: z.string(), name: z.string() });
 const date = z.iso.datetime();
 export const questionStatusSchema = z.enum(['new', 'in_progress', 'resolved']);
 export const questionSchema = z.object({
+  context_snapshot:contextSchema.optional(),
   id: z.string(), student: person, step_id: z.string().nullable(), message_id: z.string(),
   question: z.string(), context_excerpt: z.string(), status: questionStatusSchema,
   revision: z.number().int().positive(), document_ids: z.array(z.string()), resolution: z.string().nullable(),
   created_at: date, updated_at: date,
-}) satisfies z.ZodType<Schemas['KnowledgeGap']>;
+}).transform(({context_snapshot,...question}):Schemas['KnowledgeGap']=>context_snapshot?{...question,context_snapshot}:question) satisfies z.ZodType<Schemas['KnowledgeGap']>;
 export const mentorDocumentSchema = z.object({
   id: z.string(), title: z.string(), status: z.enum(['processing', 'ready', 'failed']), author: person,
   created_at: date, updated_at: date, error: z.string().nullable(), question_id: z.string().nullable(),

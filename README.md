@@ -133,6 +133,8 @@ docker compose --profile demo run --rm knowledge-import
 В AI_MODE=demo остаётся синтетический SSE-ответ без внешних вызовов. См.
 [конфигурацию](backend/README.md#конфигурация) и [импорт знаний](backend/internal/knowledge/README.md).
 
+AvitoTech Playbook подключается отдельной командой. См. [импорт, обновление и вопросы для приёмки](docs/backend/playbook.md).
+
 ## Фронтенд и интеграция
 
 Из папки frontend: npm ci, затем npm run dev. Интерфейс: http://localhost:5173.

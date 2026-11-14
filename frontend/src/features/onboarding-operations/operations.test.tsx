@@ -19,6 +19,22 @@ function json(data: unknown, status = 200) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Встречи 1:1', () => {
+  it('связывает договорённость со своим HR-обращением и открывает исходный чат', async () => {
+    const id = 'aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa';
+    const hr_questions = [{ id, title: 'Кадровый вопрос', conversation_id: 'chat', message_id: 'reply' }];
+    const fetch = vi.fn().mockResolvedValueOnce(json({ participants, meetings: [item], hr_questions }))
+      .mockResolvedValueOnce(json({ revision: 2 }))
+      .mockResolvedValueOnce(json({ participants, hr_questions, meetings: [{ ...item, status: 'completed', agreements: [
+        { id: 'agreement', owner_id: 'intern', content: 'Уточнить порядок', due_at: null, step_id: null, hr_question_id: id, completed_at: null, revision: 1 },
+      ] }] }));
+    vi.stubGlobal('fetch', fetch);
+    render(<MemoryRouter><MeetingsPage /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole('button', { name: 'Добавить договорённость' }));
+    fireEvent.change(screen.getByLabelText('Связать со своим HR-обращением'), { target: { value: id } });
+    fireEvent.submit(screen.getByRole('button', { name: 'Завершить встречу' }).closest('form')!);
+    expect(await screen.findByRole('link', { name: 'Открыть HR-обращение' })).toHaveAttribute('href', '/chat/chat#message-reply');
+    expect(JSON.parse(fetch.mock.calls[1]?.[1].body).agreements[0].hr_question_id).toBe(id);
+  });
   it('планирует, переносит и завершает встречу с договорённостью', async () => {
     const fetch = vi.fn().mockImplementation((_path: string, options: RequestInit) =>
       Promise.resolve(options.method === 'POST' ? json({ revision: 2 }) : json({ participants, meetings: [item] })));

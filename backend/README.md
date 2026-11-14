@@ -11,6 +11,7 @@ cmd/server                 конфигурация, сигналы, запус�
 cmd/migrate                отдельная команда применения миграций
 cmd/seed                   идемпотентные синтетические аккаунты и планы
 cmd/knowledge-import       импорт Markdown и эмбеддингов
+cmd/playbook-import        импорт и синхронизация AvitoTech Playbook по Git-коммиту
 internal/auth              серверные сессии, me/logout, middleware
 internal/onboarding        план, переходы и транзакционная связь с заявками
 internal/chat              диалоги, HTTP/SSE, сообщения и recovery

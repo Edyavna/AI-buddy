@@ -20,6 +20,19 @@ createServer(async (request, response) => {
     }
     if (request.url !== '/chat/completions') throw new Error('Unknown path');
     const last = input.messages.at(-1).content;
+    // #57 exercises genuine read tools without changing other fixture scenarios.
+    const userIndex = input.messages.findLastIndex(message => message.role === 'user');
+    const currentQuestion = input.messages[userIndex]?.content ?? '';
+    if (input.tools?.length && /N57/.test(currentQuestion)) {
+      const turn = input.messages.slice(userIndex + 1);
+      const replies = turn.filter(message => message.role === 'tool');
+      const call = (id, name, args) => response.end(JSON.stringify({ choices: [{ finish_reason: 'tool_calls', message: { role: 'assistant', content: '', tool_calls: [{ id, type: 'function', function: { name, arguments: JSON.stringify(args) } }] } }] }));
+      if (!replies.length) { call('context-search', 'search_knowledge', { query: currentQuestion }); return; }
+      const sources = JSON.parse(replies[0].content);
+      if (sources.length && replies.length === 1) { call('context-read', 'read_document', { document_id: sources[0].DocumentID }); return; }
+      response.end(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify({ answer: 'Проверьте конфигурацию по доступной инструкции. При необходимости уточните порядок у наставника.', outcome: sources.length ? 'answered' : 'knowledge_gap' }) } }] }));
+      return;
+    }
     let result = { answer: 'Порядок работы можно уточнить у наставника.', outcome: 'answered' };
     if (input.response_format?.type === 'json_object' && !input.tools?.length) {
       if (input.messages[0].content.startsWith('Подготовь обезличенную')) {

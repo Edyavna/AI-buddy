@@ -21,6 +21,11 @@ def check(schema, value):
 f = json.loads((ROOT / 'contracts/examples/scenario.json').read_text(encoding='utf-8'))
 resolution = json.loads((ROOT / 'contracts/examples/resolution-drafts.json').read_text(encoding='utf-8'))
 groups = json.loads((ROOT / 'contracts/examples/question-groups.json').read_text(encoding='utf-8'))
+context = json.loads((ROOT / 'contracts/examples/question-context.json').read_text(encoding='utf-8'))
+for key, schema in [('input', 'QuestionContextInput'), ('snapshot', 'QuestionContextSnapshot'), ('preview', 'QuestionContextSnapshot')]:
+    check(schema, context[key])
+assert context['snapshot']['documents'][0]['status'] == 'unavailable'
+assert context['snapshot']['documents'][0]['title'] is None
 for key, schema in [('group', 'QuestionGroup'), ('workspace', 'GroupWorkspace'), ('save', 'SaveQuestionGroup'), ('action', 'GroupAction')]:
     check(schema, groups[key])
 for key, schema in [('save', 'SaveResolutionDraft'), ('workspace', 'ResolutionWorkspace'), ('empty', 'ResolutionWorkspace'), ('publish', 'PublishResolutionDraft')]:
@@ -119,6 +124,12 @@ try: check('SendMessage',bad)
 except ValidationError: pass
 else: raise AssertionError('Whitespace-only text accepted')
 for schema,bad in [
+    ('QuestionContextInput', {**context['input'], 'documents': None}),
+    ('QuestionContextInput', {**context['input'], 'fragments': None}),
+    ('QuestionContextInput', {**context['input'], 'specialist_id': 'forged'}),
+    ('QuestionContextInput', {**context['input'], 'fragments': [{'message_id': 'msg_user', 'text': 'text', 'role': 'assistant'}]}),
+    ('QuestionContextInput', {**context['input'], 'documents': [{'document_id': 'doc1', 'version': 0}]}),
+    ('QuestionContextInput', {**context['input'], 'fragments': context['input']['fragments'] * 13}),
     ('SendMessage', {**f['send_message'], 'user_id':'forged_user'}),
     ('AccessRequest', {**f['draft'], 'status':'approved'}),
     ('SetCheckpointConfirmation', {'confirmed': True, 'revision': 0}),

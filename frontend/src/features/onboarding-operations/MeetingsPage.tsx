@@ -6,7 +6,7 @@ import { isoDate, LoadState, localDate, styles, useWorkspace } from './shared';
 
 const agreement = z.object({
   id: z.string(), owner_id: z.string(), content: z.string(), due_at: z.string().nullable(),
-  step_id: z.string().nullable(), completed_at: z.string().nullable(), revision: z.number(),
+  step_id: z.string().nullable(), hr_question_id: z.string().uuid().nullish(), completed_at: z.string().nullable(), revision: z.number(),
 });
 const meeting = z.object({
   id: z.string(), intern_id: z.string(), mentor_id: z.string(), previous_id: z.string().nullable(),
@@ -19,13 +19,14 @@ const meeting = z.object({
 const workspace = z.object({
   participants: z.array(z.object({ intern_id: z.string(), mentor_id: z.string(), team_id: z.string() })),
   meetings: z.array(meeting),
+  hr_questions: z.array(z.object({ id: z.string(), title: z.string(), conversation_id: z.string(), message_id: z.string() })).default([]),
 });
 type Meeting = z.infer<typeof meeting>;
 type Send = (payload: unknown) => Promise<boolean>;
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
 const statuses = { scheduled: 'Запланирована', completed: 'Завершена', cancelled: 'Отменена' };
 
-function MeetingCard({ item, user, send, pending }: { item: Meeting; user: string; send: Send; pending: boolean }) {
+function MeetingCard({ item, user, send, pending, hrQuestions }: { hrQuestions: z.infer<typeof workspace>["hr_questions"]; item: Meeting; user: string; send: Send; pending: boolean }) {
   const [topic, setTopic] = useState({ id: '', content: '', private: false });
   const [agreements, setAgreements] = useState<number[]>([]);
   const nextKey = useRef(0);
@@ -65,6 +66,7 @@ function MeetingCard({ item, user, send, pending }: { item: Meeting; user: strin
         content: data.get('result'),
         agreements: agreements.map((key) => ({
           content: data.get(`content-${key}`), owner_id: data.get(`owner-${key}`),
+          hr_question_id: String(data.get(`hr-${key}`) ?? '').trim() || null,
           due_at: isoDate(String(data.get(`due-${key}`) ?? '')), step_id: data.get(`step-${key}`) || null,
         })),
       }))}>
@@ -75,6 +77,7 @@ function MeetingCard({ item, user, send, pending }: { item: Meeting; user: strin
           <label>Ответственный<select name={`owner-${key}`}><option value={item.intern_id}>Стажёр</option><option value={item.mentor_id}>Наставник</option></select></label>
           <label>Срок<input name={`due-${key}`} type="datetime-local" /></label>
           <label>Чекпоинт<select name={`step-${key}`}><option value="">Без связи</option>{item.agenda.filter((entry) => entry.kind === 'checkpoint').map((entry) => <option key={entry.step_id} value={entry.step_id ?? ''}>{entry.text}</option>)}</select></label>
+          {user === item.intern_id && <label>Связать со своим HR-обращением<select name={`hr-${key}`}><option value="">Без связи</option>{hrQuestions.map(q => <option key={q.id} value={q.id}>{q.title}</option>)}</select></label>}
           <button type="button" onClick={() => setAgreements((rows) => rows.filter((row) => row !== key))}>Убрать договорённость</button>
         </fieldset>)}
         <div className={styles.actions}>
@@ -87,6 +90,7 @@ function MeetingCard({ item, user, send, pending }: { item: Meeting; user: strin
     {item.agreements.length > 0 && <h3>Договорённости</h3>}
     {item.agreements.map((entry) => <section key={entry.id} className={styles.card}>
       <p>{entry.content} · {entry.owner_id === user ? 'Вы отвечаете' : entry.owner_id} · {entry.completed_at ? 'Выполнено' : 'Открыто'}</p>
+      {entry.hr_question_id && hrQuestions.filter(q => q.id === entry.hr_question_id).map(q => <Link key={q.id} to={`/chat/${encodeURIComponent(q.conversation_id)}#message-${encodeURIComponent(q.message_id)}`}>Открыть HR-обращение</Link>)}
       {entry.due_at && <p>Срок {new Date(entry.due_at).toLocaleString('ru-RU')}</p>}
       {entry.owner_id === user && !entry.completed_at && <form className={styles.form} onSubmit={(event) => {
         event.preventDefault();
@@ -120,7 +124,7 @@ export function MeetingsPage() {
           <button disabled={work.pending}>Запланировать встречу</button>
         </form>}
       {!work.data?.meetings.length && <p>Встреч пока нет.</p>}
-      {work.data?.meetings.map((item) => <MeetingCard key={item.id} item={item} user={user?.id ?? ''} send={work.send} pending={work.pending} />)}
+      {work.data?.meetings.map((item) => <MeetingCard key={item.id} item={item} hrQuestions={work.data?.hr_questions ?? []} user={user?.id ?? ''} send={work.send} pending={work.pending} />)}
     </LoadState>
   </section>;
 }

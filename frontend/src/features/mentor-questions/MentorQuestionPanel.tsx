@@ -13,6 +13,7 @@ const POLL_INTERVAL_MS = 5000;
 const ACTIVE_STATUSES: ReadonlyArray<MentorQuestion['status']> = ['new', 'in_progress'];
 
 export interface MentorQuestionPanelProps {
+  existingOnly?: boolean;
   messageId: string;
   canEscalate: boolean;
   onOpenDocument: (documentId: string) => void;
@@ -37,6 +38,7 @@ export function MentorQuestionPanel({
   onRepeatQuestion,
   isChatBusy = false,
   canRepeatQuestion = true,
+  existingOnly = false,
 }: MentorQuestionPanelProps) {
   const queryClient = useQueryClient();
   const [isInView, setIsInView] = useState(true);
@@ -125,6 +127,7 @@ export function MentorQuestionPanel({
   }
 
   const question = query.data?.question;
+  if(existingOnly&&!question)return null;
   if (!question && query.isError) {
     return (
       <div ref={node => { rootRef.current = node; }} className={styles.state}>

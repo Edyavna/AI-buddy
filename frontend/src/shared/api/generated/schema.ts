@@ -40,6 +40,124 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/messages/{id}/context-documents/{document_id}/opened": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Explicit drawer render acknowledgement. Rechecks version and access, and records one opening per user/message/document/version. A GET alone is not an opening. */
+        post: operations["acknowledgeContextDocumentShown"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/questions/{id}/context-documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["internReadQuestionContextDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages/{id}/question-context": {
+        parameters: {
+            query: {
+                direction: components["schemas"]["QuestionDirection"];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Bounded extractive preview from authorized messages and sources. Optional fragments require explicit selection; no attempt is inferred. */
+        get: operations["previewQuestionContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages/{id}/context-documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Read a cited source with its current ACL and version. This GET does not record an opening; acknowledge the displayed version with POST to the corresponding /opened endpoint after rendering. */
+        get: operations["openCitedContextDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/questions/{id}/context-documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["mentorReadQuestionContextDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hr/questions/{id}/context-documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["hrReadQuestionContextDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mentor/question-groups": {
         parameters: {
             query?: never;
@@ -1392,6 +1510,11 @@ export interface components {
             owner_id: string;
             /** Format: date-time */
             due_at?: string | null;
+            /**
+             * Format: uuid
+             * @description ID собственного HR-обращения. Устанавливается только стажёром.
+             */
+            hr_question_id?: string | null;
             step_id?: string | null;
         };
         MeetingChange: {
@@ -1454,6 +1577,14 @@ export interface components {
             revision: number;
         };
         MeetingWorkspace: {
+            /** @description Own HR questions, available only to their author. */
+            hr_questions?: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                conversation_id: string;
+                message_id: string;
+            }[];
             participants: {
                 intern_id: string;
                 mentor_id: string;
@@ -1490,6 +1621,8 @@ export interface components {
                     content: string;
                     /** Format: date-time */
                     due_at: string | null;
+                    /** Format: uuid */
+                    hr_question_id?: string | null;
                     step_id: string | null;
                     /** Format: date-time */
                     completed_at: string | null;
@@ -1553,6 +1686,65 @@ export interface components {
                     };
                 }[];
             }[];
+        };
+        QuestionContextFragmentInput: {
+            message_id: string;
+            text: string;
+        };
+        QuestionContextDocumentInput: {
+            document_id: string;
+            version: number;
+        };
+        QuestionContextInput: {
+            reviewed: boolean;
+            include_step: boolean;
+            attempts: string;
+            fragments: components["schemas"]["QuestionContextFragmentInput"][];
+            documents: components["schemas"]["QuestionContextDocumentInput"][];
+            /** @description Plan revision shown during review; required when include_step is true, null otherwise. */
+            step_revision: number | null;
+        };
+        QuestionContextFragment: {
+            message_id: string;
+            /** @enum {string} */
+            role: "user" | "assistant";
+            text: string | null;
+            edited: boolean;
+            /** @enum {string} */
+            status: "available" | "unavailable";
+        };
+        QuestionContextDocument: {
+            document_id: string;
+            version: number;
+            title: string | null;
+            opened: boolean;
+            /** @enum {string} */
+            status: "available" | "unavailable";
+        };
+        NullableQuestionContextStep: {
+            id: string;
+            title: string | null;
+            /** @enum {string} */
+            status: "available" | "unavailable";
+            revision: number;
+        } | null;
+        QuestionContextSnapshot: {
+            conversation_id: string;
+            attempts: string;
+            step: components["schemas"]["NullableQuestionContextStep"];
+            fragments: components["schemas"]["QuestionContextFragment"][];
+            documents: components["schemas"]["QuestionContextDocument"][];
+            limited: boolean;
+        };
+        ContextDocumentBody: {
+            id: string;
+            title: string;
+            content: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** @enum {string} */
+            direction: "mentor" | "hr";
+            version: number;
         };
         GroupQuestion: {
             id: string;
@@ -1661,6 +1853,7 @@ export interface components {
             }[];
         };
         RoutedQuestion: {
+            context_snapshot?: components["schemas"]["QuestionContextSnapshot"];
             /** Format: uuid */
             id: string;
             message_id: string;
@@ -1687,11 +1880,13 @@ export interface components {
             applied_revision: number | null;
         };
         QuestionDraft: {
+            context_snapshot?: components["schemas"]["QuestionContextInput"];
             direction: components["schemas"]["QuestionDirection"];
             question: string;
             context_excerpt: string;
         };
         QuestionDraftInput: {
+            context_snapshot?: components["schemas"]["QuestionContextInput"];
             question: string;
             context_excerpt: string;
         };
@@ -1712,6 +1907,7 @@ export interface components {
             }[];
         };
         CreateRoutedQuestion: {
+            context_snapshot?: components["schemas"]["QuestionContextInput"];
             /** Format: uuid */
             operation_id: string;
             direction: components["schemas"]["QuestionDirection"];
@@ -1719,6 +1915,7 @@ export interface components {
             context_excerpt: string;
         };
         RerouteQuestion: {
+            context_snapshot?: components["schemas"]["QuestionContextInput"];
             /** Format: uuid */
             operation_id: string;
             revision: number;
@@ -1991,6 +2188,7 @@ export interface components {
             updated_at: string;
         };
         KnowledgeGap: {
+            context_snapshot?: components["schemas"]["QuestionContextSnapshot"];
             /** Format: uuid */
             id: string;
             message_id: string;
@@ -2441,6 +2639,202 @@ export interface operations {
                     "application/json": components["schemas"]["OperationRevision"];
                 };
             };
+            default: components["responses"]["Error"];
+        };
+    };
+    acknowledgeContextDocumentShown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    version: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Opening recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        opened: true;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    internReadQuestionContextDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized context */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextDocumentBody"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    previewQuestionContext: {
+        parameters: {
+            query: {
+                direction: components["schemas"]["QuestionDirection"];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized context */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionContextSnapshot"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    openCitedContextDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized context */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextDocumentBody"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    mentorReadQuestionContextDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized context */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextDocumentBody"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    hrReadQuestionContextDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized context */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextDocumentBody"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };
     };
@@ -4492,6 +4886,11 @@ export interface operations {
                         content: string;
                         /** Format: date-time */
                         updated_at: string;
+                        /**
+                         * Format: uri
+                         * @description Для AvitoTech Playbook ссылка на GitHub с коммитом импортированного текста.
+                         */
+                        original_url?: string;
                     };
                 };
             };
