@@ -3,11 +3,13 @@ package onboarding
 import (
 	"context"
 	"encoding/json"
+	"net/http"
 	"net/http/httptest"
 	"slices"
 	"testing"
 	"time"
 
+	"github.com/Edyavna/AI-buddy/backend/internal/auth"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/identity"
 	"github.com/Edyavna/AI-buddy/backend/internal/ports"
 )
@@ -307,6 +309,33 @@ func TestRecommendationScenarios(t *testing.T) {
 		}
 	})
 
+	t.Run("mentor policy on priority step sets waiting_mentor", func(t *testing.T) {
+		snap := Snapshot{
+			ID: "plan_mentor_prio", Title: "План", Revision: 1, HasHR: true,
+			Steps: []Record{
+				{
+					Step: Step{
+						ID: "step_mentor_first", Title: "Проверка наставником", Status: "not_started",
+						CompletionPolicy: "mentor",
+					},
+				},
+				{
+					Step: Step{
+						ID: "step_intern_second", Title: "Второй шаг", Status: "not_started",
+						CompletionPolicy: "intern", Instructions: "Инструкция",
+					},
+				},
+			},
+		}
+		plan := project(snap, nil, actor)
+		if plan.NextStepID == nil || *plan.NextStepID != "step_intern_second" {
+			t.Fatalf("expected step_intern_second, got %v", plan.NextStepID)
+		}
+		if plan.Recommendation.WaitingStep == nil || plan.Recommendation.WaitingStep.State != StateWaitingMentor {
+			t.Fatalf("expected waiting_mentor, got %+v", plan.Recommendation.WaitingStep)
+		}
+	})
+
 	t.Run("confirm action when step has no instructions but confirm allowed", func(t *testing.T) {
 		step := Step{
 			ID: "step_simple", Title: "Простой шаг", Status: "not_started",
@@ -402,6 +431,9 @@ func TestHttpRecommendationEndpoint(t *testing.T) {
 		}),
 	}
 	handler := Handler{Service: svc}
+	mux := http.NewServeMux()
+	session := auth.Handler{}
+	handler.Register(mux, session)
 
 	// 1. Success case
 	req := httptest.NewRequest("GET", "/api/v1/onboarding/recommendation", nil)
