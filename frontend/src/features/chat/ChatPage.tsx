@@ -12,6 +12,7 @@ import { QuestionComposer } from '@/features/hr';
 import { canEscalateMessage, MentorQuestionPanel } from '@/features/mentor-questions';
 import { AccessRequestPanel } from '@/features/access-requests';
 import { DocumentDrawer, MarkdownContent } from '@/features/documents';
+import { MemorySuggestions } from '@/features/personal-memory';
 import styles from './ChatPage.module.css';
 
 export function ChatPage() {
@@ -42,6 +43,7 @@ export function ChatPage() {
     if(target){nearBottom.current=false;target.scrollIntoView?.({block:'center'});visitedSource.current=key;}
   },[hash,state.conversationId,state.messages.length]);
   const busy = ['sending', 'streaming', 'recovering'].includes(state.phase);
+  const memorySource=state.messages.filter(message=>message.role==='user'&&state.messages.some(answer=>answer.role==='assistant'&&answer.status==='completed'&&answer.in_reply_to_message_id===message.id)).at(-1)?.id;
   const me = useQuery({ queryKey: queryKeys.me(), queryFn: ({ signal }) => getData('/me', userSchema, signal) });
   const conversations = useQuery({ queryKey: queryKeys.conversations(), queryFn: ({ signal }) => listConversations(signal), enabled: !!me.data });
   const conversation = useQuery({ queryKey: queryKeys.conversation(conversationId ?? ''), queryFn: ({ signal }) => getConversation(conversationId!, signal), enabled: !!conversationId && !!me.data });
@@ -111,7 +113,7 @@ export function ChatPage() {
       {conversations.data?.map(item => <Link key={item.id} aria-current={item.id === conversationId ? 'page' : undefined} to={`/chat/${encodeURIComponent(item.id)}`}>{item.title}</Link>)}
     </aside>
     <section className={styles.chat} aria-label="Чат с помощником">
-      <header><h1>Помощник стажёра</h1><p>{step ? `Шаг: ${step.title}` : 'Инструкции, доступы и первые задачи'}</p></header>
+      <header><h1>Помощник стажёра</h1><p>{step ? `Шаг: ${step.title}` : 'Инструкции, доступы и первые задачи'}</p><Link to="/memory">Моя память</Link></header>
       {error && <InlineError message={error.message} onRetry={() => { void client.invalidateQueries(); }} />}
       {contextInvalid && <InlineError message="Шаг не найден в вашем плане. Вернитесь к плану адаптации." />}
       {(me.isPending || (conversationId && history.isLoading)) && <Spinner />}
@@ -155,6 +157,7 @@ export function ChatPage() {
         })}
         </div>
       </div>
+      {memorySource&&me.data&&!busy&&!error&&<MemorySuggestions key={`${me.data.id}:${memorySource}`} messageId={memorySource}/>}
       {newMessages && <Button variant="secondary" onClick={() => { nearBottom.current = true; setNewMessages(false); if (list.current) list.current.scrollTop = list.current.scrollHeight; }}>Новые сообщения</Button>}
       <div role="status" aria-live="polite">{state.phase === 'sending' ? 'Отправляем вопрос…' : state.phase === 'recovering' ? 'Восстанавливаем ответ…' : ''}{Object.values(state.tools).map((label, i) => <p key={i}>{label}</p>)}</div>
       {state.error && <InlineError message={state.error} />}

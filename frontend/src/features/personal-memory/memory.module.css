@@ -1,0 +1,88 @@
+.page,
+.suggestions,
+.card,
+.editor {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.page {
+  max-width: 900px;
+  margin-inline: auto;
+}
+.page h1 {
+  font-size: var(--font-size-2xl);
+}
+.page h2,
+.suggestions h2 {
+  font-size: var(--font-size-xl);
+}
+.page p,
+.suggestions p {
+  line-height: 1.6;
+}
+.card {
+  padding: var(--space-5);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+  margin-block: var(--space-3);
+}
+.card h3,
+.card p {
+  margin: 0;
+}
+.card small {
+  color: var(--color-text-secondary);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+.page button,
+.suggestions button {
+  min-height: 44px;
+  max-width: 100%;
+  white-space: normal;
+  line-height: 1.4;
+  padding-block: var(--space-3);
+  height: auto;
+}
+.editor select {
+  width: 100%;
+  min-height: 44px;
+  font: inherit;
+  padding: var(--space-3);
+  color: var(--color-text-primary);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+.page pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  font-size: var(--font-size-sm);
+  line-height: 1.6;
+}
+.page summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: var(--space-3);
+  font-weight: var(--font-weight-semibold);
+}
+.suggestions {
+  padding-block: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+@media (max-width: 767px) {
+  .card {
+    padding: var(--space-4);
+  }
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+}
