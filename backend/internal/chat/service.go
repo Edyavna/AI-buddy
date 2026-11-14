@@ -16,7 +16,6 @@ type Prepared struct {
 	Reservation
 	Input     ports.AgentInput
 	StartedAt time.Time
-	agent     ports.Agent
 }
 
 func (s Service) List(ctx context.Context) ([]Conversation, error) {
@@ -84,6 +83,13 @@ func (s Service) request(ctx context.Context, id string) (ports.RequestState, er
 	}
 	return r, nil
 }
+func (s Service) runner(role identity.Role) ports.Agent {
+	if role == identity.Mentor {
+		return s.MentorAgent
+	}
+	return s.Agent
+}
+
 func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepared, error) {
 	p, err := principal(ctx)
 	if err != nil {
@@ -95,11 +101,7 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 	if !validUUID(clientID) || !validText(text) {
 		return Prepared{}, ports.ErrInvalid
 	}
-	runner := s.Agent
-	if p.Role == identity.Mentor {
-		runner = s.MentorAgent
-	}
-	if runner == nil {
+	if s.runner(p.Role) == nil {
 		return Prepared{}, ports.ErrUnavailable
 	}
 	started := time.Now()
@@ -112,7 +114,7 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 	s.checkSources(work, r.Previous)
 	in := ports.AgentInput{ConversationID: id, AssistantMessageID: r.Assistant.ID, StepID: r.Conversation.StepID, Markdown: r.Conversation.Markdown, Text: text, History: history(r.Previous, text), Requests: []ports.RequestState{}}
 	if p.Role == identity.Mentor {
-		return Prepared{Reservation: r, Input: in, StartedAt: started, agent: runner}, nil
+		return Prepared{Reservation: r, Input: in, StartedAt: started}, nil
 	}
 	ids := map[string]bool{}
 	for _, m := range r.Previous {
@@ -136,7 +138,7 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 			in.Requests = append(in.Requests, request)
 		}
 	}
-	return Prepared{Reservation: r, Input: in, StartedAt: started, agent: runner}, nil
+	return Prepared{Reservation: r, Input: in, StartedAt: started}, nil
 }
 
 func (s Service) proposed(ctx context.Context, p Prepared, event ports.AgentEvent) (*httpapi.AccessRequest, error) {
@@ -235,9 +237,9 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 	if err != nil {
 		return err
 	}
-	runner := p.agent
+	runner := s.runner(owner.Role)
 	if runner == nil {
-		runner = s.Agent
+		return ports.ErrUnavailable
 	}
 	o := options.defaults()
 	timeout := o.GenerationTimeout
