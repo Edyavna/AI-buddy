@@ -5,6 +5,7 @@ import { ClientError } from '@/shared/api';
 import { useMe } from '@/features/session';
 import type { Step } from '@/features/onboarding';
 import { MarkdownContent } from '@/features/documents';
+import { PlanAgreements } from '@/features/onboarding-operations/MeetingsPage';
 import { Button, EmptyState, InlineError } from '@/shared/ui';
 import { mentorApi, mentorKeys } from './api';
 import { acceptMentorPlan, setMentorConfirmation } from './checkpoints';
@@ -66,6 +67,7 @@ function MentorPlan({ id }: { id: string }) {
       <p>Следующий шаг: {plan.steps.find(s => s.id === plan.next_step_id)?.title ?? 'Нет следующего шага'}</p>
       <QueryFeedback query={summary} /></header>
       {action.error && <InlineError message={action.error} />}
+      <PlanAgreements mentor internID={id} />
       {plan.steps.length ? <ol className={styles.list}>{plan.steps.map(step => <Checkpoint key={step.id} step={step} busy={action.busy} pending={action.busy && pendingStep === step.id} onChange={confirmed => change(step, confirmed)} />)}</ol> : <EmptyState title="В плане пока нет шагов" description="План ещё не заполнен." />}
     </>}
   </section>;

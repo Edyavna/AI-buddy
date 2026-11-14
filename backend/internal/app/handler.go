@@ -9,11 +9,13 @@ import (
 	"github.com/Edyavna/AI-buddy/backend/internal/accessrequests"
 	"github.com/Edyavna/AI-buddy/backend/internal/auth"
 	"github.com/Edyavna/AI-buddy/backend/internal/chat"
+	"github.com/Edyavna/AI-buddy/backend/internal/curator"
 	"github.com/Edyavna/AI-buddy/backend/internal/demo"
 	"github.com/Edyavna/AI-buddy/backend/internal/hrscope"
 	"github.com/Edyavna/AI-buddy/backend/internal/integrations"
 	"github.com/Edyavna/AI-buddy/backend/internal/knowledge"
 	"github.com/Edyavna/AI-buddy/backend/internal/knowledgegaps"
+	"github.com/Edyavna/AI-buddy/backend/internal/meetings"
 	"github.com/Edyavna/AI-buddy/backend/internal/mentor"
 	"github.com/Edyavna/AI-buddy/backend/internal/onboarding"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/config"
@@ -76,6 +78,8 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 			checkpoints.Register(mux, session)
 			knowledgegaps.Handler{Store: questions}.Register(mux, session)
 			reviewprep.Handler{Store: reviews}.Register(mux, session)
+			meetings.Store{DB: db}.Register(mux, session)
+			curator.Store{DB: db}.Register(mux, session)
 			uploads.Register(mux, session)
 			uploads.RegisterResolutions(mux, session, deps.ResolutionGenerator)
 			uploads.RegisterGroups(mux, session)
