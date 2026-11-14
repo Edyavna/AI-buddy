@@ -33,6 +33,7 @@ type Step struct {
 	AwaitingRole     *identity.Role `json:"awaiting_role"`
 	Instructions     string         `json:"instructions"`
 	Resources        []Resource     `json:"resources"`
+	BlockedAt        *time.Time     `json:"blocked_at,omitempty"`
 }
 
 type Confirmation struct {
@@ -47,11 +48,12 @@ type Resource struct {
 	Note  *string `json:"note"`
 }
 type Plan struct {
-	ID              string  `json:"id"`
-	Title           string  `json:"title"`
-	ProgressPercent int     `json:"progress_percent"`
-	NextStepID      *string `json:"next_step_id"`
-	Steps           []Step  `json:"steps"`
+	ID              string         `json:"id"`
+	Title           string         `json:"title"`
+	ProgressPercent int            `json:"progress_percent"`
+	NextStepID      *string        `json:"next_step_id"`
+	Recommendation  Recommendation `json:"recommendation"`
+	Steps           []Step         `json:"steps"`
 }
 
 // Record is a persisted step; derived UI fields are never accepted from HTTP.
@@ -59,11 +61,13 @@ type Record struct {
 	Step
 	Requirement   *ports.AccessCheck
 	Prerequisites []string
+	BlockedAt     *time.Time
 }
 type Snapshot struct {
 	ID, Title string
 	Revision  int64
 	Steps     []Record
+	HasHR     bool
 }
 type Store interface {
 	Read(context.Context, identity.Principal) (Snapshot, error)
@@ -187,15 +191,12 @@ func project(snapshot Snapshot, grants map[ports.AccessCheck]bool, actor identit
 		if step.Status == "completed" {
 			p.ProgressPercent++
 		}
-		if p.NextStepID == nil && step.Status != "completed" && step.Status != "blocked" {
-			id := step.ID
-			p.NextStepID = &id
-		}
 		p.Steps = append(p.Steps, step)
 	}
 	if len(p.Steps) > 0 {
 		p.ProgressPercent = 100 * p.ProgressPercent / len(p.Steps)
 	}
+	p.Recommendation, p.NextStepID = computeRecommendation(snapshot, p.Steps, grants, actor)
 	return p
 }
 

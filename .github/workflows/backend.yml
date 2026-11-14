@@ -51,7 +51,7 @@ jobs:
           set -o pipefail
           go run ../scripts/go_line_coverage.go coverage.out | tee -a line-coverage.txt "$GITHUB_STEP_SUMMARY"
       - name: Changed backend lines above 90 percent
-        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/62-hr') || startsWith(github.head_ref, 'feature/resolution-knowledge-drafts') || startsWith(github.head_ref, 'feature/shared-question-resolutions'))
+        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/62-hr') || startsWith(github.head_ref, 'feature/resolution-knowledge-drafts') || startsWith(github.head_ref, 'feature/shared-question-resolutions') || startsWith(github.head_ref, 'feature/issue-55-next-step') || startsWith(github.head_ref, 'feat/55-'))
         shell: bash
         env:
           COVERAGE_BASE: ${{ github.event.pull_request.base.sha }}
