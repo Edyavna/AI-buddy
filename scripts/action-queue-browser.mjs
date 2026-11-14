@@ -22,7 +22,7 @@ async function login(page, name) {
 
 async function teamStep(page) {
   const open = page.getByRole('button', { name: /Организационные моменты/ });
-  if (await open.count()) await open.first().click();
+  await open.click();
   return page.getByRole('region', { name: 'Приглашение в закрытые чаты' });
 }
 
