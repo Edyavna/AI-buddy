@@ -14,6 +14,7 @@ async function login(page, name) {
   await page.waitForURL(url => url.pathname !== '/login');
 }
 async function action(page, route, button) {
+  await button.and(page.locator(':enabled')).waitFor();
   const result = page.waitForResponse(response => response.request().method() === 'POST' && new URL(response.url()).pathname === '/api/v1/' + route);
   await button.focus();
   await page.keyboard.press('Enter');
@@ -21,8 +22,9 @@ async function action(page, route, button) {
   assert.equal(response.status(), 200, await response.text());
 }
 async function screenshot(page, name) {
-  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   await page.screenshot({ path: `${directory}/${name}.png`, fullPage: true });
+  const dimensions = await page.evaluate(() => ({ page: document.documentElement.scrollWidth, viewport: innerWidth }));
+  assert.ok(dimensions.page <= dimensions.viewport, `${name}: page ${dimensions.page}px, viewport ${dimensions.viewport}px`);
 }
 
 try {

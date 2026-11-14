@@ -1,8 +1,9 @@
 .page { max-width: 76rem; margin-inline: auto; padding: clamp(1rem, 3vw, 2rem); }
 .card { border: 1px solid #d7dce2; border-radius: 1rem; padding: 1rem; margin-block: 1rem; background: #fff; overflow-wrap: anywhere; }
-.form { display: grid; gap: .75rem; margin-block: 1rem; }
+.form { display: grid; grid-template-columns: minmax(0, 1fr); gap: .75rem; margin-block: 1rem; }
+.form fieldset { min-width: 0; }
 .form label { display: grid; gap: .3rem; min-width: 0; }
-.form input, .form textarea, .form select { width: 100%; box-sizing: border-box; border: 1px solid #86919d; padding: .55rem; border-radius: .5rem; font: inherit; }
+.form input, .form textarea, .form select { width: 100%; min-width: 0; box-sizing: border-box; border: 1px solid #86919d; padding: .55rem; border-radius: .5rem; font: inherit; }
 .form input[type='checkbox'] { width: auto; justify-self: start; }
 .form textarea { min-height: 5rem; }
 .form button, .card button, .page button { min-height: 2.5rem; padding: .4rem .8rem; margin: .15rem; }
