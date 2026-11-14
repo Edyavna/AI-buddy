@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, InlineError, Spinner } from '@/shared/ui';
 import { ClientError, queryKeys } from '@/shared/api';
@@ -18,18 +18,29 @@ export function ChatPage() {
   const { conversationId } = useParams();
   const [params] = useSearchParams();
   const stepId = params.get('stepId');
+  const {hash}=useLocation();
   const navigate = useNavigate(), client = useQueryClient();
   const [controller] = useState(() => new ChatController(client, () => navigate('/login', { replace: true })));
   const state = useSyncExternalStore(controller.subscribe, controller.snapshot);
   const [text, setText] = useState('');
   const [newMessages, setNewMessages] = useState(false);
   const [documentId, setDocumentId] = useState<string | null>(null);
-  const closeDocument = useCallback(() => setDocumentId(null), []);
+  const [sourceMessageId,setSourceMessageId]=useState<string>();
+  const closeDocument = useCallback(() => {setDocumentId(null);setSourceMessageId(undefined);void client.invalidateQueries({queryKey:['question-context']});}, [client]);
+  function openSource(messageId:string,id:string){setSourceMessageId(messageId);setDocumentId(id);}
   const composer = useRef<HTMLTextAreaElement>(null);
   const focusComposer = useCallback(() => composer.current?.focus(), []);
   const activeUser = useRef<string | null>(null);
   const list = useRef<HTMLDivElement>(null), nearBottom = useRef(true);
   const messageContent = useRef<HTMLDivElement>(null);
+  const visitedSource=useRef('');
+  useEffect(()=>{
+    const key=(state.conversationId??'')+hash;
+    if(!hash.startsWith('#message-')||visitedSource.current===key)return;
+    let id:string;try{id=decodeURIComponent(hash.slice(1));}catch{return;}
+    const target=document.getElementById(id);
+    if(target){nearBottom.current=false;target.scrollIntoView?.({block:'center'});visitedSource.current=key;}
+  },[hash,state.conversationId,state.messages.length]);
   const busy = ['sending', 'streaming', 'recovering'].includes(state.phase);
   const me = useQuery({ queryKey: queryKeys.me(), queryFn: ({ signal }) => getData('/me', userSchema, signal) });
   const conversations = useQuery({ queryKey: queryKeys.conversations(), queryFn: ({ signal }) => listConversations(signal), enabled: !!me.data });
@@ -113,14 +124,14 @@ export function ChatPage() {
         {state.messages.map(message => {
           const canEscalate = canEscalateMessage(message);
           const original = canEscalate ? state.messages.find(m => m.id === message.in_reply_to_message_id && m.role === 'user') : undefined;
-          return <article key={message.id} className={message.role === 'user' ? styles.user : styles.assistant}>
+          return <article key={message.id} id={`message-${message.id}`} className={message.role === 'user' ? styles.user : styles.assistant}>
             <strong>{message.role === 'user' ? 'Вы' : 'AI-buddy'}</strong>
             {message.role === 'assistant'
               ? <MarkdownContent content={message.text || (message.status === 'generating' ? 'Готовлю ответ…' : 'Ответ без текста')} />
               : <p>{message.text}</p>}
             {message.sources.length > 0 && <ul className={styles.sources} aria-label="Источники ответа">
               {message.sources.map(source => <li key={source.id}>
-                <button type="button" className={styles.source} onClick={() => setDocumentId(source.document_id)}>
+                <button type="button" className={styles.source} onClick={() => openSource(message.id,source.document_id)}>
                   <strong>{source.title}</strong><span>{source.excerpt}</span>
                   {source.version && source.direction === 'hr' && <span>Версия {source.version}{source.updated_at && ` · ${new Date(source.updated_at).toLocaleDateString('ru-RU')}`}</span>}
                 </button>
@@ -130,9 +141,9 @@ export function ChatPage() {
               <AccessRequestPanel requestId={requestId} onDiscuss={focusComposer} />
             </div>)}
             {message.role === 'assistant' && message.in_reply_to_message_id && message.status !== 'generating' &&
-              <QuestionComposer messageId={message.id} onOpenDocument={setDocumentId} />}
+              <QuestionComposer messageId={message.id} onOpenDocument={id=>{setSourceMessageId(undefined);setDocumentId(id);}} onOpenContextDocument={id=>openSource(message.id,id)}/>}
             {canEscalate && !message.routing && me.data &&
-              <MentorQuestionPanel key={me.data.id} messageId={message.id} onOpenDocument={setDocumentId}
+              <MentorQuestionPanel key={me.data.id} messageId={message.id} onOpenDocument={id=>{setSourceMessageId(undefined);setDocumentId(id);}} existingOnly
                 canEscalate={canEscalate} isChatBusy={busy} canRepeatQuestion={!!original && contextReady && !contextInvalid && !error}
                 onRepeatQuestion={() => {
                   if (!original || busy || !contextReady || contextInvalid || error) return;
@@ -157,6 +168,6 @@ export function ChatPage() {
         <div><small>{text.length}/8000 · Shift+Enter — новая строка</small><Button type="submit" disabled={busy || !text.trim() || !contextReady || contextInvalid || !me.data || !!conversation.error}>Отправить</Button></div>
       </form>
     </section>
-    <DocumentDrawer documentId={documentId} onClose={closeDocument} />
+    <DocumentDrawer documentId={documentId} onClose={closeDocument} sourceMessageId={sourceMessageId}/>
   </div>;
 }

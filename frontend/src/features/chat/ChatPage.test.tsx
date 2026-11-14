@@ -44,6 +44,25 @@ it('restores direct URL history and context', async () => {
   expect(await screen.findByText(`Шаг: ${f.plan.steps[0]?.title}`)).toBeInTheDocument();
   expect(screen.getByRole('link', { name: f.conversation.title })).toHaveAttribute('aria-current', 'page');
 });
+it('opens a cited message once after loading history and preserves its scroll position', async () => {
+  const scroll = vi.fn(function(this: HTMLElement) {
+    this.closest('[role="log"]')!.scrollTop = 37;
+  });
+  const previous = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = scroll;
+  try {
+    const view = mount('/chat/conversation_demo_1#message-' + f.messages[0]!.id);
+    await waitFor(() => expect(scroll).toHaveBeenCalledTimes(1));
+    expect(scroll.mock.instances[0]).toHaveAttribute('id', 'message-' + f.messages[0]!.id);
+    expect(screen.getByRole('log').scrollTop).toBe(37);
+    await view.queryClient.invalidateQueries({ queryKey: queryKeys.messages('conversation_demo_1') });
+    expect(scroll).toHaveBeenCalledTimes(1);
+    view.unmount();
+    mount('/chat/conversation_demo_1#message-%E0%A4%A');
+    await screen.findByText(f.messages[1]!.text);
+    expect(scroll).toHaveBeenCalledTimes(1);
+  } finally { HTMLElement.prototype.scrollIntoView = previous; }
+});
 it('sends with Enter, does not send with Shift or IME, and survives internal URL replace', async () => {
   let posts = 0;
   server.use(http.get('*/api/v1/conversations/:id/messages', () => HttpResponse.json([])),
