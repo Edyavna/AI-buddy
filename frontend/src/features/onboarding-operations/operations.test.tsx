@@ -19,6 +19,34 @@ function json(data: unknown, status = 200) {
 afterEach(() => vi.unstubAllGlobals());
 
 describe('Встречи 1:1', () => {
+  it('планирует, переносит и завершает встречу с договорённостью', async () => {
+    const fetch = vi.fn().mockImplementation((_path: string, options: RequestInit) =>
+      Promise.resolve(options.method === 'POST' ? json({ revision: 2 }) : json({ participants, meetings: [item] })));
+    vi.stubGlobal('fetch', fetch);
+    render(<MeetingsPage />);
+    await screen.findByRole('button', { name: 'Запланировать встречу' });
+    const send = async (name: string, action: string) => {
+      const button = screen.getByRole('button', { name });
+      await waitFor(() => expect(button).toBeEnabled());
+      fireEvent.submit(button.closest('form')!);
+      await waitFor(() => expect(fetch.mock.calls.some(([, req]) => req.body && JSON.parse(req.body).action === action)).toBe(true));
+      await waitFor(() => expect(button).toBeEnabled());
+    };
+    fireEvent.change(screen.getByLabelText(/^Дата и время/), { target: { value: '2030-05-01T09:00' } });
+    await send('Запланировать встречу', 'create');
+    await send('Перенести встречу', 'reschedule');
+    fireEvent.click(screen.getByRole('button', { name: 'Новая тема' }));
+    fireEvent.click(screen.getByLabelText('Видна только мне'));
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить договорённость' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Убрать договорённость' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить договорённость' }));
+    fireEvent.change(screen.getByLabelText('Итоги встречи'), { target: { value: 'Итоги' } });
+    fireEvent.change(screen.getByLabelText('Текст'), { target: { value: 'Проверить доступ' } });
+    fireEvent.change(screen.getByLabelText('Чекпоинт'), { target: { value: 'step' } });
+    await send('Завершить встречу', 'complete');
+    fireEvent.click(screen.getByRole('button', { name: 'Отменить встречу' }));
+    await waitFor(() => expect(fetch.mock.calls.some(([, req]) => req.body && JSON.parse(req.body).action === 'cancel')).toBe(true));
+  });
   it('показывает повестку, отправляет тему с ревизией и обновляет список', async () => {
     const fetch = vi.fn().mockResolvedValueOnce(json({ participants, meetings: [item] }))
       .mockResolvedValueOnce(json({ revision: 2 }))
@@ -56,6 +84,28 @@ describe('Обзор куратора', () => {
     summaries: [{ kind: 'blocked', direction: 'mentor', topic: 'Доступ', events: 2, interns: 2,
       average_hours: 4, earlier_events: 1, later_events: 1, source_ids: ['step-one', 'step-two'] }],
   };
+  it('создаёт проблему из сигнала и редактирует карточку', async () => {
+    const stored = { id: 'id', kind: 'knowledge', direction: 'mentor', title: 'Общая проблема', description: 'Два вопроса',
+      status: 'open', owner_id: null, due_at: null, resolution: '', document_id: null, template_version: null,
+      merged_into: null, revision: 1, evidence: [{ kind: 'knowledge', id: 'question' }],
+      history: [{ revision: 1, actor_id: 'mentor', changed_at: '2030-04-15T12:00:00Z', snapshot: { status: 'open', title: 'Общая проблема' } }] };
+    const fetch = vi.fn().mockImplementation((_path: string, options: RequestInit) =>
+      Promise.resolve(options.method === 'POST' ? json({ revision: 2 }) : json({ ...data, problems: [stored] })));
+    vi.stubGlobal('fetch', fetch);
+    render(<CuratorPage />);
+    fireEvent.change(await screen.findByLabelText('Команда'), { target: { value: 'team' } });
+    fireEvent.click(await screen.findByRole('button', { name: 'Создать проблему по сигналу' }));
+    fireEvent.change(screen.getByLabelText('Идентификаторы исходных записей'), { target: { value: 'step-one' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить проблему' }));
+    fireEvent.change(screen.getAllByLabelText('Тип').at(-1)!, { target: { value: 'knowledge' } });
+    fireEvent.change(screen.getAllByLabelText('Направление').at(-1)!, { target: { value: 'hr' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Редактировать проблему' }));
+    fireEvent.change(screen.getByLabelText('Описание', { selector: 'textarea' }), { target: { value: 'Разобрать тему' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Сохранить проблему' }));
+    await waitFor(() => expect(fetch.mock.calls.some(([, req]) => req.body && JSON.parse(req.body).action === 'save-problem')).toBe(true));
+    fireEvent.click(screen.getByRole('button', { name: 'Добавить чекпоинт' }));
+    fireEvent.click(screen.getAllByRole('button', { name: 'Убрать из шаблона' })[1]!);
+  });
   it('публикует шаблон только после предпросмотра', async () => {
     const fetch = vi.fn().mockImplementation((_path: string, options: RequestInit) =>
       Promise.resolve(options.method === 'POST' ? json({ revision: 1 }) : json(data)));

@@ -34,11 +34,23 @@ func TestPostgresMeetingsAndAgreements(t *testing.T) {
 	mentorTopic := "dddddddd-dddd-4ddd-addd-dddddddddddd"
 	path := "/api/v1/meetings"
 	apiRequest(t, h, "GET", path, "", nil, 401)
+	apiRequest(t, h, "POST", path, "{", intern, 400)
+	for _, bad := range []string{
+		`{"action":"create","id":"invalid"}`,
+		`{"action":"create","id":"aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaax"}`,
+		`{"action":"create","id":"aaaaaaaa_aaaa-4aaa-aaaa-aaaaaaaaaaaa"}`,
+		`{"action":"unknown","id":"aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa"}`,
+		`{"action":"complete","id":"aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa","content":" "}`,
+		`{"action":"complete","id":"aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa","content":"Итог","agreements":[{"content":""}]}`,
+	} {
+		apiRequest(t, h, "POST", path, bad, intern, 422)
+	}
 	create := func(id string) string {
 		return `{"action":"create","id":"` + id + `","intern_id":"intern_demo_1","scheduled_at":"2030-04-15T12:00:00Z","timezone":"Europe/Moscow"}`
 	}
 	apiRequest(t, h, "POST", path, create(first), intern, 200)
 	apiRequest(t, h, "POST", path, create(first), intern, 200)
+	apiRequest(t, h, "POST", path, strings.Replace(create(first), "Europe/Moscow", "UTC", 1), intern, 409)
 	apiRequest(t, h, "POST", path, create(first), other, 404)
 	apiRequest(t, h, "POST", path, create(first), hr, 404)
 	apiRequest(t, h, "POST", path, `{"action":"topic","id":"`+first+`","topic_id":"`+topic+`","revision":1,"content":"Закрытая заметка","private":true}`, intern, 200)
@@ -58,8 +70,17 @@ func TestPostgresMeetingsAndAgreements(t *testing.T) {
 	apiRequest(t, h, "POST", path, `{"action":"reschedule","id":"`+first+`","revision":3,"timezone":"UTC","scheduled_at":"2030-04-16T09:00:00Z"}`, mentor, 200)
 	apiRequest(t, h, "POST", path, `{"action":"complete","id":"`+first+`","revision":4,"content":"Итоги","agreements":[{"owner_id":"hr_demo_1","content":"Недопустимо"}]}`, mentor, 422)
 	finish := `{"action":"complete","id":"` + first + `","revision":4,"content":"Итоги","agreements":[{"owner_id":"intern_demo_1","content":"Продолжить работу","step_id":"step_local_setup"}]}`
+	apiRequest(t, h, "POST", path, strings.Replace(finish, "step_local_setup", "step_local_setup_2", 1), mentor, 422)
+	if _, err := db.Exec("ALTER TABLE onboarding_agreements ADD CONSTRAINT test_reject_agreement CHECK (content <> 'Продолжить работу')"); err != nil {
+		t.Fatal(err)
+	}
+	apiRequest(t, h, "POST", path, finish, mentor, 503)
+	if _, err := db.Exec("ALTER TABLE onboarding_agreements DROP CONSTRAINT test_reject_agreement"); err != nil {
+		t.Fatal(err)
+	}
 	apiRequest(t, h, "POST", path, finish, mentor, 200)
 	apiRequest(t, h, "POST", path, finish, mentor, 200)
+	apiRequest(t, h, "POST", path, strings.Replace(finish, "Итоги", "Другие итоги", 1), mentor, 409)
 	apiRequest(t, h, "POST", path, create(second), mentor, 200)
 	h = newHandler()
 	w = apiRequest(t, h, "GET", path, "", intern, 200)
@@ -93,6 +114,7 @@ func TestPostgresMeetingsAndAgreements(t *testing.T) {
 	apiRequest(t, h, "POST", path, `{"action":"agreement-reschedule","id":"`+agreementID+`","revision":1,"due_at":"2030-04-23T09:00:00Z"}`, intern, 200)
 	apiRequest(t, h, "POST", path, complete, intern, 409)
 	apiRequest(t, h, "POST", path, strings.Replace(complete, `"revision":1`, `"revision":2`, 1), intern, 200)
+	apiRequest(t, h, "POST", path, strings.Replace(complete, `"revision":1`, `"revision":2`, 1), intern, 200)
 	if w = apiRequest(t, h, "GET", path, "", intern, 200); strings.Count(w.Body.String(), "Продолжить работу") != 1 {
 		t.Fatal(w.Body.String())
 	}
@@ -105,6 +127,11 @@ func TestPostgresMeetingsAndAgreements(t *testing.T) {
 			t.Fatal("revoked meeting disclosed")
 		}
 	}
+	apiRequest(t, h, "POST", path, finish, mentor, 404)
+	if _, err := db.Exec("ALTER TABLE onboarding_meetings RENAME TO temporarily_unavailable_meetings"); err != nil {
+		t.Fatal(err)
+	}
+	apiRequest(t, h, "GET", path, "", intern, 503)
 }
 
 func TestPostgresCuratorScopeProblemsAndTemplate(t *testing.T) {
@@ -125,6 +152,18 @@ func TestPostgresCuratorScopeProblemsAndTemplate(t *testing.T) {
 	apiRequest(t, h, "GET", path+"?team_id=team_demo_frontend", "", curator, 404)
 	apiRequest(t, h, "GET", full+"&from=bad", "", curator, 422)
 	apiRequest(t, h, "GET", full+"&kind=unknown", "", curator, 422)
+	apiRequest(t, h, "POST", path, "{", curator, 400)
+	for _, bad := range []string{
+		`{}`,
+		`{"action":"publish-template","team_id":"team_demo_backend","id":"eeeeeeee_eeee-4eee-aeee-eeeeeeeeeeee"}`,
+		`{"action":"publish-template","team_id":"team_demo_backend","id":"eeeeeeee-eeee-4eee-aeee-eeeeeeeeeeex"}`,
+		`{"action":"publish-template","team_id":"team_demo_backend","id":"eeeeeeee-eeee-4eee-aeee-eeeeeeeeeeee","steps":[]}`,
+		`{"action":"publish-template","team_id":"team_demo_backend","id":"eeeeeeee-eeee-4eee-aeee-eeeeeeeeeeee","steps":[{"key":"a","title":"A","description":"A"},{"key":"a","title":"A","description":"A"}]}`,
+		`{"action":"invalid","team_id":"team_demo_backend","id":"eeeeeeee-eeee-4eee-aeee-eeeeeeeeeeee"}`,
+		`{"action":"save-problem","team_id":"team_demo_backend","id":"eeeeeeee-eeee-4eee-aeee-eeeeeeeeeeee","kind":"blocked","direction":"mentor","title":"Блокер","description":"Два события","status":"resolved"}`,
+	} {
+		apiRequest(t, h, "POST", path, bad, curator, 422)
+	}
 	if w := apiRequest(t, h, "GET", path, "", curator, 200); !strings.Contains(w.Body.String(), "team_demo_backend") {
 		t.Fatal(w.Body.String())
 	}
@@ -158,6 +197,18 @@ func TestPostgresCuratorScopeProblemsAndTemplate(t *testing.T) {
 	apiRequest(t, h, "POST", path, template, curator, 200)
 	apiRequest(t, h, "POST", path, strings.Replace(template, "eeeeeeee", "faaaaaaa", 1), curator, 409)
 	apiRequest(t, h, "POST", path, strings.Replace(template, "Инструкция", "Другой текст", 1), curator, 409)
+	if _, err := db.Exec("ALTER TABLE onboarding_steps ADD CONSTRAINT test_reject_template CHECK (title <> 'Ошибка шаблона')"); err != nil {
+		t.Fatal(err)
+	}
+	next := strings.ReplaceAll(strings.ReplaceAll(template, "eeeeeeee-eeee", "dddddddd-dddd"), `"revision":0`, `"revision":1`)
+	apiRequest(t, h, "POST", path, strings.Replace(next, "Новый шаг", "Ошибка шаблона", 1), curator, 503)
+	if _, err := db.Exec("ALTER TABLE onboarding_steps DROP CONSTRAINT test_reject_template"); err != nil {
+		t.Fatal(err)
+	}
+	var published int
+	if err := db.QueryRow("SELECT count(*) FROM onboarding_template_publications").Scan(&published); err != nil || published != 1 {
+		t.Fatal(published, err)
+	}
 	var completed string
 	var count int
 	if err := db.QueryRow("SELECT status FROM onboarding_steps WHERE id='step_local_setup'").Scan(&completed); err != nil || completed != "completed" {
@@ -178,8 +229,16 @@ func TestPostgresCuratorScopeProblemsAndTemplate(t *testing.T) {
 		return `{"action":"save-problem","id":"` + id + `","team_id":"team_demo_backend","revision":0,"kind":"blocked","direction":"mentor","status":"open","title":"Блокер","description":"Две записи","evidence":[{"kind":"blocked","id":"blocked-test-1"},{"kind":"blocked","id":"blocked-test-1"}]}`
 	}
 	apiRequest(t, h, "POST", path, create(id), curator, 200)
+	apiRequest(t, h, "POST", path, create(id), curator, 409)
 	apiRequest(t, h, "POST", path, create(other), curator, 200)
 	update := `{"action":"save-problem","id":"` + id + `","team_id":"team_demo_backend","revision":1,"kind":"blocked","direction":"mentor","status":"resolved","title":"Решено","description":"Доказательства","resolution":"Опубликован шаблон","template_version":1,"owner_id":"mentor_demo_1","merge_from":"` + other + `","merge_revision":1}`
+	apiRequest(t, h, "POST", path, strings.Replace(update, `"owner_id":"mentor_demo_1"`, `"owner_id":"hr_demo_1"`, 1), curator, 422)
+	apiRequest(t, h, "POST", path, strings.Replace(update, `"template_version":1`, `"template_version":99`, 1), curator, 404)
+	apiRequest(t, h, "POST", path, strings.Replace(update, `"template_version":1`, `"document_id":"foreign-document"`, 1), curator, 404)
+	apiRequest(t, h, "POST", path, strings.Replace(update, other, id, 1), curator, 422)
+	apiRequest(t, h, "POST", path, strings.Replace(update, `"merge_revision":1`, `"merge_revision":2`, 1), curator, 409)
+	apiRequest(t, h, "POST", path, strings.Replace(create("bbbbbbbb-cccc-4aaa-aaaa-aaaaaaaaaaaa"), "blocked-test-1", "foreign-step", 1), curator, 422)
+	apiRequest(t, h, "POST", path, strings.Replace(create("bbbbbbbb-cccc-4aaa-aaaa-aaaaaaaaaaaa"), `"kind":"blocked","id"`, `"kind":"access","id"`, 1), curator, 422)
 	apiRequest(t, h, "POST", path, update, curator, 200)
 	apiRequest(t, h, "POST", path, update, curator, 409)
 	h = newHandler()
@@ -192,4 +251,8 @@ func TestPostgresCuratorScopeProblemsAndTemplate(t *testing.T) {
 	}
 	apiRequest(t, h, "GET", full, "", curator, 404)
 	apiRequest(t, h, "POST", path, update, curator, 404)
+	if _, err := db.Exec("ALTER TABLE curator_team_assignments RENAME TO temporarily_unavailable_scope"); err != nil {
+		t.Fatal(err)
+	}
+	apiRequest(t, h, "GET", path, "", curator, 503)
 }
