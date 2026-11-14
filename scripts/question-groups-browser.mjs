@@ -10,6 +10,7 @@ const escape=text=>text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 async function login(page,name){await page.goto(origin+'/login');await page.getByRole('radio',{name:new RegExp(name)}).click();await page.getByRole('button',{name:/Войти как/}).click();await page.waitForURL(url=>!url.pathname.endsWith('/login'));}
 async function question(page,direction,text){
  await page.goto(origin+'/chat');await page.getByRole('textbox',{name:'Ваш вопрос'}).fill(text);await page.getByRole('button',{name:'Отправить',exact:true}).click();await page.getByRole('button',{name:'Обратиться к специалисту'}).last().click();await page.getByRole('combobox',{name:/Адресат/}).selectOption(direction);await page.getByLabel('Контекст для специалиста').fill('Личный контекст пользователя N58 — не включать в инструкцию');
+ await page.getByRole('checkbox',{name:'Я проверил вопрос, адресата и весь отправляемый контекст'}).check();
  const reply=page.waitForResponse(r=>r.request().method()==='POST'&&/\/questions$/.test(new URL(r.url()).pathname));await page.getByRole('button',{name:'Подтвердить отправку'}).click();return await (await reply).json();
 }
 async function docForIntern(page,conversation,title){await page.goto(conversation);await page.getByRole('button',{name:'Обратиться к специалисту'}).first().click();await page.getByRole('button',{name:'Открыть инструкцию',exact:true}).last().click();await page.getByRole('dialog',{name:title,exact:true}).waitFor();await page.keyboard.press('Escape');}

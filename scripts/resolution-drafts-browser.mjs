@@ -58,6 +58,7 @@ try {
       await intern.getByRole('button', { name: 'Обратиться к специалисту' }).last().click();
       await intern.getByRole('combobox', { name: /Адресат/ }).selectOption(direction);
       await intern.getByLabel('Контекст для специалиста').fill('Только одобренный контекст для проверки N56');
+      await intern.getByRole('checkbox', { name: 'Я проверил вопрос, адресата и весь отправляемый контекст' }).check();
       const response = intern.waitForResponse(r => r.request().method() === 'POST' && /\/questions$/.test(new URL(r.url()).pathname));
       await intern.getByRole('button', { name: 'Подтвердить отправку' }).focus();
       await intern.keyboard.press('Enter');
