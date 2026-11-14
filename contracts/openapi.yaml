@@ -23,6 +23,269 @@ tags:
 - name: Requests
 - name: Mentor
 paths:
+  /messages/{id}/context-documents/{document_id}/opened:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: document_id
+        required: true
+        schema:
+          type: string
+    post:
+      tags:
+        - Question context
+      operationId: acknowledgeContextDocumentShown
+      description: >-
+        Explicit drawer render acknowledgement. Rechecks version and access, and records one opening per
+        user/message/document/version. A GET alone is not an opening.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - version
+              additionalProperties: false
+              properties:
+                version:
+                  type: integer
+                  minimum: 1
+      responses:
+        '200':
+          description: Opening recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - opened
+                properties:
+                  opened:
+                    type: boolean
+                    enum:
+                      - true
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /questions/{id}/context-documents/{document_id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: document_id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Question context
+      operationId: internReadQuestionContextDocument
+      responses:
+        '200':
+          description: Authorized context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextDocumentBody'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /messages/{id}/question-context:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: query
+        name: direction
+        required: true
+        schema:
+          $ref: '#/components/schemas/QuestionDirection'
+    get:
+      tags:
+        - Question context
+      operationId: previewQuestionContext
+      responses:
+        '200':
+          description: Authorized context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuestionContextSnapshot'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+      description: >-
+        Bounded extractive preview from authorized messages and sources. Optional fragments require explicit
+        selection; no attempt is inferred.
+  /messages/{id}/context-documents/{document_id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: document_id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Question context
+      operationId: openCitedContextDocument
+      responses:
+        '200':
+          description: Authorized context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextDocumentBody'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+      description: >-
+        Read a cited source with its current ACL and version. This GET does not record an opening;
+        acknowledge the displayed version with POST to the corresponding /opened endpoint after rendering.
+  /mentor/questions/{id}/context-documents/{document_id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: document_id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Question context
+      operationId: mentorReadQuestionContextDocument
+      responses:
+        '200':
+          description: Authorized context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextDocumentBody'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /hr/questions/{id}/context-documents/{document_id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+      - in: path
+        name: document_id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Question context
+      operationId: hrReadQuestionContextDocument
+      responses:
+        '200':
+          description: Authorized context
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ContextDocumentBody'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /mentor/question-groups:
     get:
       tags:
@@ -3439,6 +3702,193 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
   schemas:
+    QuestionContextFragmentInput:
+      type: object
+      required:
+        - message_id
+        - text
+      additionalProperties: false
+      properties:
+        message_id:
+          type: string
+        text:
+          type: string
+          maxLength: 800
+    QuestionContextDocumentInput:
+      type: object
+      required:
+        - document_id
+        - version
+      additionalProperties: false
+      properties:
+        document_id:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+    QuestionContextInput:
+      type: object
+      required:
+        - reviewed
+        - include_step
+        - attempts
+        - fragments
+        - documents
+        - step_revision
+      additionalProperties: false
+      properties:
+        reviewed:
+          type: boolean
+        include_step:
+          type: boolean
+        attempts:
+          type: string
+          maxLength: 4000
+        fragments:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionContextFragmentInput'
+          maxItems: 12
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionContextDocumentInput'
+          maxItems: 10
+        step_revision:
+          type: integer
+          minimum: 1
+          nullable: true
+          description: Plan revision shown during review; required when include_step is true, null otherwise.
+    QuestionContextFragment:
+      type: object
+      required:
+        - message_id
+        - role
+        - text
+        - edited
+        - status
+      additionalProperties: false
+      properties:
+        message_id:
+          type: string
+        role:
+          type: string
+          enum:
+            - user
+            - assistant
+        text:
+          type: string
+          nullable: true
+        edited:
+          type: boolean
+        status:
+          type: string
+          enum:
+            - available
+            - unavailable
+    QuestionContextDocument:
+      type: object
+      required:
+        - document_id
+        - version
+        - title
+        - opened
+        - status
+      additionalProperties: false
+      properties:
+        document_id:
+          type: string
+        version:
+          type: integer
+          minimum: 1
+        title:
+          type: string
+          nullable: true
+        opened:
+          type: boolean
+        status:
+          type: string
+          enum:
+            - available
+            - unavailable
+    NullableQuestionContextStep:
+      type: object
+      required:
+        - id
+        - title
+        - status
+        - revision
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum:
+            - available
+            - unavailable
+        revision:
+          type: integer
+          minimum: 0
+      nullable: true
+    QuestionContextSnapshot:
+      type: object
+      required:
+        - conversation_id
+        - attempts
+        - step
+        - fragments
+        - documents
+        - limited
+      additionalProperties: false
+      properties:
+        conversation_id:
+          type: string
+        attempts:
+          type: string
+        step:
+          $ref: '#/components/schemas/NullableQuestionContextStep'
+        fragments:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionContextFragment'
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionContextDocument'
+        limited:
+          type: boolean
+    ContextDocumentBody:
+      type: object
+      required:
+        - id
+        - title
+        - content
+        - updated_at
+        - direction
+        - version
+      additionalProperties: false
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        content:
+          type: string
+        updated_at:
+          type: string
+          format: date-time
+        direction:
+          type: string
+          enum:
+            - mentor
+            - hr
+        version:
+          type: integer
+          minimum: 1
     GroupQuestion:
       type: object
       required:
@@ -3795,6 +4245,8 @@ components:
         - updated_at
         - applied_revision
       properties:
+        context_snapshot:
+          $ref: '#/components/schemas/QuestionContextSnapshot'
         id:
           type: string
           format: uuid
@@ -3857,6 +4309,8 @@ components:
         - question
         - context_excerpt
       properties:
+        context_snapshot:
+          $ref: '#/components/schemas/QuestionContextInput'
         direction:
           $ref: '#/components/schemas/QuestionDirection'
         question:
@@ -3869,6 +4323,8 @@ components:
         - question
         - context_excerpt
       properties:
+        context_snapshot:
+          $ref: '#/components/schemas/QuestionContextInput'
         question:
           type: string
         context_excerpt:
@@ -3928,6 +4384,8 @@ components:
         - question
         - context_excerpt
       properties:
+        context_snapshot:
+          $ref: '#/components/schemas/QuestionContextInput'
         operation_id:
           type: string
           format: uuid
@@ -3946,6 +4404,8 @@ components:
         - question
         - context_excerpt
       properties:
+        context_snapshot:
+          $ref: '#/components/schemas/QuestionContextInput'
         operation_id:
           type: string
           format: uuid
@@ -4713,6 +5173,8 @@ components:
       - question
       - context_excerpt
       properties:
+        context_snapshot:
+          $ref: '#/components/schemas/QuestionContextSnapshot'
         id:
           type: string
           format: uuid
