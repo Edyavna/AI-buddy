@@ -1,0 +1,60 @@
+Issue #79, feature/intern-personal-memory, base dev 6947a2b
+Local acceptance: 2026-11-15. All checks below passed.
+
+Frontend:
+  npm run typecheck
+  npm run lint
+  npm run test:coverage: 49 files, 427 tests
+    lines: 95.46% (2339/2450)
+    statements: 92.86% (2826/3043)
+  node ../scripts/hr-coverage.mjs 6947a2b frontend
+    changed executable lines: 96.43% (135/140), strictly >90%
+  npm run test:e2e: 1 passed
+  npm run build
+  npm run check:api
+  Existing build warning: JavaScript bundle >500 kB. No gates disabled.
+
+Backend (Go 1.26.5 Linux, PostgreSQL 17, pgvector 0.8.7):
+  go test -race -p 1 -count=1 -timeout=2m -coverpkg=./... -coverprofile=coverage.out ./...
+  go vet ./...
+  go build ./...
+  Git installed in test container for existing Playbook tests.
+  TEST_DATABASE_URL references isolated synthetic databases, not application data.
+  go run ../scripts/go_line_coverage.go coverage.out
+    all instrumented source lines: 85.88% (6314/7352), existing >=80% gate preserved
+  go run ../scripts/go_line_coverage.go --lines coverage.out > coverage/lines.tsv
+  node ../scripts/hr-coverage.mjs 6947a2b backend
+    changed executable lines: 93.25% (470/504), strictly >90%
+
+Measured file/line lists: frontend-lines.txt and backend-lines.txt.
+CI uses github.event.pull_request.base.sha. The existing coverage tool excludes
+generated/test/mock/vendor files; runtime feature code is measured without exclusions.
+
+Contracts:
+  python -m pip install -r contracts/requirements-check.txt
+  python scripts/check_contracts.py
+    PASS: OpenAPI 0.2.0; 110 operations; fixtures, SSE schemas, negative cases, references
+
+Real-Go browser acceptance:
+  node scripts/personal-memory-browser.mjs
+    360/768/1440 px: source-grounded proposal, explicit confirmation, rejection,
+    replay/reload, PowerShell in a new conversation, edit to Bash and next request,
+    physical deletion and owner-only deletion receipt, no resurrection,
+    other user list/direct API/model context isolation, keyboard and source links.
+    Failed selector and unsafe source do not create a memory entry or break chat.
+  Change mentor_demo_1 -> mentor_demo_2 for the synthetic intern in the test database.
+  Restart API and repeat demo seed without resetting data.
+  node scripts/personal-memory-browser.mjs --verify
+    PASS: confirmed preference survives; next model reply names the new mentor;
+    the peer still has no access and no private preference in its model context.
+  Local: Chrome via Playwright core 1.60.0, isolated Go API + Vite + PostgreSQL.
+  CI: Ubuntu 24.04, Playwright core 1.60.0, production Nginx SPA via Compose,
+    same browser script, mentor reassignment, API restart/reseed and artifact upload.
+
+AI boundary and limits:
+  External provider is scripts/hr-provider-fixture.mjs for reproducible acceptance.
+  Live external model with a real key was not tested.
+  The production selector uses the configured AI provider. Demo selection is explicit.
+  Preferences use a server catalog, explicit positive phrases, <=1000-character
+    own source, <=4 proposals, and a <=4096-byte profile; arbitrary free text is not stored.
+  Expiration, temporary records and automatic confirmation are outside scope.
