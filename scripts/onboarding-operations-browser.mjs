@@ -83,6 +83,15 @@ try {
     }
     await writeFile(`${directory}/report.json`, JSON.stringify(report, null, 2));
   }
+} catch (error) {
+  let index = 0;
+  for (const context of browser.contexts()) {
+    for (const page of context.pages()) {
+      console.error(page.url(), await page.locator('body').innerText());
+      await page.screenshot({ path: `${directory}/failure-${++index}.png`, fullPage: true });
+    }
+  }
+  throw error;
 } finally {
   await browser.close();
 }

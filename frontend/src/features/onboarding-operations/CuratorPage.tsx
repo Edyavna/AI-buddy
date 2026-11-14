@@ -117,7 +117,7 @@ export function CuratorPage() {
     <LoadState loading={work.loading} error={work.error} retry={() => void work.load()}>
       {work.message && <p role="alert">{work.message}</p>}
       {!work.data?.teams.length ? <p>У вас нет назначенных команд куратора.</p> : <>
-        <label>Команда <select value={team} onChange={(e) => { setEditing(undefined); setTeam(e.target.value); }}><option value="">Выберите команду</option>{work.data.teams.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
+        <label>Команда <select aria-label="Команда" value={team} onChange={(e) => { setEditing(undefined); setTeam(e.target.value); }}><option value="">Выберите команду</option>{work.data.teams.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}</select></label>
         {team && <>
           <form className={styles.form} onSubmit={(e) => {
             e.preventDefault();
