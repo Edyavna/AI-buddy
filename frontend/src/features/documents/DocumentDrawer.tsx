@@ -7,7 +7,10 @@ import { Drawer, InlineError, Spinner } from '@/shared/ui';
 import { MarkdownContent } from './MarkdownContent';
 import styles from './DocumentDrawer.module.css';
 
-const documentSchema = z.object({ id: z.string(), title: z.string(), content: z.string(), updated_at: z.iso.datetime() });
+const documentSchema = z.object({
+  id: z.string(), title: z.string(), content: z.string(), updated_at: z.iso.datetime(),
+  original_url: z.url({ protocol: /^https$/, hostname: /^github\.com$/ }).optional(),
+});
 export type DocumentDrawerProps = { documentId: string | null; onClose: () => void };
 
 export function DocumentDrawer({ documentId, onClose }: DocumentDrawerProps) {
@@ -53,6 +56,7 @@ export function DocumentDrawer({ documentId, onClose }: DocumentDrawerProps) {
       {query.isPending && <div role="status"><Spinner /><p>Загружаем документ…</p></div>}
       {query.isError && <InlineError message={notFound ? 'Документ недоступен или удалён' : query.error.message}
         {...(!notFound && { onRetry: () => void query.refetch(), isRetrying: query.isRefetching })} />}
+      {visibleDocument?.original_url && <a href={visibleDocument.original_url} target="_blank" rel="noopener noreferrer">Открыть в GitHub</a>}
       {visibleDocument && <MarkdownContent content={visibleDocument.content} />}
     </Drawer>
   </div>;

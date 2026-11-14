@@ -4190,6 +4190,11 @@ export interface operations {
                         content: string;
                         /** Format: date-time */
                         updated_at: string;
+                        /**
+                         * Format: uri
+                         * @description Для AvitoTech Playbook ссылка на GitHub с коммитом импортированного текста.
+                         */
+                        original_url?: string;
                     };
                 };
             };
