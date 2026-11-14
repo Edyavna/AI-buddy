@@ -49,6 +49,7 @@ func TestPostgresMeetingsAndAgreements(t *testing.T) {
 		return `{"action":"create","id":"` + id + `","intern_id":"intern_demo_1","scheduled_at":"2030-04-15T12:00:00Z","timezone":"Europe/Moscow"}`
 	}
 	apiRequest(t, h, "POST", path, create(first), intern, 200)
+	apiRequest(t, h, "POST", path, create(second), mentor, 200)
 	apiRequest(t, h, "POST", path, create(first), intern, 200)
 	apiRequest(t, h, "POST", path, strings.Replace(create(first), "Europe/Moscow", "UTC", 1), intern, 409)
 	apiRequest(t, h, "POST", path, create(first), other, 404)
@@ -81,7 +82,6 @@ func TestPostgresMeetingsAndAgreements(t *testing.T) {
 	apiRequest(t, h, "POST", path, finish, mentor, 200)
 	apiRequest(t, h, "POST", path, finish, mentor, 200)
 	apiRequest(t, h, "POST", path, strings.Replace(finish, "Итоги", "Другие итоги", 1), mentor, 409)
-	apiRequest(t, h, "POST", path, create(second), mentor, 200)
 	h = newHandler()
 	w = apiRequest(t, h, "GET", path, "", intern, 200)
 	var result struct {
@@ -237,6 +237,17 @@ func TestPostgresCuratorScopeProblemsAndTemplate(t *testing.T) {
 	apiRequest(t, h, "POST", path, strings.Replace(update, `"template_version":1`, `"document_id":"foreign-document"`, 1), curator, 404)
 	apiRequest(t, h, "POST", path, strings.Replace(update, other, id, 1), curator, 422)
 	apiRequest(t, h, "POST", path, strings.Replace(update, `"merge_revision":1`, `"merge_revision":2`, 1), curator, 409)
+	// The combined count must be checked after deduplication. The rejected
+	// merge must leave both cards and their revisions unchanged.
+	if _, err := db.Exec(`INSERT INTO onboarding_problem_evidence
+ SELECT $1,'blocked','extra-'||n FROM generate_series(1,50) n`, other); err != nil {
+		t.Fatal(err)
+	}
+	overLimit := strings.Replace(update, `"merge_from"`, `"evidence":[{"kind":"blocked","id":"blocked-test-2"}],"merge_from"`, 1)
+	apiRequest(t, h, "POST", path, overLimit, curator, 422)
+	if _, err := db.Exec(`DELETE FROM onboarding_problem_evidence WHERE problem_id=$1 AND source_id LIKE 'extra-%'`, other); err != nil {
+		t.Fatal(err)
+	}
 	apiRequest(t, h, "POST", path, strings.Replace(create("bbbbbbbb-cccc-4aaa-aaaa-aaaaaaaaaaaa"), "blocked-test-1", "foreign-step", 1), curator, 422)
 	apiRequest(t, h, "POST", path, strings.Replace(create("bbbbbbbb-cccc-4aaa-aaaa-aaaaaaaaaaaa"), `"kind":"blocked","id"`, `"kind":"access","id"`, 1), curator, 422)
 	apiRequest(t, h, "POST", path, update, curator, 200)
@@ -255,4 +266,25 @@ func TestPostgresCuratorScopeProblemsAndTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 	apiRequest(t, h, "GET", path, "", curator, 503)
+}
+
+func TestPostgresCuratorHidesRedirectedEvidence(t *testing.T) {
+	f := prepareResolution(t, "mentor")
+	path := "/api/v1/curator"
+	overview := path + "?team_id=team_demo_backend"
+	body := `{"action":"save-problem","id":"abaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa","team_id":"team_demo_backend",
+ "revision":0,"kind":"knowledge","direction":"mentor","status":"open","title":"Пробел знаний","description":"Повторяющийся вопрос",
+ "evidence":[{"kind":"knowledge","id":"` + f.question.ID + `"}]}`
+	apiRequest(t, f.h, "POST", path, body, f.owner, 200)
+	w := apiRequest(t, f.h, "GET", overview, "", f.owner, 200)
+	if !strings.Contains(w.Body.String(), f.question.ID) {
+		t.Fatal("initial evidence was not visible")
+	}
+	if _, err := f.db.Exec(`UPDATE knowledge_gaps SET direction='hr',mentor_id=NULL WHERE id=$1`, f.question.ID); err != nil {
+		t.Fatal(err)
+	}
+	w = apiRequest(t, f.h, "GET", overview, "", f.owner, 200)
+	if strings.Contains(w.Body.String(), f.question.ID) || !strings.Contains(w.Body.String(), "Пробел знаний") {
+		t.Fatal("redirected evidence remained visible or its card disappeared")
+	}
 }

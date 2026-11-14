@@ -47,7 +47,11 @@ const participants = `SELECT a.intern_id,a.mentor_id,a.team_id FROM mentor_assig
  JOIN users m ON m.id=a.mentor_id AND m.team_id=a.team_id AND m.role='mentor'
  WHERE a.team_id=$2 AND (($3='intern' AND a.intern_id=$1) OR ($3='mentor' AND a.mentor_id=$1))`
 const visible = ` FROM onboarding_meetings m JOIN (` + participants + `) a USING(intern_id,mentor_id,team_id)`
-const meetingJSON = `jsonb_build_object('id',m.id,'intern_id',m.intern_id,'mentor_id',m.mentor_id,'previous_id',m.previous_id,
+const previousMeeting = `SELECT other.id,other.completed_at FROM onboarding_meetings other
+ WHERE other.intern_id=m.intern_id AND other.mentor_id=m.mentor_id AND other.team_id=m.team_id AND other.id<>m.id
+ AND other.completed_at<LEAST(m.scheduled_at,clock_timestamp())
+ ORDER BY other.completed_at DESC,other.id LIMIT 1`
+const meetingJSON = `jsonb_build_object('id',m.id,'intern_id',m.intern_id,'mentor_id',m.mentor_id,'previous_id',prev.id,
  'scheduled_at',m.scheduled_at,'timezone',m.timezone,'status',m.status,'revision',m.revision,'result',m.result,
  'topics',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',t.id,'author_id',t.author_id,'content',t.content,'private',t.private) ORDER BY t.id)
  FROM onboarding_meeting_topics t WHERE t.meeting_id=m.id AND (NOT t.private OR t.author_id=$1)),'[]'::jsonb),
@@ -83,7 +87,8 @@ func (s Store) list(w http.ResponseWriter, r *http.Request) {
 	err = s.DB.QueryRowContext(r.Context(), `SELECT jsonb_build_object(
  'participants',COALESCE((SELECT jsonb_agg(row_to_json(a)) FROM (`+participants+`) a),'[]'::jsonb),
  'meetings',COALESCE((SELECT jsonb_agg(item) FROM (SELECT `+meetingJSON+` item`+visible+`
- LEFT JOIN onboarding_meetings prev ON prev.id=m.previous_id
+ LEFT JOIN LATERAL (`+previousMeeting+`) latest ON m.status='scheduled'
+ LEFT JOIN onboarding_meetings prev ON prev.id=CASE WHEN m.status='scheduled' THEN latest.id ELSE m.previous_id END
  ORDER BY m.scheduled_at DESC,m.id LIMIT 100) meetings),'[]'::jsonb))`, p.UserID, p.TeamID, p.Role).Scan(&result)
 	if err != nil {
 		writeError(w, r, err)
@@ -283,7 +288,8 @@ func complete(ctx context.Context, tx *sql.Tx, in change, intern, mentor, team s
 			return err
 		}
 	}
-	_, err := tx.ExecContext(ctx, `UPDATE onboarding_meetings SET status='completed',result=$2,completed_at=clock_timestamp(),finish_hash=$3 WHERE id=$1`, in.ID, in.Content, payloadHash(in))
+	_, err := tx.ExecContext(ctx, `UPDATE onboarding_meetings m SET status='completed',result=$2,completed_at=clock_timestamp(),finish_hash=$3,
+ previous_id=(SELECT previous.id FROM (`+previousMeeting+`) previous) WHERE m.id=$1`, in.ID, in.Content, payloadHash(in))
 	return err
 }
 func changeAgreement(ctx context.Context, tx *sql.Tx, p identity.Principal, in change) (int64, error) {

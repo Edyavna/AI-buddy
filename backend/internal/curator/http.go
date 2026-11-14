@@ -52,6 +52,10 @@ type change struct {
 
 // Inputs are row identifiers and timings only. Topic identity comes from a reviewed group
 // for mentor questions. HR aggregation never returns personal question text or record IDs.
+const readableEvidence = `(e.source_kind<>'knowledge' OR (p.direction='mentor' AND EXISTS (
+ SELECT 1 FROM knowledge_gaps q WHERE q.id::text=e.source_id AND q.team_id=p.team_id AND q.direction='mentor'
+ )))`
+
 const events = `SELECT a.id,'access' kind,'mentor' direction,a.user_id intern,a.resource_id topic,a.created_at at,
  EXTRACT(epoch FROM (CASE WHEN a.status IN ('pending','submitting') THEN now() ELSE a.updated_at END-a.created_at))/3600 hours
  FROM access_requests a WHERE a.team_id=$1 AND a.status IN ('pending','submitting','granted','rejected','failed')
@@ -116,7 +120,7 @@ func (s Store) list(w http.ResponseWriter, r *http.Request) {
  FROM visible_events GROUP BY kind,direction,topic HAVING count(DISTINCT intern)>=2
  ORDER BY count(DISTINCT intern) DESC,kind,direction,topic LIMIT 100
  ), problems AS (
- SELECT to_jsonb(p) || jsonb_build_object('evidence',COALESCE((SELECT jsonb_agg(jsonb_build_object('kind',e.source_kind,'id',e.source_id)) FROM onboarding_problem_evidence e WHERE e.problem_id=p.id),'[]'::jsonb),
+ SELECT to_jsonb(p) || jsonb_build_object('evidence',COALESCE((SELECT jsonb_agg(jsonb_build_object('kind',e.source_kind,'id',e.source_id) ORDER BY e.source_kind,e.source_id) FROM onboarding_problem_evidence e WHERE e.problem_id=p.id AND `+readableEvidence+`),'[]'::jsonb),
  'history',COALESCE((SELECT jsonb_agg(h ORDER BY h.revision DESC) FROM (SELECT revision,actor_id,changed_at,snapshot FROM onboarding_problem_history WHERE problem_id=p.id ORDER BY revision DESC LIMIT 30) h),'[]'::jsonb)) obj
  FROM onboarding_system_problems p WHERE team_id=$1
  AND ($4='' OR kind=$4) AND ($5='' OR direction=$5) AND ($7='' OR status=$7)
@@ -309,8 +313,17 @@ func saveProblem(ctx context.Context, tx *sql.Tx, actor string, in change) (int6
 		if err != nil {
 			return 0, err
 		}
-		if _, err = tx.ExecContext(ctx, `INSERT INTO onboarding_problem_evidence SELECT $1,source_kind,source_id FROM onboarding_problem_evidence WHERE problem_id::text=$2 ON CONFLICT DO NOTHING`, in.ID, in.MergeFrom); err != nil {
+		if _, err = tx.ExecContext(ctx, `INSERT INTO onboarding_problem_evidence SELECT $1,e.source_kind,e.source_id
+ FROM onboarding_problem_evidence e JOIN onboarding_system_problems p ON p.id=e.problem_id
+ WHERE p.id::text=$2 AND `+readableEvidence+` ON CONFLICT DO NOTHING`, in.ID, in.MergeFrom); err != nil {
 			return 0, err
+		}
+		var count int
+		if err = tx.QueryRowContext(ctx, `SELECT count(*) FROM onboarding_problem_evidence WHERE problem_id=$1`, in.ID).Scan(&count); err != nil {
+			return 0, err
+		}
+		if count > 50 {
+			return 0, ports.ErrInvalid
 		}
 		if err = history(ctx, tx, in.MergeFrom, actor); err != nil {
 			return 0, err
