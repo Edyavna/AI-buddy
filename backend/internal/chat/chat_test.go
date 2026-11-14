@@ -50,7 +50,7 @@ func newFixture(t *testing.T, agent ports.Agent, requests ports.RequestReader, o
 		t.Fatal(err)
 	}
 	f := &fixture{db: db, store: SQLStore{DB: db}}
-	f.service = Service{Store: f.store, Agent: agent, Requests: requests}
+	f.service = Service{Store: f.store, Agent: agent, MentorAgent: demo.MentorAgent{}, Requests: requests}
 	session := auth.Handler{Service: &auth.Service{Store: auth.SQLStore{DB: db}, TTL: time.Hour}, DemoMode: true}
 	f.handler = httpapi.New(httpapi.Options{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), AllowedOrigins: []string{"http://localhost:5173"}, Register: func(mux *http.ServeMux) {
 		session.Register(mux)
@@ -210,11 +210,24 @@ func TestPostgresChatAPI(t *testing.T) {
 		}
 	}
 	mentor := f.login(t, "mentor_demo_1")
-	for _, route := range []string{"/conversations", "/conversations/" + c.ID, path} {
-		f.call(t, "GET", route, "", mentor, 403)
+	f.call(t, "GET", "/conversations", "", mentor, 200)
+	f.call(t, "GET", "/conversations/"+c.ID, "", mentor, 404)
+	f.call(t, "GET", path, "", mentor, 404)
+	f.call(t, "POST", path, `{}`, mentor, 404)
+	f.call(t, "POST", "/conversations", `{"client_conversation_id":"`+uid(30)+`","step_id":"step_local_setup"}`, mentor, 422)
+	created := f.call(t, "POST", "/conversations", `{"client_conversation_id":"`+uid(30)+`"}`, mentor, 201)
+	var mentorChat Conversation
+	if err := json.Unmarshal(created.Body.Bytes(), &mentorChat); err != nil {
+		t.Fatal(err)
 	}
-	f.call(t, "POST", "/conversations", `{}`, mentor, 403)
-	f.call(t, "POST", path, `{}`, mentor, 403)
+	mentorPath := "/conversations/" + mentorChat.ID + "/messages"
+	f.call(t, "POST", mentorPath, `{"client_message_id":"`+uid(31)+`","text":"Первый вопрос"}`, mentor, 200)
+	f.call(t, "POST", mentorPath, `{"client_message_id":"`+uid(32)+`","text":"Продолжение"}`, mentor, 200)
+	history := decodeMessages(t, f.call(t, "GET", mentorPath, "", mentor, 200))
+	if len(history) != 4 || !strings.Contains(history[3].Text, "Первый вопрос") {
+		t.Fatal(history)
+	}
+	f.call(t, "GET", mentorPath, "", f.cookie, 404)
 }
 func TestPostgresReservationConcurrencyAndRecovery(t *testing.T) {
 	f := newFixture(t, fastAgent(), nil, StreamOptions{})

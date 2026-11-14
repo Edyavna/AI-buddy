@@ -7,7 +7,7 @@ import styles from './AppShell.module.css';
 
 const navigationByRole = {
  intern: [{ to: '/onboarding', text: 'Мой план' }, { to: '/chat', text: 'Чат' }, { to: '/review-preparation', text: 'Ревью' }],
- mentor: [{ to: '/mentor/questions', text: 'Вопросы' }, { to: '/mentor/documents', text: 'Знания' }, { to: '/mentor/interns', text: 'Стажёры' }, { to: '/mentor/review-preparations', text: 'Ревью' }],
+ mentor: [{ to: '/mentor/chat', text: 'Чат' }, { to: '/mentor/questions', text: 'Вопросы' }, { to: '/mentor/documents', text: 'Знания' }, { to: '/mentor/interns', text: 'Стажёры' }, { to: '/mentor/review-preparations', text: 'Ревью' }],
  hr: [{ to: '/hr/questions', text: 'Обращения' }, { to: '/hr/documents', text: 'Инструкции' }],
 };
 

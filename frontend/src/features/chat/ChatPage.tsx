@@ -14,10 +14,11 @@ import { AccessRequestPanel } from '@/features/access-requests';
 import { DocumentDrawer, MarkdownContent } from '@/features/documents';
 import styles from './ChatPage.module.css';
 
-export function ChatPage() {
+export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
+  const chatPath = mentor ? "/mentor/chat" : "/chat";
   const { conversationId } = useParams();
   const [params] = useSearchParams();
-  const stepId = params.get('stepId');
+  const stepId = mentor ? null : params.get('stepId');
   const {hash}=useLocation();
   const navigate = useNavigate(), client = useQueryClient();
   const [controller] = useState(() => new ChatController(client, () => navigate('/login', { replace: true })));
@@ -98,20 +99,21 @@ export function ChatPage() {
     observer.observe(messageContent.current);
     return () => observer.disconnect();
   }, []);
+  const openConversation = (id: string) => navigate(`${chatPath}/${encodeURIComponent(id)}`, { replace: true });
   const send = () => {
     if (!me.data || (conversationId && !conversation.data) || !contextReady || contextInvalid || !text.trim() || text.length > 8000 || busy) return;
-    void controller.send(text, me.data.id, contextId ?? null, id => navigate(`/chat/${encodeURIComponent(id)}`, { replace: true }));
+    void controller.send(text, me.data.id, contextId ?? null, openConversation);
     setText('');
   };
   return <div className={styles.layout}>
     <aside className={styles.sidebar} aria-label="Диалоги">
-      <Link to="/chat">Новый диалог</Link>
+      <Link to={chatPath}>Новый диалог</Link>
       {conversations.isLoading && <Spinner />}
       {conversations.data?.length === 0 && <p>Диалогов пока нет</p>}
-      {conversations.data?.map(item => <Link key={item.id} aria-current={item.id === conversationId ? 'page' : undefined} to={`/chat/${encodeURIComponent(item.id)}`}>{item.title}</Link>)}
+      {conversations.data?.map(item => <Link key={item.id} aria-current={item.id === conversationId ? 'page' : undefined} to={`${chatPath}/${encodeURIComponent(item.id)}`}>{item.title}</Link>)}
     </aside>
     <section className={styles.chat} aria-label="Чат с помощником">
-      <header><h1>Помощник стажёра</h1><p>{step ? `Шаг: ${step.title}` : 'Инструкции, доступы и первые задачи'}</p></header>
+      <header><h1>{mentor ? 'Помощник наставника' : 'Помощник стажёра'}</h1><p>{mentor ? 'Вопросы к ИИ' : step ? `Шаг: ${step.title}` : 'Инструкции, доступы и первые задачи'}</p></header>
       {error && <InlineError message={error.message} onRetry={() => { void client.invalidateQueries(); }} />}
       {contextInvalid && <InlineError message="Шаг не найден в вашем плане. Вернитесь к плану адаптации." />}
       {(me.isPending || (conversationId && history.isLoading)) && <Spinner />}
@@ -120,9 +122,9 @@ export function ChatPage() {
         if (nearBottom.current) setNewMessages(false);
       }}>
         <div ref={messageContent} className={styles.messageContent}>
-        {!state.messages.length && !busy && <div className={styles.welcome}><h2>С чего начнём?</h2><p>Задайте вопрос о настройке окружения или выберите шаг в плане.</p><Link to="/onboarding">Открыть мой план</Link></div>}
+        {!state.messages.length && !busy && <div className={styles.welcome}><h2>С чего начнём?</h2><p>{mentor ? 'Задайте вопрос помощнику.' : 'Задайте вопрос о настройке окружения или выберите шаг в плане.'}</p>{!mentor && <Link to="/onboarding">Открыть мой план</Link>}</div>}
         {state.messages.map(message => {
-          const canEscalate = canEscalateMessage(message);
+          const canEscalate = !mentor && canEscalateMessage(message);
           const original = canEscalate ? state.messages.find(m => m.id === message.in_reply_to_message_id && m.role === 'user') : undefined;
           return <article key={message.id} id={`message-${message.id}`} className={message.role === 'user' ? styles.user : styles.assistant}>
             <strong>{message.role === 'user' ? 'Вы' : 'AI-buddy'}</strong>
@@ -137,10 +139,10 @@ export function ChatPage() {
                 </button>
               </li>)}
             </ul>}
-            {[...new Set(message.request_ids)].map(requestId => <div className={styles.request} key={requestId}>
+            {!mentor && [...new Set(message.request_ids)].map(requestId => <div className={styles.request} key={requestId}>
               <AccessRequestPanel requestId={requestId} onDiscuss={focusComposer} />
             </div>)}
-            {message.role === 'assistant' && message.in_reply_to_message_id && message.status !== 'generating' &&
+            {!mentor && message.role === 'assistant' && message.in_reply_to_message_id && message.status !== 'generating' &&
               <QuestionComposer messageId={message.id} onOpenDocument={id=>{setSourceMessageId(undefined);setDocumentId(id);}} onOpenContextDocument={id=>openSource(message.id,id)}/>}
             {canEscalate && !message.routing && me.data &&
               <MentorQuestionPanel key={me.data.id} messageId={message.id} onOpenDocument={id=>{setSourceMessageId(undefined);setDocumentId(id);}} existingOnly
@@ -148,9 +150,15 @@ export function ChatPage() {
                 onRepeatQuestion={() => {
                   if (!original || busy || !contextReady || contextInvalid || error) return;
                   void controller.send(original.text, me.data.id, contextId ?? null,
-                    id => navigate(`/chat/${encodeURIComponent(id)}`, { replace: true }), { newMessage: true });
+                    openConversation, { newMessage: true });
                 }} />}
             {['failed', 'interrupted'].includes(message.status) && <InlineError message={message.error?.error.message ?? 'Ответ прерван. Можно задать вопрос заново.'} />}
+            {mentor && !busy && me.data && ['failed', 'interrupted'].includes(message.status) && state.messages.at(-1)?.id === message.id && (
+              <Button variant="secondary" onClick={() => {
+                const question = state.messages.find(item => item.id === message.in_reply_to_message_id);
+                if (question) void controller.send(question.text, me.data!.id, null, openConversation, { newMessage: true });
+              }}>Повторить запрос</Button>
+            )}
           </article>;
         })}
         </div>
@@ -158,7 +166,7 @@ export function ChatPage() {
       {newMessages && <Button variant="secondary" onClick={() => { nearBottom.current = true; setNewMessages(false); if (list.current) list.current.scrollTop = list.current.scrollHeight; }}>Новые сообщения</Button>}
       <div role="status" aria-live="polite">{state.phase === 'sending' ? 'Отправляем вопрос…' : state.phase === 'recovering' ? 'Восстанавливаем ответ…' : ''}{Object.values(state.tools).map((label, i) => <p key={i}>{label}</p>)}</div>
       {state.error && <InlineError message={state.error} />}
-      {!busy && controller.canRetry && me.data && <Button variant="secondary" onClick={() => void controller.retry(me.data!.id, id => navigate(`/chat/${encodeURIComponent(id)}`, { replace: true }))}>Повторить исходный вопрос</Button>}
+      {!busy && controller.canRetry && me.data && <Button variant="secondary" onClick={() => void controller.retry(me.data!.id, openConversation)}>Повторить исходный вопрос</Button>}
       {state.conversationId && <Button variant="ghost" disabled={busy} onClick={() => void controller.recover(state.conversationId!)}>Обновить историю</Button>}
       <form className={styles.composer} onSubmit={event => { event.preventDefault(); send(); }}>
         <label htmlFor="chat-question">Ваш вопрос</label>

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/httpapi"
+	"github.com/Edyavna/AI-buddy/backend/internal/platform/identity"
 	"github.com/Edyavna/AI-buddy/backend/internal/ports"
 )
 
@@ -15,6 +16,7 @@ type Prepared struct {
 	Reservation
 	Input     ports.AgentInput
 	StartedAt time.Time
+	agent     ports.Agent
 }
 
 func (s Service) List(ctx context.Context) ([]Conversation, error) {
@@ -47,7 +49,7 @@ func (s Service) Create(ctx context.Context, id string, step *string) (Conversat
 	if err != nil {
 		return Conversation{}, false, err
 	}
-	if !validUUID(id) || (step != nil && *step == "") {
+	if !validUUID(id) || (step != nil && (*step == "" || p.Role == identity.Mentor)) {
 		return Conversation{}, false, ports.ErrInvalid
 	}
 	return s.Store.Create(ctx, p, strings.ToLower(id), step)
@@ -86,7 +88,11 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 	if !validUUID(clientID) || !validText(text) {
 		return Prepared{}, ports.ErrInvalid
 	}
-	if s.Agent == nil {
+	runner := s.Agent
+	if p.Role == identity.Mentor {
+		runner = s.MentorAgent
+	}
+	if runner == nil {
 		return Prepared{}, ports.ErrUnavailable
 	}
 	started := time.Now()
@@ -98,6 +104,9 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 	}
 	s.checkSources(work, r.Previous)
 	in := ports.AgentInput{ConversationID: id, AssistantMessageID: r.Assistant.ID, StepID: r.Conversation.StepID, Text: text, History: history(r.Previous, text), Requests: []ports.RequestState{}}
+	if p.Role == identity.Mentor {
+		return Prepared{Reservation: r, Input: in, StartedAt: started, agent: runner}, nil
+	}
 	ids := map[string]bool{}
 	for _, m := range r.Previous {
 		for _, id := range m.RequestIDs {
@@ -120,7 +129,7 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 			in.Requests = append(in.Requests, request)
 		}
 	}
-	return Prepared{Reservation: r, Input: in, StartedAt: started}, nil
+	return Prepared{Reservation: r, Input: in, StartedAt: started, agent: runner}, nil
 }
 
 func (s Service) proposed(ctx context.Context, p Prepared, event ports.AgentEvent) (*httpapi.AccessRequest, error) {
@@ -219,6 +228,10 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 	if err != nil {
 		return err
 	}
+	runner := p.agent
+	if runner == nil {
+		runner = s.Agent
+	}
 	o := options.defaults()
 	timeout := o.GenerationTimeout
 	if !p.StartedAt.IsZero() {
@@ -235,7 +248,7 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 				done <- runResult{err: errors.New("agent panic")}
 			}
 		}()
-		result, err := s.Agent.Run(runCtx, p.Input, func(eventCtx context.Context, event ports.AgentEvent) error {
+		result, err := runner.Run(runCtx, p.Input, func(eventCtx context.Context, event ports.AgentEvent) error {
 			// A sequential caller may reuse its pointed-to event after emit returns.
 			// The queue must own a snapshot, not references the agent can mutate next.
 			if event.Tool != nil {
