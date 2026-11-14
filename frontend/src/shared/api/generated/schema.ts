@@ -1906,6 +1906,8 @@ export interface components {
             revision: components["schemas"]["CheckpointRevision"];
         };
         Conversation: {
+            /** @description Диалог наставника для подготовки Markdown-инструкции. */
+            markdown?: boolean;
             id: string;
             title: string;
             step_id: string | null;
@@ -2084,6 +2086,8 @@ export interface components {
             revision: number;
         };
         CreateConversation: {
+            /** @description Диалог наставника для подготовки Markdown-инструкции. */
+            markdown?: boolean;
             /** Format: uuid */
             client_conversation_id: string;
             step_id?: string | null;

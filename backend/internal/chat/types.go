@@ -26,6 +26,7 @@ type Conversation struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	ClientID  string    `json:"client_conversation_id"`
+	Markdown  bool      `json:"markdown,omitempty"`
 }
 type Source struct {
 	ID         string     `json:"id"`
@@ -60,7 +61,7 @@ type Reservation struct {
 }
 type Store interface {
 	List(context.Context, identity.Principal) ([]Conversation, error)
-	Create(context.Context, identity.Principal, string, *string) (Conversation, bool, error)
+	Create(context.Context, identity.Principal, string, *string, bool) (Conversation, bool, error)
 	Get(context.Context, identity.Principal, string) (Conversation, error)
 	Messages(context.Context, identity.Principal, string) ([]Message, error)
 	Begin(context.Context, identity.Principal, string, string, string, string) (Reservation, error)

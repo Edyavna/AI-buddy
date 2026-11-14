@@ -5020,6 +5020,9 @@ components:
       - updated_at
       - client_conversation_id
       properties:
+        markdown:
+          type: boolean
+          description: Диалог наставника для подготовки Markdown-инструкции.
         id:
           type: string
         title:
@@ -5458,6 +5461,9 @@ components:
       required:
       - client_conversation_id
       properties:
+        markdown:
+          type: boolean
+          description: Диалог наставника для подготовки Markdown-инструкции.
         client_conversation_id: *id001
         step_id:
           type: string

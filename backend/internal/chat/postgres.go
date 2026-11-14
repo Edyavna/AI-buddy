@@ -20,13 +20,13 @@ type queryer interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
-const conversationColumns = `id,title,step_id,created_at,updated_at,client_conversation_id::text`
+const conversationColumns = `id,title,step_id,created_at,updated_at,client_conversation_id::text,markdown`
 
 type scanner interface{ Scan(...any) error }
 
 func scanConversation(row scanner) (Conversation, error) {
 	var c Conversation
-	err := row.Scan(&c.ID, &c.Title, &c.StepID, &c.CreatedAt, &c.UpdatedAt, &c.ClientID)
+	err := row.Scan(&c.ID, &c.Title, &c.StepID, &c.CreatedAt, &c.UpdatedAt, &c.ClientID, &c.Markdown)
 	c.CreatedAt = c.CreatedAt.UTC()
 	c.UpdatedAt = c.UpdatedAt.UTC()
 	return c, err
@@ -50,14 +50,14 @@ func owned(ctx context.Context, q queryer, p identity.Principal, id string, lock
 	if lock {
 		suffix = " FOR UPDATE"
 	}
-	return scanConversation(q.QueryRowContext(ctx, `SELECT `+conversationColumns+` FROM conversations WHERE id=$1 AND user_id=$2 AND team_id=$3`+suffix, id, p.UserID, p.TeamID))
+	return scanConversation(q.QueryRowContext(ctx, `SELECT `+conversationColumns+` FROM conversations WHERE id=$1 AND user_id=$2 AND team_id=$3 AND (NOT markdown OR $4)`+suffix, id, p.UserID, p.TeamID, p.Role == identity.Mentor))
 }
 func (s SQLStore) Get(ctx context.Context, p identity.Principal, id string) (Conversation, error) {
 	c, err := owned(ctx, s.DB, p, id, false)
 	return c, sqlError(err)
 }
 func (s SQLStore) List(ctx context.Context, p identity.Principal) ([]Conversation, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT `+conversationColumns+` FROM conversations WHERE user_id=$1 AND team_id=$2 ORDER BY updated_at DESC,id`, p.UserID, p.TeamID)
+	rows, err := s.DB.QueryContext(ctx, `SELECT `+conversationColumns+` FROM conversations WHERE user_id=$1 AND team_id=$2 AND (NOT markdown OR $3) ORDER BY updated_at DESC,id`, p.UserID, p.TeamID, p.Role == identity.Mentor)
 	if err != nil {
 		return nil, sqlError(err)
 	}
@@ -73,19 +73,22 @@ func (s SQLStore) List(ctx context.Context, p identity.Principal) ([]Conversatio
 	return result, sqlError(rows.Err())
 }
 func sameStep(a, b *string) bool { return (a == nil && b == nil) || (a != nil && b != nil && *a == *b) }
-func (s SQLStore) Create(ctx context.Context, p identity.Principal, clientID string, stepID *string) (Conversation, bool, error) {
+func (s SQLStore) Create(ctx context.Context, p identity.Principal, clientID string, stepID *string, markdown bool) (Conversation, bool, error) {
 	var result Conversation
 	created := false
 	err := database.WithinTx(ctx, s.DB, func(tx *sql.Tx) error {
 		title := "Новый диалог"
+		if markdown {
+			title = "Markdown-инструкция"
+		}
 		if stepID != nil {
 			if err := tx.QueryRowContext(ctx, `SELECT s.title FROM onboarding_steps s JOIN onboarding_plans p ON p.id=s.plan_id WHERE s.id=$1 AND p.user_id=$2 AND p.team_id=$3`, *stepID, p.UserID, p.TeamID).Scan(&title); err != nil {
 				return err
 			}
 		}
 		var err error
-		result, err = scanConversation(tx.QueryRowContext(ctx, `INSERT INTO conversations(id,user_id,team_id,client_conversation_id,step_id,title) VALUES($1,$2,$3,$4,$5,$6)
- ON CONFLICT(user_id,client_conversation_id) DO NOTHING RETURNING `+conversationColumns, rand.Text(), p.UserID, p.TeamID, clientID, stepID, title))
+		result, err = scanConversation(tx.QueryRowContext(ctx, `INSERT INTO conversations(id,user_id,team_id,client_conversation_id,step_id,title,markdown) VALUES($1,$2,$3,$4,$5,$6,$7)
+ ON CONFLICT(user_id,client_conversation_id) DO NOTHING RETURNING `+conversationColumns, rand.Text(), p.UserID, p.TeamID, clientID, stepID, title, markdown))
 		if err == nil {
 			created = true
 			return nil
@@ -97,7 +100,7 @@ func (s SQLStore) Create(ctx context.Context, p identity.Principal, clientID str
 		if err != nil {
 			return err
 		}
-		if !sameStep(result.StepID, stepID) {
+		if !sameStep(result.StepID, stepID) || result.Markdown != markdown {
 			return ports.ErrConflict
 		}
 		return nil

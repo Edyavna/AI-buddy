@@ -44,6 +44,7 @@ type AgentInput struct {
 	ConversationID, AssistantMessageID, Text string
 	StepID                                   *string
 	History                                  []ChatMessage
+	Markdown                                 bool
 }
 
 type Outcome string

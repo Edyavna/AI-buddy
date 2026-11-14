@@ -67,6 +67,7 @@ func (h Handler) create(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		ClientID *string `json:"client_conversation_id"`
 		StepID   *string `json:"step_id"`
+		Markdown bool    `json:"markdown"`
 	}
 	if err := httpapi.DecodeJSON(w, r, &body); err != nil {
 		httpapi.WriteError(w, r, err)
@@ -76,7 +77,7 @@ func (h Handler) create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, ports.ErrInvalid)
 		return
 	}
-	result, created, err := h.Service.Create(r.Context(), *body.ClientID, body.StepID)
+	result, created, err := h.Service.create(r.Context(), *body.ClientID, body.StepID, body.Markdown)
 	if err != nil {
 		writeError(w, r, err)
 		return

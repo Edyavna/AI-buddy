@@ -321,3 +321,28 @@ func TestHistoryBudgetAndValidation(t *testing.T) {
 		t.Fatal("validation")
 	}
 }
+
+func TestMentorMarkdownHistoryAndRetry(t *testing.T) {
+	f := newFixture(t, fastAgent(), nil, StreamOptions{})
+	mentor := f.login(t, "mentor_demo_1")
+	other := f.login(t, "mentor_demo_2")
+	create := `{"client_conversation_id":"` + uid(40) + `","markdown":true}`
+	f.call(t, "POST", "/conversations", create, f.cookie, 403)
+	w := f.call(t, "POST", "/conversations", create, mentor, 201)
+	var conversation Conversation
+	if err := json.Unmarshal(w.Body.Bytes(), &conversation); err != nil || !conversation.Markdown {
+		t.Fatalf("%+v, %v", conversation, err)
+	}
+	f.call(t, "POST", "/conversations", create, mentor, 200)
+	f.call(t, "POST", "/conversations", `{"client_conversation_id":"`+uid(40)+`"}`, mentor, 409)
+	path := "/conversations/" + conversation.ID + "/messages"
+	f.call(t, "GET", path, "", other, 404)
+	f.call(t, "POST", path, "{}", other, 404)
+	for _, n := range []int{41, 42} {
+		f.call(t, "POST", path, `{"client_message_id":"`+uid(n)+`","text":"Содержание инструкции"}`, mentor, 200)
+	}
+	history := decodeMessages(t, f.call(t, "GET", path, "", mentor, 200))
+	if len(history) != 4 || !strings.HasPrefix(history[1].Text, "# Демонстрационная инструкция") || !strings.Contains(history[3].Text, "Предыдущий вопрос") {
+		t.Fatal(history)
+	}
+}

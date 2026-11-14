@@ -1,5 +1,5 @@
 import { useCallback, useRef, useState, type KeyboardEvent } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ClientError } from '@/shared/api';
 import { Button, Drawer, EmptyState, InlineError, TextField } from '@/shared/ui';
@@ -73,7 +73,7 @@ export function MentorDocumentsPage() {
     void action.run(async signal => { await mentorApi.retryDocument(id, signal); if (!signal.aborted) await client.invalidateQueries({ queryKey: mentorKeys.all }); });
   }
   return <section className={styles.page}><header className={styles.heading}><h1>Знания команды</h1><p className={styles.muted}>Добавляйте инструкции, чтобы помощник отвечал по проверенным источникам.</p></header>
-    <form className={styles.card} onSubmit={e => { e.preventDefault(); upload(); }}><h2>Добавить Markdown-документ</h2>{questionId && <p>Документ будет связан с выбранным вопросом. Сам вопрос останется открытым.</p>}
+    <form className={styles.card} onSubmit={e => { e.preventDefault(); upload(); }}><h2>Добавить Markdown-документ</h2><Link to="/mentor/chat?mode=markdown">Сгенерировать Markdown</Link>{questionId && <p>Документ будет связан с выбранным вопросом. Сам вопрос останется открытым.</p>}
       <TextField label="Название документа" value={title} disabled={action.busy || !!attempt} onChange={e => setTitle(e.target.value)} required />
       <label className={styles.field}>Файл Markdown<input ref={fileInput} type="file" accept=".md,text/markdown" disabled={action.busy || !!attempt} onChange={e => setFile(e.target.files?.[0])} aria-describedby="markdown-help" /></label>
       <p id="markdown-help" className={styles.muted}>Один .md файл в UTF-8, до 1 MiB.</p>

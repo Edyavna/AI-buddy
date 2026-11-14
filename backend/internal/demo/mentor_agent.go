@@ -10,6 +10,9 @@ type MentorAgent struct{}
 
 func (MentorAgent) Run(ctx context.Context, in ports.AgentInput, emit ports.Emit) (ports.AgentResult, error) {
 	answer := "Демонстрационный ответ наставнику: " + in.Text
+	if in.Markdown {
+		answer = "# Демонстрационная инструкция\n\n" + in.Text
+	}
 	if len(in.History) >= 2 {
 		answer += "\n\nПредыдущий вопрос: " + in.History[len(in.History)-2].Text
 	}

@@ -45,6 +45,10 @@ func (s Service) Messages(ctx context.Context, id string) ([]Message, error) {
 	return items, err
 }
 func (s Service) Create(ctx context.Context, id string, step *string) (Conversation, bool, error) {
+	return s.create(ctx, id, step, false)
+}
+
+func (s Service) create(ctx context.Context, id string, step *string, markdown bool) (Conversation, bool, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return Conversation{}, false, err
@@ -52,7 +56,10 @@ func (s Service) Create(ctx context.Context, id string, step *string) (Conversat
 	if !validUUID(id) || (step != nil && (*step == "" || p.Role == identity.Mentor)) {
 		return Conversation{}, false, ports.ErrInvalid
 	}
-	return s.Store.Create(ctx, p, strings.ToLower(id), step)
+	if markdown && p.Role != identity.Mentor {
+		return Conversation{}, false, ports.ErrForbidden
+	}
+	return s.Store.Create(ctx, p, strings.ToLower(id), step, markdown)
 }
 func failure(code, trace string) *APIError {
 	messages := map[string]string{
@@ -103,7 +110,7 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 		return Prepared{}, err
 	}
 	s.checkSources(work, r.Previous)
-	in := ports.AgentInput{ConversationID: id, AssistantMessageID: r.Assistant.ID, StepID: r.Conversation.StepID, Text: text, History: history(r.Previous, text), Requests: []ports.RequestState{}}
+	in := ports.AgentInput{ConversationID: id, AssistantMessageID: r.Assistant.ID, StepID: r.Conversation.StepID, Markdown: r.Conversation.Markdown, Text: text, History: history(r.Previous, text), Requests: []ports.RequestState{}}
 	if p.Role == identity.Mentor {
 		return Prepared{Reservation: r, Input: in, StartedAt: started, agent: runner}, nil
 	}
