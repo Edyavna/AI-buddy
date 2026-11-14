@@ -476,13 +476,13 @@
     "step_id": "plan_demo_unassigned:team-setup",
     "title": "Организационные моменты",
     "period": "1 неделя",
-    "reason": "Текущий доступный шаг по плану адаптации",
-    "action_type": "confirm",
-    "action_label": "Подтвердить выполнение",
+    "reason": "Текущий приоритетный шаг плана",
+    "action_type": "assistant",
+    "action_label": "Спросить помощника",
     "target": {
       "step_id": "plan_demo_unassigned:team-setup",
-      "route": "/onboarding",
-      "action": "open_card"
+      "route": "/chat?stepId=plan_demo_unassigned:team-setup",
+      "action": "open_chat"
     },
     "waiting_step": null,
     "help_action": null

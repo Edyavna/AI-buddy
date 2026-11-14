@@ -21,8 +21,8 @@
    - **Выбор независимого шага**: если приоритетный шаг перешёл в ожидание наставника/доступов или ожидает подтверждения наставника при выполненной части стажёра (политика `both`), движок находит следующий независимый шаг, доступный для выполнения, а детали ожидания приоритетного шага изолирует в `waiting_step`.
 
 2. **История и учёт времени блокировки шагов**:
-   - Миграция `000019_step_blocking_history.sql`: колонка `blocked_at timestamptz` в `onboarding_steps` и таблица `onboarding_step_blocking_history` (с полями `step_id`, `state`, `reason`, `blocked_at`, `unblocked_at`).
-   - При переходе шага в блокировку или ожидание фиксируется время начала. При разблокировке или завершении интервал закрывается.
+   - Миграция `000019_step_blocking_history.sql`: колонка `blocked_at timestamptz` в `onboarding_steps` и таблица `onboarding_step_blocking_history` (с полями `id`, `step_id`, `blocked_reason`, `started_at`, `ended_at`).
+   - При переходе шага в блокировку фиксируется время начала. При разблокировке или завершении интервал закрывается.
    - Расчёт `waiting_duration_seconds` в реальном времени с поддержкой легаси-шагов (`blocked_at: null`, `waiting_duration_seconds: null`).
 
 3. **Интеграция с HR (#62)**:
@@ -46,20 +46,18 @@
 
 ```sql
 ALTER TABLE onboarding_steps
-    ADD COLUMN IF NOT EXISTS blocked_at timestamptz;
+    ADD COLUMN blocked_at timestamptz;
 
-CREATE TABLE IF NOT EXISTS onboarding_step_blocking_history (
-    id bigserial PRIMARY KEY,
+CREATE TABLE onboarding_step_blocking_history (
+    id text PRIMARY KEY,
     step_id text NOT NULL REFERENCES onboarding_steps(id) ON DELETE CASCADE,
-    state text NOT NULL,
-    reason text NOT NULL,
-    blocked_at timestamptz NOT NULL,
-    unblocked_at timestamptz,
-    created_at timestamptz NOT NULL DEFAULT now()
+    blocked_reason text NOT NULL,
+    started_at timestamptz NOT NULL DEFAULT clock_timestamp(),
+    ended_at timestamptz
 );
 
-CREATE INDEX IF NOT EXISTS idx_step_blocking_history_step_id
-    ON onboarding_step_blocking_history(step_id, blocked_at DESC);
+CREATE INDEX onboarding_step_blocking_history_step_idx
+    ON onboarding_step_blocking_history (step_id, started_at);
 ```
 
 ## Результаты тестирования и покрытие

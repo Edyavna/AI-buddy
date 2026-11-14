@@ -82,7 +82,6 @@ func readSteps(ctx context.Context, tx *sql.Tx, s *Snapshot) error {
 		if blockedAt.Valid {
 			t := blockedAt.Time.UTC()
 			r.BlockedAt = &t
-			r.Step.BlockedAt = &t
 		}
 		if err := json.Unmarshal(resources, &r.Resources); err != nil {
 			return err
@@ -190,12 +189,12 @@ func saveStepStatus(ctx context.Context, tx *sql.Tx, id, status string) error {
 	if status == "blocked" {
 		_, err = tx.ExecContext(ctx, `UPDATE onboarding_steps SET status=$1 WHERE id=$2`, status, id)
 		if err == nil {
-			_ = recordBlockingTx(ctx, tx, id, "Заблокирован")
+			err = recordBlockingTx(ctx, tx, id, "Заблокирован")
 		}
 	} else {
 		_, err = tx.ExecContext(ctx, `UPDATE onboarding_steps SET status=$1,blocked_reason=NULL WHERE id=$2`, status, id)
 		if err == nil {
-			_ = recordUnblockingTx(ctx, tx, id)
+			err = recordUnblockingTx(ctx, tx, id)
 		}
 	}
 	return err
@@ -293,7 +292,9 @@ func ApplyRequestStateTx(ctx context.Context, tx *sql.Tx, owner identity.Princip
 		if _, err := tx.ExecContext(ctx, `UPDATE onboarding_steps SET status='blocked',blocked_reason=$2 WHERE id=$1`, stepID, reason); err != nil {
 			return sqlError(err)
 		}
-		_ = recordBlockingTx(ctx, tx, stepID, reason)
+		if err := recordBlockingTx(ctx, tx, stepID, reason); err != nil {
+			return sqlError(err)
+		}
 	} else {
 		if _, err := tx.ExecContext(ctx, `UPDATE onboarding_steps s SET status=CASE
  WHEN (SELECT count(*) FROM onboarding_step_confirmations c WHERE c.step_id=s.id
@@ -303,7 +304,9 @@ func ApplyRequestStateTx(ctx context.Context, tx *sql.Tx, owner identity.Princip
  AND EXISTS(SELECT 1 FROM onboarding_step_requests WHERE step_id=$1 AND status='granted')`, stepID); err != nil {
 			return sqlError(err)
 		}
-		_ = recordUnblockingTx(ctx, tx, stepID)
+		if err := recordUnblockingTx(ctx, tx, stepID); err != nil {
+			return sqlError(err)
+		}
 	}
 	return sqlError(advanceRevision(ctx, tx, &snapshot))
 }

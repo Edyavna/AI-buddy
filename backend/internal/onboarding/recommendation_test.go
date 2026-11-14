@@ -97,10 +97,9 @@ func TestRecommendationScenarios(t *testing.T) {
 			Steps: []Record{
 				{
 					Requirement: &req,
-					BlockedAt:   &now,
 					Step: Step{
 						ID: "step_1", Title: "Доступ к коду", Status: "blocked", BlockedReason: &reason,
-						CompletionPolicy: "intern",
+						CompletionPolicy: "intern", BlockedAt: &now,
 					},
 				},
 				{
@@ -231,10 +230,9 @@ func TestRecommendationScenarios(t *testing.T) {
 			ID: "plan_legacy", Title: "План", Revision: 1, HasHR: true,
 			Steps: []Record{
 				{
-					BlockedAt: nil, // old step without history!
 					Step: Step{
 						ID: "step_old", Title: "Старый шаг", Status: "blocked", BlockedReason: &reason,
-						CompletionPolicy: "intern",
+						CompletionPolicy: "intern", BlockedAt: nil, // old step without history!
 					},
 				},
 			},

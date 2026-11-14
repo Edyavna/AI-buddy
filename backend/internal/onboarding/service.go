@@ -61,7 +61,6 @@ type Record struct {
 	Step
 	Requirement   *ports.AccessCheck
 	Prerequisites []string
-	BlockedAt     *time.Time
 }
 type Snapshot struct {
 	ID, Title string

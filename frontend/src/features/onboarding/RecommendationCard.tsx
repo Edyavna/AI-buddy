@@ -10,7 +10,7 @@ export interface RecommendationCardProps {
 }
 
 export function formatWaitingDuration(seconds: number | null | undefined): string | null {
-  if (seconds == null || seconds < 0) return null;
+  if (seconds == null || !Number.isFinite(seconds) || seconds < 0) return null;
   if (seconds < 60) return 'меньше минуты';
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes} мин`;
@@ -66,7 +66,10 @@ export const RecommendationCard: React.FC<RecommendationCardProps> = ({
       if (onSelectStep && target.step_id) {
         onSelectStep(target.step_id);
       } else {
-        navigate(target.route);
+        const route = target.route.includes('stepId=')
+          ? target.route
+          : `${target.route}?stepId=${encodeURIComponent(target.step_id)}`;
+        navigate(route);
       }
     }
   };

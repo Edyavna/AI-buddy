@@ -12,10 +12,12 @@ import { RecommendationCard, formatWaitingDuration } from './RecommendationCard'
 import type { Recommendation } from './schemas';
 
 describe('formatWaitingDuration', () => {
-  it('returns null for null, undefined or negative numbers', () => {
+  it('returns null for null, undefined, negative numbers or non-finite numbers', () => {
     expect(formatWaitingDuration(null)).toBeNull();
     expect(formatWaitingDuration(undefined)).toBeNull();
     expect(formatWaitingDuration(-10)).toBeNull();
+    expect(formatWaitingDuration(Number.NaN)).toBeNull();
+    expect(formatWaitingDuration(Number.POSITIVE_INFINITY)).toBeNull();
   });
 
   it('formats less than a minute', () => {
