@@ -23,11 +23,11 @@ const unauthorized = () => jsonError(401, 'UNAUTHORIZED', 'Сессия не н�
 function withServerProgress(plan: Plan): Plan {
   const completed = plan.steps.filter((step) => step.status === 'completed').length;
   const next = plan.steps.find((step) => step.status !== 'completed' && step.status !== 'blocked');
-  return {
+  return planSchema.parse({
     ...plan,
     progress_percent: plan.steps.length ? Math.floor((100 * completed) / plan.steps.length) : 0,
     next_step_id: next?.id ?? null,
-  };
+  });
 }
 
 function withNextRevision(plan: Plan): Plan {
@@ -92,6 +92,7 @@ export function createFe2Handlers(options: { plan?: Plan } = {}) {
     }),
 
     http.get('*/api/v1/onboarding/plan', () => currentUser ? HttpResponse.json(plan) : unauthorized()),
+    http.get('*/api/v1/onboarding/recommendation', () => currentUser ? HttpResponse.json(plan.recommendation) : unauthorized()),
 
     http.patch('*/api/v1/onboarding/steps/:stepId', async ({ params, request: incoming }) => {
       if (!currentUser) return unauthorized();

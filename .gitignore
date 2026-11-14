@@ -15,6 +15,7 @@ test-results/
 bin/
 tmp/
 *.log
+*.out
 
 # Editors and OS
 .idea/

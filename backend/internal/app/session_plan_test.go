@@ -62,6 +62,14 @@ func TestPostgresPlanPrerequisitesAndEmptyPlan(t *testing.T) {
 	if next := checkpointStep(t, plan, "step_next"); len(plan.Steps) != 18 || next.Status != "blocked" || next.BlockedReason == nil {
 		t.Fatal(plan)
 	}
+	recRecorder := apiRequest(t, h, "GET", "/api/v1/onboarding/recommendation", "", cookie, 200)
+	var rec onboarding.Recommendation
+	if err := json.Unmarshal(recRecorder.Body.Bytes(), &rec); err != nil || rec.State == "" {
+		t.Fatalf("failed to decode recommendation: %v", err)
+	}
+	if rec.State != plan.Recommendation.State {
+		t.Fatalf("mismatched recommendation: %v vs %v", rec, plan.Recommendation)
+	}
 	apiRequest(t, h, "PATCH", "/api/v1/onboarding/steps/step_next", `{"status":"not_started"}`, cookie, 409)
 	plan = decodePlan(t, apiRequest(t, h, "PATCH", "/api/v1/onboarding/steps/step_local_setup", `{"status":"completed"}`, cookie, 200))
 	if plan.ProgressPercent != 5 || checkpointStep(t, plan, "step_next").Status != "not_started" {
@@ -76,7 +84,7 @@ func TestPostgresPlanPrerequisitesAndEmptyPlan(t *testing.T) {
 		t.Fatal(err)
 	}
 	empty := decodePlan(t, apiRequest(t, h, "GET", "/api/v1/onboarding/plan", "", other, 200))
-	if len(empty.Steps) != 0 || empty.NextStepID != nil || empty.ProgressPercent != 0 {
+	if len(empty.Steps) != 0 || empty.NextStepID != nil || empty.ProgressPercent != 0 || empty.Recommendation.State != onboarding.StateEmptyPlan {
 		t.Fatal(empty)
 	}
 	if _, err := db.Exec(`DELETE FROM onboarding_plans WHERE id='plan_demo_other'`); err != nil {

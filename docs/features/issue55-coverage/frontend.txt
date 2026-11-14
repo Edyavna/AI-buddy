@@ -1,0 +1,4 @@
+frontend/src/features/onboarding/PlanPage.tsx	42,43,44,47,48,49,76,89,91,92,93,99,100,101,102	uncovered=
+frontend/src/features/onboarding/api.ts	13	uncovered=
+frontend/src/features/onboarding/schemas.ts	48,58,65,71,83,90,111,112,113,134	uncovered=
+frontend changed line coverage 100.00% (26/26)

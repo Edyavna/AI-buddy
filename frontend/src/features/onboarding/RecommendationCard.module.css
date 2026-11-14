@@ -1,0 +1,262 @@
+.card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding: var(--space-6);
+  border-radius: var(--radius-xl);
+  background-color: var(--color-bg-elevated, #ffffff);
+  border: 1px solid var(--color-border-subtle, rgba(0, 0, 0, 0.08));
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  margin-bottom: var(--space-6);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  border-color: var(--color-border-hover, rgba(0, 170, 255, 0.3));
+}
+
+.cardHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.cardHeading {
+  font-size: var(--font-size-xs, 12px);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-secondary);
+  margin: 0;
+  font-weight: 600;
+}
+
+.badgeRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.periodBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm, 4px);
+  background-color: var(--color-bg-secondary, rgba(0, 0, 0, 0.04));
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-xs, 12px);
+  font-weight: 500;
+}
+
+.mainContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.stepTitle {
+  margin: 0;
+  font-size: var(--font-size-xl, 20px);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.reason {
+  margin: 0;
+  font-size: var(--font-size-sm, 14px);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.actionsRow {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+  margin-top: var(--space-2);
+}
+
+.actionButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: var(--radius-md, 8px);
+  background-color: var(--avito-blue, #00aaff);
+  color: #ffffff;
+  font-size: var(--font-size-sm, 14px);
+  font-weight: 600;
+  text-decoration: none;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease, transform 0.1s ease;
+}
+
+.actionButton:hover {
+  background-color: var(--avito-blue-hover, #0095e0);
+}
+
+.actionButton:focus-visible {
+  outline: 2px solid var(--avito-blue);
+  outline-offset: 2px;
+}
+
+.actionButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.helpButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 16px;
+  border-radius: var(--radius-md, 8px);
+  background-color: var(--color-bg-secondary, #f3f4f6);
+  color: var(--color-text-primary);
+  border: 1px solid var(--color-border-subtle, rgba(0, 0, 0, 0.12));
+  font-size: var(--font-size-sm, 14px);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.helpButton:hover {
+  background-color: var(--color-bg-hover, #e5e7eb);
+}
+
+.helpButton:focus-visible {
+  outline: 2px solid var(--avito-blue);
+  outline-offset: 2px;
+}
+
+.waitingNotice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  border-radius: var(--radius-lg, 8px);
+  background-color: rgba(255, 149, 0, 0.08);
+  border: 1px solid rgba(255, 149, 0, 0.24);
+  margin-top: var(--space-2);
+}
+
+.waitingHeader {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: #b35900;
+  font-size: var(--font-size-sm, 14px);
+}
+
+.waitingDot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: #ff9500;
+  flex-shrink: 0;
+}
+
+.periodText {
+  color: var(--color-text-secondary);
+  font-weight: normal;
+}
+
+.waitingReason {
+  margin: 0;
+  font-size: var(--font-size-sm, 14px);
+  color: var(--color-text-secondary);
+  line-height: 1.4;
+}
+
+.waitingDuration {
+  display: inline-flex;
+  align-items: center;
+  font-size: var(--font-size-xs, 12px);
+  color: #8c4400;
+  font-weight: 500;
+}
+
+.noHelpNotice {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--font-size-sm, 14px);
+  color: var(--color-text-secondary);
+}
+
+.subtext {
+  font-size: var(--font-size-xs, 12px);
+  color: var(--color-text-secondary);
+}
+
+.viewWaitingBtn {
+  align-self: flex-start;
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--avito-blue, #00aaff);
+  font-size: var(--font-size-xs, 12px);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.viewWaitingBtn:hover {
+  color: var(--avito-blue-hover, #0095e0);
+}
+
+.completedContent {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-2) 0;
+}
+
+.completedTitle {
+  margin: 0;
+  font-size: var(--font-size-lg, 18px);
+  font-weight: var(--font-weight-bold, 700);
+  color: var(--color-text-primary);
+}
+
+.completedText {
+  margin: 0;
+  font-size: var(--font-size-sm, 14px);
+  color: var(--color-text-secondary);
+}
+
+@media (max-width: 768px) {
+  .card {
+    padding: var(--space-4);
+  }
+
+  .stepTitle {
+    font-size: 18px;
+  }
+}
+
+@media (max-width: 360px) {
+  .card {
+    padding: var(--space-3);
+  }
+
+  .stepTitle {
+    font-size: 16px;
+  }
+
+  .actionsRow {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .actionButton,
+  .helpButton {
+    width: 100%;
+    text-align: center;
+  }
+}

@@ -470,5 +470,21 @@
         }
       ]
     }
-  ]
+  ],
+  "recommendation": {
+    "state": "action_available",
+    "step_id": "plan_demo_unassigned:team-setup",
+    "title": "Организационные моменты",
+    "period": "1 неделя",
+    "reason": "Текущий приоритетный шаг плана",
+    "action_type": "assistant",
+    "action_label": "Спросить помощника",
+    "target": {
+      "step_id": "plan_demo_unassigned:team-setup",
+      "route": "/chat?stepId=plan_demo_unassigned:team-setup",
+      "action": "open_chat"
+    },
+    "waiting_step": null,
+    "help_action": null
+  }
 }

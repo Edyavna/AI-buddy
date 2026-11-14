@@ -25,7 +25,7 @@ jobs:
       - run: npm run lint
       - run: npm run test:coverage
       - name: Changed frontend lines above 90 percent
-        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/62-hr') || startsWith(github.head_ref, 'feature/resolution-knowledge-drafts') || startsWith(github.head_ref, 'feature/shared-question-resolutions'))
+        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/62-hr') || startsWith(github.head_ref, 'feature/resolution-knowledge-drafts') || startsWith(github.head_ref, 'feature/shared-question-resolutions') || startsWith(github.head_ref, 'feature/issue-55-next-step') || startsWith(github.head_ref, 'feat/55-'))
         shell: bash
         env:
           COVERAGE_BASE: ${{ github.event.pull_request.base.sha }}

@@ -1,7 +1,9 @@
 import React from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { EmptyState, InlineError, Spinner, StatusBadge } from '@/shared/ui';
 import { useCheckpointConfirmation, usePlan, useUpdateStep } from './hooks';
 import { StepCard } from './StepCard';
+import { RecommendationCard } from './RecommendationCard';
 import type { Step, StepTarget } from './schemas';
 import styles from './PlanPage.module.css';
 
@@ -37,8 +39,16 @@ export const PlanPage: React.FC = () => {
   const plan = usePlan();
   const updateStep = useUpdateStep();
   const updateConfirmation = useCheckpointConfirmation();
-  const [selectedStepId, setSelectedStepId] = React.useState<string | null>(null);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const stepIdFromUrl = searchParams.get('stepId');
+  const [selectedStepId, setSelectedStepId] = React.useState<string | null>(stepIdFromUrl);
   const [navigationDirection, setNavigationDirection] = React.useState<'forward' | 'backward'>('forward');
+
+  React.useEffect(() => {
+    if (stepIdFromUrl) {
+      setSelectedStepId(stepIdFromUrl);
+    }
+  }, [stepIdFromUrl]);
 
   if (plan.isPending) {
     return (
@@ -62,7 +72,10 @@ export const PlanPage: React.FC = () => {
   const data = plan.data;
   const completedCount = data.steps.filter((step) => step.status === 'completed').length;
   const nextStep = data.steps.find((step) => step.id === data.next_step_id);
-  const currentStep = data.steps.find((step) => step.id === selectedStepId) ?? nextStep ?? data.steps[0];
+  const currentStep =
+    data.steps.find((step) => step.id === (selectedStepId ?? stepIdFromUrl)) ??
+    nextStep ??
+    data.steps[0];
   const currentIndex = currentStep ? data.steps.findIndex((step) => step.id === currentStep.id) : -1;
   const allRemainingBlocked =
     !nextStep && data.steps.some((step) => step.status !== 'completed');
@@ -73,6 +86,21 @@ export const PlanPage: React.FC = () => {
     if (!step) return;
     setNavigationDirection(index < currentIndex ? 'backward' : 'forward');
     setSelectedStepId(step.id);
+    setSearchParams(
+      (prev) => {
+        const next = new URLSearchParams(prev);
+        next.set('stepId', step.id);
+        return next;
+      },
+      { replace: true }
+    );
+  };
+
+  const handleSelectStepById = (stepId: string) => {
+    const index = data.steps.findIndex((step) => step.id === stepId);
+    if (index !== -1) {
+      showStep(index);
+    }
   };
 
   const mutationErrorFor = (stepId: string): string | null => {
@@ -153,6 +181,13 @@ export const PlanPage: React.FC = () => {
           </div>
         </div>
       </section>
+
+      {data.recommendation && (
+        <RecommendationCard
+          recommendation={data.recommendation}
+          onSelectStep={handleSelectStepById}
+        />
+      )}
 
       <section className={styles.stepsSection} aria-label="Шаги адаптации">
         <div className={styles.sectionHeader}>

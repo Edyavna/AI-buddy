@@ -2039,6 +2039,27 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+  /onboarding/recommendation:
+    get:
+      tags:
+      - Onboarding
+      operationId: getMyRecommendation
+      description: Рекомендация следующего доступного действия для стажёра по его плану.
+      responses:
+        '200':
+          description: Рекомендация доступного шага и статус ожидания приоритетного шага
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recommendation'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /onboarding/plan:
     get:
       tags:
@@ -4387,6 +4408,132 @@ components:
               type: string
             name:
               type: string
+    RecommendationState:
+      type: string
+      enum:
+      - action_available
+      - waiting_mentor
+      - waiting_access
+      - blocked_dependencies
+      - blocked
+      - completed
+      - empty_plan
+      description: Состояние рекомендации следующего шага
+    RecommendationActionType:
+      type: string
+      enum:
+      - confirm
+      - read_instructions
+      - assistant
+      - view_step
+      - null
+      nullable: true
+      description: Тип рекомендуемого действия стажёра
+    RecommendationTarget:
+      type: object
+      nullable: true
+      required:
+      - step_id
+      - route
+      - action
+      properties:
+        step_id:
+          type: string
+        route:
+          type: string
+        action:
+          type: string
+          enum:
+          - open_card
+          - open_instructions
+          - open_chat
+    WaitingStepInfo:
+      type: object
+      nullable: true
+      required:
+      - step_id
+      - title
+      - reason
+      - state
+      properties:
+        step_id:
+          type: string
+        title:
+          type: string
+        period:
+          type: string
+          nullable: true
+        reason:
+          type: string
+        state:
+          $ref: '#/components/schemas/RecommendationState'
+        awaiting_role:
+          type: string
+          enum: [intern, mentor, null]
+          nullable: true
+        help_direction:
+          type: string
+          enum: [mentor, hr, null]
+          nullable: true
+        blocked_at:
+          type: string
+          format: date-time
+          nullable: true
+        waiting_duration_seconds:
+          type: integer
+          nullable: true
+    RecommendationHelpAction:
+      type: object
+      nullable: true
+      required:
+      - direction
+      - label
+      - url
+      - available
+      properties:
+        direction:
+          $ref: '#/components/schemas/QuestionDirection'
+        label:
+          type: string
+        url:
+          type: string
+        available:
+          type: boolean
+          description: Доступен ли данный адресат (например, false если у команды нет HR)
+    Recommendation:
+      type: object
+      required:
+      - state
+      - reason
+      properties:
+        state:
+          $ref: '#/components/schemas/RecommendationState'
+        step_id:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        period:
+          type: string
+          nullable: true
+        reason:
+          type: string
+        action_type:
+          $ref: '#/components/schemas/RecommendationActionType'
+          nullable: true
+        action_label:
+          type: string
+          nullable: true
+        target:
+          $ref: '#/components/schemas/RecommendationTarget'
+          nullable: true
+        waiting_step:
+          $ref: '#/components/schemas/WaitingStepInfo'
+          nullable: true
+        help_action:
+          $ref: '#/components/schemas/RecommendationHelpAction'
+          nullable: true
     Plan:
       type: object
       required:
@@ -4394,6 +4541,7 @@ components:
       - title
       - progress_percent
       - next_step_id
+      - recommendation
       - steps
       properties:
         id:
@@ -4408,6 +4556,9 @@ components:
         next_step_id:
           type: string
           nullable: true
+          description: Идентификатор следующего доступного для выполнения шага стажёра (совпадает с recommendation.step_id), либо null
+        recommendation:
+          $ref: '#/components/schemas/Recommendation'
         steps:
           type: array
           items:

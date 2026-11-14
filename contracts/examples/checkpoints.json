@@ -43,7 +43,23 @@
             }
           ]
         }
-      ]
+      ],
+      "recommendation": {
+        "state": "action_available",
+        "step_id": "step_demo_checkpoint",
+        "title": "Обсудить цели",
+        "period": "2 неделя",
+        "reason": "Текущий доступный шаг по плану адаптации",
+        "action_type": "confirm",
+        "action_label": "Подтвердить выполнение",
+        "target": {
+          "step_id": "step_demo_checkpoint",
+          "route": "/onboarding",
+          "action": "open_card"
+        },
+        "waiting_step": null,
+        "help_action": null
+      }
     },
     "mentor": {
       "id": "plan_demo_checkpoint",
@@ -77,7 +93,34 @@
             }
           ]
         }
-      ]
+      ],
+      "recommendation": {
+        "state": "waiting_mentor",
+        "step_id": null,
+        "title": null,
+        "period": null,
+        "reason": "Ожидает подтверждения наставника",
+        "action_type": null,
+        "action_label": null,
+        "target": null,
+        "waiting_step": {
+          "step_id": "step_demo_checkpoint",
+          "title": "Обсудить цели",
+          "period": "2 неделя",
+          "reason": "Ожидает подтверждения наставника",
+          "state": "waiting_mentor",
+          "awaiting_role": "mentor",
+          "help_direction": "mentor",
+          "blocked_at": "2026-11-14T10:00:00Z",
+          "waiting_duration_seconds": 3600
+        },
+        "help_action": {
+          "direction": "mentor",
+          "label": "Задать вопрос наставнику",
+          "url": "/chat?stepId=step_demo_checkpoint",
+          "available": true
+        }
+      }
     },
     "both_0": {
       "id": "plan_demo_checkpoint",
@@ -113,7 +156,23 @@
             }
           ]
         }
-      ]
+      ],
+      "recommendation": {
+        "state": "action_available",
+        "step_id": "step_demo_checkpoint",
+        "title": "Обсудить цели",
+        "period": "2 неделя",
+        "reason": "Текущий доступный шаг по плану адаптации",
+        "action_type": "confirm",
+        "action_label": "Подтвердить выполнение",
+        "target": {
+          "step_id": "step_demo_checkpoint",
+          "route": "/onboarding",
+          "action": "open_card"
+        },
+        "waiting_step": null,
+        "help_action": null
+      }
     },
     "both_1": {
       "id": "plan_demo_checkpoint",
@@ -153,7 +212,34 @@
             }
           ]
         }
-      ]
+      ],
+      "recommendation": {
+        "state": "waiting_mentor",
+        "step_id": null,
+        "title": null,
+        "period": null,
+        "reason": "Ожидает подтверждения наставника",
+        "action_type": null,
+        "action_label": null,
+        "target": null,
+        "waiting_step": {
+          "step_id": "step_demo_checkpoint",
+          "title": "Обсудить цели",
+          "period": "2 неделя",
+          "reason": "Ожидает подтверждения наставника",
+          "state": "waiting_mentor",
+          "awaiting_role": "mentor",
+          "help_direction": "mentor",
+          "blocked_at": "2026-11-14T10:00:00Z",
+          "waiting_duration_seconds": 3600
+        },
+        "help_action": {
+          "direction": "mentor",
+          "label": "Задать вопрос наставнику",
+          "url": "/chat?stepId=step_demo_checkpoint",
+          "available": true
+        }
+      }
     },
     "both_1_mentor_first": {
       "id": "plan_demo_checkpoint",
@@ -193,7 +279,23 @@
             }
           ]
         }
-      ]
+      ],
+      "recommendation": {
+        "state": "action_available",
+        "step_id": "step_demo_checkpoint",
+        "title": "Обсудить цели",
+        "period": "2 неделя",
+        "reason": "Текущий доступный шаг по плану адаптации",
+        "action_type": "confirm",
+        "action_label": "Подтвердить выполнение",
+        "target": {
+          "step_id": "step_demo_checkpoint",
+          "route": "/onboarding",
+          "action": "open_card"
+        },
+        "waiting_step": null,
+        "help_action": null
+      }
     },
     "both_2": {
       "id": "plan_demo_checkpoint",
@@ -238,7 +340,19 @@
             }
           ]
         }
-      ]
+      ],
+      "recommendation": {
+        "state": "completed",
+        "step_id": null,
+        "title": null,
+        "period": null,
+        "reason": "Все шаги плана успешно завершены!",
+        "action_type": null,
+        "action_label": null,
+        "target": null,
+        "waiting_step": null,
+        "help_action": null
+      }
     },
     "blocked": {
       "id": "plan_demo_checkpoint",
@@ -278,7 +392,34 @@
             }
           ]
         }
-      ]
+      ],
+      "recommendation": {
+        "state": "blocked",
+        "step_id": null,
+        "title": null,
+        "period": null,
+        "reason": "Сначала завершите предыдущий шаг",
+        "action_type": null,
+        "action_label": null,
+        "target": null,
+        "waiting_step": {
+          "step_id": "step_demo_checkpoint",
+          "title": "Обсудить цели",
+          "period": "2 неделя",
+          "reason": "Сначала завершите предыдущий шаг",
+          "state": "blocked",
+          "awaiting_role": "mentor",
+          "help_direction": "mentor",
+          "blocked_at": "2026-11-14T10:00:00Z",
+          "waiting_duration_seconds": 3600
+        },
+        "help_action": {
+          "direction": "mentor",
+          "label": "Задать вопрос наставнику",
+          "url": "/chat?stepId=step_demo_checkpoint",
+          "available": true
+        }
+      }
     },
     "blocked_with_both_confirmations": {
       "id": "plan_demo_checkpoint",
@@ -323,7 +464,34 @@
             }
           ]
         }
-      ]
+      ],
+      "recommendation": {
+        "state": "blocked",
+        "step_id": null,
+        "title": null,
+        "period": null,
+        "reason": "Ожидается получение доступа",
+        "action_type": null,
+        "action_label": null,
+        "target": null,
+        "waiting_step": {
+          "step_id": "step_demo_checkpoint",
+          "title": "Обсудить цели",
+          "period": "2 неделя",
+          "reason": "Ожидается получение доступа",
+          "state": "blocked",
+          "awaiting_role": null,
+          "help_direction": "mentor",
+          "blocked_at": "2026-11-14T10:00:00Z",
+          "waiting_duration_seconds": 3600
+        },
+        "help_action": {
+          "direction": "mentor",
+          "label": "Задать вопрос наставнику",
+          "url": "/chat?stepId=step_demo_checkpoint",
+          "available": true
+        }
+      }
     }
   },
   "errors": {
