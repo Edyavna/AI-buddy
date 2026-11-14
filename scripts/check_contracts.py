@@ -25,6 +25,9 @@ for key, schema in [('group', 'QuestionGroup'), ('workspace', 'GroupWorkspace'),
     check(schema, groups[key])
 for key, schema in [('save', 'SaveResolutionDraft'), ('workspace', 'ResolutionWorkspace'), ('empty', 'ResolutionWorkspace'), ('publish', 'PublishResolutionDraft')]:
     check(schema, resolution[key])
+recommendations = json.loads((ROOT / 'contracts/examples/recommendation.json').read_text(encoding='utf-8'))
+for key in ['action_available', 'waiting_hr']:
+    check('Recommendation', recommendations[key])
 mapping = {'user':'User', 'create_conversation':'CreateConversation', 'conversation':'Conversation',
            'send_message':'SendMessage', 'confirm':'ConfirmRequest', 'error':'ApiError',
            'failed_event':'ChatEvent'}

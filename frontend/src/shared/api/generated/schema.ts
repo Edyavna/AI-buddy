@@ -789,6 +789,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/onboarding/recommendation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Рекомендация следующего доступного действия для стажёра по его плану. */
+        get: operations["getMyRecommendation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/onboarding/plan": {
         parameters: {
             query?: never;
@@ -1662,13 +1679,64 @@ export interface components {
                 name: string;
             };
         };
+        /**
+         * @description Состояние рекомендации следующего шага
+         * @enum {string}
+         */
+        RecommendationState: "action_available" | "waiting_mentor" | "waiting_access" | "blocked_dependencies" | "blocked" | "completed" | "empty_plan";
+        /**
+         * @description Тип рекомендуемого действия стажёра
+         * @enum {string|null}
+         */
+        RecommendationActionType: "confirm" | "read_instructions" | "assistant" | "view_step" | null;
+        RecommendationTarget: {
+            step_id: string;
+            route: string;
+            /** @enum {string} */
+            action: "open_card" | "open_instructions" | "open_chat";
+        } | null;
+        WaitingStepInfo: {
+            step_id: string;
+            title: string;
+            period?: string | null;
+            reason: string;
+            state: components["schemas"]["RecommendationState"];
+            /** @enum {string|null} */
+            awaiting_role?: "intern" | "mentor" | null;
+            /** @enum {string|null} */
+            help_direction?: "mentor" | "hr" | null;
+            /** Format: date-time */
+            blocked_at?: string | null;
+            waiting_duration_seconds?: number | null;
+        } | null;
+        RecommendationHelpAction: {
+            direction: components["schemas"]["QuestionDirection"];
+            label: string;
+            url: string;
+            /** @description Доступен ли данный адресат (например, false если у команды нет HR) */
+            available: boolean;
+        } | null;
+        Recommendation: {
+            state: components["schemas"]["RecommendationState"];
+            step_id?: string | null;
+            title?: string | null;
+            period?: string | null;
+            reason: string;
+            action_type?: components["schemas"]["RecommendationActionType"];
+            action_label?: string | null;
+            target?: components["schemas"]["RecommendationTarget"];
+            waiting_step?: components["schemas"]["WaitingStepInfo"];
+            help_action?: components["schemas"]["RecommendationHelpAction"];
+        };
         /** @description progress_percent=floor(100*completed/total); пустой план дает 0. next_step_id — первый незавершенный неблокированный шаг, иначе null. Статусы и порядок определяет сервер. */
         Plan: {
             id: string;
             title: string;
             /** @description Рассчитывает сервер */
             progress_percent: number;
+            /** @description Идентификатор следующего доступного для выполнения шага стажёра (совпадает с recommendation.step_id), либо null */
             next_step_id: string | null;
+            recommendation: components["schemas"]["Recommendation"];
             steps: components["schemas"]["Step"][];
         };
         Step: {
@@ -3928,6 +3996,30 @@ export interface operations {
             404: components["responses"]["Error"];
             429: components["responses"]["Error"];
             500: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getMyRecommendation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Рекомендация доступного шага и статус ожидания приоритетного шага */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Recommendation"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
             503: components["responses"]["Error"];
             default: components["responses"]["Error"];
         };

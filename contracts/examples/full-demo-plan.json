@@ -470,5 +470,21 @@
         }
       ]
     }
-  ]
+  ],
+  "recommendation": {
+    "state": "action_available",
+    "step_id": "plan_demo_unassigned:team-setup",
+    "title": "Организационные моменты",
+    "period": "1 неделя",
+    "reason": "Текущий доступный шаг по плану адаптации",
+    "action_type": "confirm",
+    "action_label": "Подтвердить выполнение",
+    "target": {
+      "step_id": "plan_demo_unassigned:team-setup",
+      "route": "/onboarding",
+      "action": "open_card"
+    },
+    "waiting_step": null,
+    "help_action": null
+  }
 }

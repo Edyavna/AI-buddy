@@ -1,0 +1,60 @@
+{
+  "action_available": {
+    "state": "action_available",
+    "step_id": "step_org",
+    "title": "Организационные моменты",
+    "period": "1 неделя",
+    "reason": "Независимый шаг, доступный для выполнения, пока «Получить доступы» ожидает подтверждения",
+    "action_type": "confirm",
+    "action_label": "Подтвердить выполнение",
+    "target": {
+      "step_id": "step_org",
+      "route": "/onboarding",
+      "action": "open_card"
+    },
+    "waiting_step": {
+      "step_id": "step_access",
+      "title": "Получить доступы",
+      "period": "1 день",
+      "reason": "Ожидается подтверждение наставника",
+      "state": "waiting_mentor",
+      "awaiting_role": "mentor",
+      "help_direction": "mentor",
+      "blocked_at": "2026-11-14T09:00:00Z",
+      "waiting_duration_seconds": 7200
+    },
+    "help_action": {
+      "direction": "mentor",
+      "label": "Задать вопрос наставнику",
+      "url": "/chat?stepId=step_access",
+      "available": true
+    }
+  },
+  "waiting_hr": {
+    "state": "waiting_mentor",
+    "step_id": null,
+    "title": null,
+    "period": null,
+    "reason": "Шаг ожидает проверки кадровых документов специалистом HR",
+    "action_type": null,
+    "action_label": null,
+    "target": null,
+    "waiting_step": {
+      "step_id": "step_hr_docs",
+      "title": "Оформление документов",
+      "period": "1 неделя",
+      "reason": "Ожидается рассмотрение кадровым специалистом",
+      "state": "waiting_mentor",
+      "awaiting_role": "mentor",
+      "help_direction": "hr",
+      "blocked_at": "2026-11-14T08:30:00Z",
+      "waiting_duration_seconds": 9000
+    },
+    "help_action": {
+      "direction": "hr",
+      "label": "Обратиться к HR",
+      "url": "/chat?stepId=step_hr_docs",
+      "available": true
+    }
+  }
+}

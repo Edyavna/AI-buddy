@@ -52,7 +52,23 @@
         "instructions": "Тестовый шаг настройки окружения",
         "resources": []
       }
-    ]
+    ],
+    "recommendation": {
+      "state": "action_available",
+      "step_id": "step_local_setup",
+      "title": "Запустить проект",
+      "period": null,
+      "reason": "Текущий доступный шаг по плану адаптации",
+      "action_type": "assistant",
+      "action_label": "Спросить помощника",
+      "target": {
+        "step_id": "step_local_setup",
+        "route": "/chat?stepId=step_local_setup",
+        "action": "open_chat"
+      },
+      "waiting_step": null,
+      "help_action": null
+    }
   },
   "draft": {
     "id": "request_demo_1",
@@ -269,7 +285,34 @@
         "instructions": "Тестовый шаг настройки окружения",
         "resources": []
       }
-    ]
+    ],
+    "recommendation": {
+      "state": "waiting_access",
+      "step_id": null,
+      "title": null,
+      "period": null,
+      "reason": "Ожидается получение доступа: write для repo:demo-service",
+      "action_type": null,
+      "action_label": null,
+      "target": null,
+      "waiting_step": {
+        "step_id": "step_local_setup",
+        "title": "Запустить проект",
+        "period": null,
+        "reason": "Ожидается получение доступа: write для repo:demo-service",
+        "state": "waiting_access",
+        "awaiting_role": null,
+        "help_direction": "mentor",
+        "blocked_at": "2026-11-14T10:00:00Z",
+        "waiting_duration_seconds": 3600
+      },
+      "help_action": {
+        "direction": "mentor",
+        "label": "Задать вопрос наставнику",
+        "url": "/chat?stepId=step_local_setup",
+        "available": true
+      }
+    }
   },
   "granted_plan": {
     "id": "plan_demo_1",
@@ -302,7 +345,23 @@
         "instructions": "Тестовый шаг настройки окружения",
         "resources": []
       }
-    ]
+    ],
+    "recommendation": {
+      "state": "action_available",
+      "step_id": "step_local_setup",
+      "title": "Запустить проект",
+      "period": null,
+      "reason": "Текущий доступный шаг по плану адаптации",
+      "action_type": "confirm",
+      "action_label": "Подтвердить выполнение",
+      "target": {
+        "step_id": "step_local_setup",
+        "route": "/onboarding",
+        "action": "open_card"
+      },
+      "waiting_step": null,
+      "help_action": null
+    }
   },
   "completed_plan": {
     "id": "plan_demo_1",
@@ -340,7 +399,19 @@
         "instructions": "Тестовый шаг настройки окружения",
         "resources": []
       }
-    ]
+    ],
+    "recommendation": {
+      "state": "completed",
+      "step_id": null,
+      "title": null,
+      "period": null,
+      "reason": "Все шаги плана успешно завершены!",
+      "action_type": null,
+      "action_label": null,
+      "target": null,
+      "waiting_step": null,
+      "help_action": null
+    }
   },
   "error": {
     "error": {
