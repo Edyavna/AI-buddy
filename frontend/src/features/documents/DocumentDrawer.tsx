@@ -8,7 +8,7 @@ import { MarkdownContent } from './MarkdownContent';
 import { revokeDocumentContext } from './context-access';
 import styles from './DocumentDrawer.module.css';
 
-const documentSchema = z.object({ id: z.string(), title: z.string(), content: z.string(), updated_at: z.iso.datetime(),version:z.number().int().positive().optional() });
+const documentSchema = z.object({ id: z.string(), title: z.string(), content: z.string(), updated_at: z.iso.datetime(),version:z.number().int().positive().optional(), original_url: z.url({ protocol: /^https$/, hostname: /^github\.com$/ }).optional() });
 export type DocumentDrawerProps = { documentId: string | null; onClose: () => void; sourceMessageId?:string|undefined; contextQuestion?:{id:string;direction:'mentor'|'hr'|'intern'} };
 
 export function DocumentDrawer({ documentId, onClose,sourceMessageId,contextQuestion }: DocumentDrawerProps) {
@@ -73,6 +73,7 @@ export function DocumentDrawer({ documentId, onClose,sourceMessageId,contextQues
       {query.isError && <InlineError message={notFound ? 'Документ недоступен или удалён' : query.error.message}
         {...(!notFound && { onRetry: () => void query.refetch(), isRetrying: query.isRefetching })} />}
       {query.data===null&&!query.isError&&<InlineError message="Документ недоступен или доступ изменился" onRetry={()=>void query.refetch()}/>}
+      {visibleDocument?.original_url && <a href={visibleDocument.original_url} target="_blank" rel="noopener noreferrer">Открыть в GitHub</a>}
       {visibleDocument && <MarkdownContent content={visibleDocument.content} />}
     </Drawer>
   </div>;

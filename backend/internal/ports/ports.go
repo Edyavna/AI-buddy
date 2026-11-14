@@ -25,11 +25,13 @@ type Source struct {
 	Direction                      string
 	Version                        int64
 	UpdatedAt                      time.Time
+	OriginalURL                    string `json:"-"`
 }
 type Document struct {
 	ID, Title, Content, Direction string
 	Version                       int64
 	UpdatedAt                     time.Time
+	OriginalURL                   string `json:"original_url,omitempty"`
 }
 type Task struct {
 	ID, Title, Description, URL string

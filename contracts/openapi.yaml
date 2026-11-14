@@ -2637,6 +2637,10 @@ paths:
                   updated_at:
                     type: string
                     format: date-time
+                  original_url:
+                    type: string
+                    format: uri
+                    description: Для AvitoTech Playbook ссылка на GitHub с коммитом импортированного текста.
         default:
           $ref: '#/components/responses/Error'
         '400':

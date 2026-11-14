@@ -24,6 +24,9 @@ import (
 type Embedder interface {
 	Embed(context.Context, string, string) ([]float64, error)
 }
+
+const MaxMarkdownRunes = 16000
+
 type Document struct {
 	ID, Source, SourceID, Title, Content, TeamID string
 	Direction                                    string
@@ -55,7 +58,7 @@ func vector(v []float64) (string, error) {
 	return string(b), e
 }
 func (s *Service) Import(ctx context.Context, d Document) error {
-	if d.ID == "" || d.Source == "" || d.SourceID == "" || d.Title == "" || d.TeamID == "" || d.UpdatedAt.IsZero() || len([]rune(d.Content)) == 0 || len([]rune(d.Content)) > 16000 {
+	if d.ID == "" || d.Source == "" || d.SourceID == "" || d.Title == "" || d.TeamID == "" || d.UpdatedAt.IsZero() || strings.HasPrefix(d.ID, playbookIDPrefix) || d.Source == playbookSource || len([]rune(d.Content)) == 0 || len([]rune(d.Content)) > MaxMarkdownRunes {
 		return ports.ErrInvalid
 	}
 	digest := contentDigest(d)
@@ -198,7 +201,18 @@ func (s *Service) SearchDirection(ctx context.Context, q, direction string) ([]p
 	if threshold == 0 {
 		threshold = 0.35
 	}
-	rows, e := s.DB.QueryContext(ctx, `SELECT c.id,d.id,d.title,c.excerpt,d.direction,d.version,d.updated_at FROM knowledge_chunks c JOIN knowledge_documents d ON d.id=c.document_id WHERE `+readableDocument+` AND ($6='' OR d.direction=$6) AND 1-(c.embedding <=> $4::vector)>=$5 ORDER BY c.embedding <=> $4::vector,c.id LIMIT 5`, p.TeamID, p.UserID, p.Role, encoded, threshold, direction)
+	rows, e := s.DB.QueryContext(ctx, `WITH candidates AS (
+SELECT c.id,d.id AS document_id,d.title,c.excerpt,`+documentDirection+` AS direction,d.version,d.updated_at,
+       c.embedding <=> $4::vector AS distance,
+       row_number() OVER (PARTITION BY pb.document_id,
+           CASE WHEN pb.document_id IS NULL THEN c.id END ORDER BY c.embedding <=> $4::vector,c.id) AS chunk_rank
+FROM knowledge_chunks c JOIN knowledge_documents d ON d.id=c.document_id
+LEFT JOIN playbook_documents pb ON pb.document_id=d.id
+WHERE `+readableDocument+` AND (pb.document_id IS NULL OR pb.active)
+AND ($6='' OR (pb.document_id IS NULL AND d.direction=$6) OR (pb.active AND $6 IN ('mentor','hr')))
+AND 1-(c.embedding <=> $4::vector)>=$5)
+SELECT id,document_id,title,excerpt,direction,version,updated_at FROM candidates
+WHERE chunk_rank=1 ORDER BY distance,id LIMIT 5`, p.TeamID, p.UserID, p.Role, encoded, threshold, direction)
 	if e != nil {
 		return nil, ports.ErrUnavailable
 	}
@@ -222,7 +236,9 @@ func (s *Service) Read(ctx context.Context, id string) (ports.Document, error) {
 		return ports.Document{}, e
 	}
 	var d ports.Document
-	e = s.DB.QueryRowContext(ctx, `SELECT d.id,d.title,d.content,d.updated_at,d.direction,d.version FROM knowledge_documents d WHERE `+readableDocument+` AND d.id=$4`, p.TeamID, p.UserID, p.Role, id).Scan(&d.ID, &d.Title, &d.Content, &d.UpdatedAt, &d.Direction, &d.Version)
+	e = s.DB.QueryRowContext(ctx, `SELECT d.id,d.title,d.content,d.updated_at,`+documentDirection+`,d.version,COALESCE(pb.original_url,'')
+FROM knowledge_documents d LEFT JOIN playbook_documents pb ON pb.document_id=d.id
+WHERE `+readableDocument+` AND d.id=$4`, p.TeamID, p.UserID, p.Role, id).Scan(&d.ID, &d.Title, &d.Content, &d.UpdatedAt, &d.Direction, &d.Version, &d.OriginalURL)
 	if errors.Is(e, sql.ErrNoRows) {
 		return d, ports.ErrNotFound
 	}
@@ -270,12 +286,13 @@ func Handler(k ports.Knowledge) http.HandlerFunc {
 			return
 		}
 		httpapi.WriteJSON(w, 200, struct {
-			ID        string    `json:"id"`
-			Title     string    `json:"title"`
-			Content   string    `json:"content"`
-			UpdatedAt time.Time `json:"updated_at"`
-			Direction string    `json:"direction,omitempty"`
-			Version   int64     `json:"version,omitempty"`
-		}{d.ID, d.Title, d.Content, d.UpdatedAt.UTC(), d.Direction, d.Version})
+			ID          string    `json:"id"`
+			Title       string    `json:"title"`
+			Content     string    `json:"content"`
+			UpdatedAt   time.Time `json:"updated_at"`
+			Direction   string    `json:"direction,omitempty"`
+			Version     int64     `json:"version,omitempty"`
+			OriginalURL string    `json:"original_url,omitempty"`
+		}{d.ID, d.Title, d.Content, d.UpdatedAt.UTC(), d.Direction, d.Version, d.OriginalURL})
 	}
 }

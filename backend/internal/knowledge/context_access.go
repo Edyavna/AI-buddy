@@ -19,7 +19,7 @@ func ReadContextDocumentTx(ctx context.Context, tx *sql.Tx, student, viewer iden
 		return ports.Document{}, err
 	}
 	var d ports.Document
-	err = tx.QueryRowContext(ctx, `SELECT d.id,d.title,d.content,d.updated_at,d.direction,d.version FROM knowledge_documents d
+	err = tx.QueryRowContext(ctx, `SELECT d.id,d.title,d.content,d.updated_at,d.direction,d.version FROM knowledge_documents d LEFT JOIN playbook_documents pb ON pb.document_id=d.id
  WHERE `+readableDocument+` AND d.id=$4 AND d.direction=$5
  AND ($6='intern' OR ($6='mentor' AND d.direction='mentor' AND (d.users='[]'::jsonb OR d.users ? $7))
  OR ($6='hr' AND d.direction='hr' AND EXISTS(SELECT 1 FROM hr_team_assignments h WHERE h.hr_user_id=$7 AND h.team_id=$1 AND h.active))) FOR SHARE OF d`, student.TeamID, student.UserID, student.Role, id, direction, viewer.Role, viewer.UserID).Scan(&d.ID, &d.Title, &d.Content, &d.UpdatedAt, &d.Direction, &d.Version)
