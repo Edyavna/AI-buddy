@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/identity"
@@ -47,12 +48,19 @@ func checkInternTx(ctx context.Context, tx *sql.Tx, p identity.Principal) error 
 	return err
 }
 func readSteps(ctx context.Context, tx *sql.Tx, s *Snapshot) error {
+	var teamID string
+	if err := tx.QueryRowContext(ctx, `SELECT team_id FROM onboarding_plans WHERE id=$1`, s.ID).Scan(&teamID); err == nil && teamID != "" {
+		_ = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM hr_team_assignments h JOIN users u ON u.id=h.hr_user_id AND u.role='hr' WHERE h.team_id=$1 AND h.active)`, teamID).Scan(&s.HasHR)
+	} else {
+		s.HasHR = true
+	}
 	rows, err := tx.QueryContext(ctx, `SELECT s.id,s.title,s.description,s.status,s.blocked_reason,s.resource_id,s.permission,
  COALESCE(s.template_key,s.id),s.period,s.completion_policy,COALESCE(s.instructions,s.description),s.resources,
  COALESCE((SELECT jsonb_agg(jsonb_build_object('role',c.role,'user_id',c.user_id,'confirmed_at',c.confirmed_at)
  ORDER BY c.role) FROM onboarding_step_confirmations c WHERE c.step_id=s.id),'[]'::jsonb),
  ARRAY(SELECT r.request_id FROM onboarding_step_requests r WHERE r.step_id=s.id ORDER BY r.request_id),
- ARRAY(SELECT d.prerequisite_id FROM onboarding_step_dependencies d WHERE d.step_id=s.id ORDER BY d.prerequisite_id)
+ ARRAY(SELECT d.prerequisite_id FROM onboarding_step_dependencies d WHERE d.step_id=s.id ORDER BY d.prerequisite_id),
+ s.blocked_at
  FROM onboarding_steps s WHERE s.plan_id=$1 ORDER BY s.position`, s.ID)
 	if err != nil {
 		return err
@@ -62,13 +70,19 @@ func readSteps(ctx context.Context, tx *sql.Tx, s *Snapshot) error {
 	for rows.Next() {
 		var r Record
 		var resource, permission sql.NullString
+		var blockedAt sql.NullTime
 		var confirmations, resources []byte
 		// pgx database/sql exposes text arrays as strings; pgtype's codec provides
 		// the PostgreSQL array parser (including quotes/escapes) without hand parsing.
 		var requests, prerequisites string
 		if err := rows.Scan(&r.ID, &r.Title, &r.Description, &r.Status, &r.BlockedReason, &resource, &permission,
-			&r.TemplateKey, &r.Period, &r.CompletionPolicy, &r.Instructions, &resources, &confirmations, &requests, &prerequisites); err != nil {
+			&r.TemplateKey, &r.Period, &r.CompletionPolicy, &r.Instructions, &resources, &confirmations, &requests, &prerequisites, &blockedAt); err != nil {
 			return err
+		}
+		if blockedAt.Valid {
+			t := blockedAt.Time.UTC()
+			r.BlockedAt = &t
+			r.Step.BlockedAt = &t
 		}
 		if err := json.Unmarshal(resources, &r.Resources); err != nil {
 			return err
@@ -172,8 +186,46 @@ func findStep(snapshot Snapshot, id string) (Record, error) {
 }
 
 func saveStepStatus(ctx context.Context, tx *sql.Tx, id, status string) error {
-	_, err := tx.ExecContext(ctx, `UPDATE onboarding_steps SET status=$1,blocked_reason=NULL WHERE id=$2`, status, id)
+	var err error
+	if status == "blocked" {
+		_, err = tx.ExecContext(ctx, `UPDATE onboarding_steps SET status=$1 WHERE id=$2`, status, id)
+		if err == nil {
+			_ = recordBlockingTx(ctx, tx, id, "Заблокирован")
+		}
+	} else {
+		_, err = tx.ExecContext(ctx, `UPDATE onboarding_steps SET status=$1,blocked_reason=NULL WHERE id=$2`, status, id)
+		if err == nil {
+			_ = recordUnblockingTx(ctx, tx, id)
+		}
+	}
 	return err
+}
+
+func recordBlockingTx(ctx context.Context, tx *sql.Tx, stepID, reason string) error {
+	now := time.Now().UTC()
+	var prevBlockedAt sql.NullTime
+	_ = tx.QueryRowContext(ctx, `SELECT blocked_at FROM onboarding_steps WHERE id=$1`, stepID).Scan(&prevBlockedAt)
+	if !prevBlockedAt.Valid {
+		eventID := fmt.Sprintf("%s:%d", stepID, now.UnixNano())
+		if _, err := tx.ExecContext(ctx, `INSERT INTO onboarding_step_blocking_history(id, step_id, blocked_reason, started_at) VALUES($1, $2, $3, $4)`, eventID, stepID, reason, now); err != nil {
+			return err
+		}
+		if _, err := tx.ExecContext(ctx, `UPDATE onboarding_steps SET blocked_at=$1 WHERE id=$2`, now, stepID); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func recordUnblockingTx(ctx context.Context, tx *sql.Tx, stepID string) error {
+	now := time.Now().UTC()
+	if _, err := tx.ExecContext(ctx, `UPDATE onboarding_step_blocking_history SET ended_at=$1 WHERE step_id=$2 AND ended_at IS NULL`, now, stepID); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, `UPDATE onboarding_steps SET blocked_at=NULL WHERE id=$1`, stepID); err != nil {
+		return err
+	}
+	return nil
 }
 
 func advanceRevision(ctx context.Context, tx *sql.Tx, snapshot *Snapshot) error {
@@ -241,6 +293,7 @@ func ApplyRequestStateTx(ctx context.Context, tx *sql.Tx, owner identity.Princip
 		if _, err := tx.ExecContext(ctx, `UPDATE onboarding_steps SET status='blocked',blocked_reason=$2 WHERE id=$1`, stepID, reason); err != nil {
 			return sqlError(err)
 		}
+		_ = recordBlockingTx(ctx, tx, stepID, reason)
 	} else {
 		if _, err := tx.ExecContext(ctx, `UPDATE onboarding_steps s SET status=CASE
  WHEN (SELECT count(*) FROM onboarding_step_confirmations c WHERE c.step_id=s.id
@@ -250,6 +303,7 @@ func ApplyRequestStateTx(ctx context.Context, tx *sql.Tx, owner identity.Princip
  AND EXISTS(SELECT 1 FROM onboarding_step_requests WHERE step_id=$1 AND status='granted')`, stepID); err != nil {
 			return sqlError(err)
 		}
+		_ = recordUnblockingTx(ctx, tx, stepID)
 	}
 	return sqlError(advanceRevision(ctx, tx, &snapshot))
 }

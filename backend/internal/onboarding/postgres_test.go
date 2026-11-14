@@ -73,6 +73,13 @@ func TestPostgresPlanTransactionsAndRecovery(t *testing.T) {
 	if err != nil || p.Steps[0].Status != "blocked" || p.Steps[0].BlockedReason == nil {
 		t.Fatal(p, err)
 	}
+	if p.Steps[0].BlockedAt == nil || p.Recommendation.WaitingStep == nil || p.Recommendation.WaitingStep.BlockedAt == nil {
+		t.Fatalf("expected blocked_at to be populated, got %+v", p.Steps[0])
+	}
+	var histCount int
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM onboarding_step_blocking_history WHERE step_id='step_local_setup' AND ended_at IS NULL`).Scan(&histCount); err != nil || histCount == 0 {
+		t.Fatalf("expected active blocking history row, got %d %v", histCount, err)
+	}
 	if _, err := svc.Update(ctx, "step_local_setup", "completed"); !errors.Is(err, onboarding.ErrTransition) {
 		t.Fatal(err)
 	}
@@ -91,6 +98,12 @@ func TestPostgresPlanTransactionsAndRecovery(t *testing.T) {
 	p, err = svc.Get(ctx)
 	if err != nil || p.Steps[0].Status != "in_progress" || p.ProgressPercent != 0 {
 		t.Fatal("grant did not unblock failed previous attempt", p, err)
+	}
+	if p.Steps[0].BlockedAt != nil {
+		t.Fatalf("expected blocked_at to be cleared, got %v", p.Steps[0].BlockedAt)
+	}
+	if err := db.QueryRowContext(ctx, `SELECT count(*) FROM onboarding_step_blocking_history WHERE step_id='step_local_setup' AND ended_at IS NOT NULL`).Scan(&histCount); err != nil || histCount == 0 {
+		t.Fatalf("expected ended blocking history row, got %d %v", histCount, err)
 	}
 	// A distinct required resource remains blocking, even if another was granted.
 	if err := apply("r3", "pending", "other_repo"); err != nil {
