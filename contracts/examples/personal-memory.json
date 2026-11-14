@@ -1,0 +1,107 @@
+{
+  "entry": {
+    "id": "12345678-1234-4234-8234-123456789012",
+    "category": "work_environment",
+    "key": "shell",
+    "value": "powershell",
+    "text": "Использую PowerShell",
+    "source_message_id": "memory_user",
+    "conversation_id": "memory_conversation",
+    "revision": 1,
+    "edited": false,
+    "created_at": "2026-11-14T10:00:00Z",
+    "updated_at": "2026-11-14T10:00:00Z"
+  },
+  "proposals": {
+    "state": "ready",
+    "items": [
+      {
+        "id": "12345678-1234-4234-8234-123456789013",
+        "category": "work_environment",
+        "key": "shell",
+        "value": "powershell",
+        "text": "Использую PowerShell",
+        "source_message_id": "memory_user",
+        "conversation_id": "memory_conversation",
+        "state": "pending",
+        "created_at": "2026-11-14T10:00:00Z",
+        "entry_id": null,
+        "replaces": null
+      }
+    ]
+  },
+  "decision": {
+    "decision": "accept",
+    "expected_entry_id": null,
+    "expected_revision": 0
+  },
+  "result": {
+    "proposal": {
+      "id": "12345678-1234-4234-8234-123456789013",
+      "category": "work_environment",
+      "key": "shell",
+      "value": "powershell",
+      "text": "Использую PowerShell",
+      "source_message_id": "memory_user",
+      "conversation_id": "memory_conversation",
+      "state": "accepted",
+      "created_at": "2026-11-14T10:00:00Z",
+      "entry_id": "12345678-1234-4234-8234-123456789012",
+      "replaces": null
+    },
+    "entry": {
+      "id": "12345678-1234-4234-8234-123456789012",
+      "category": "work_environment",
+      "key": "shell",
+      "value": "powershell",
+      "text": "Использую PowerShell",
+      "source_message_id": "memory_user",
+      "conversation_id": "memory_conversation",
+      "revision": 1,
+      "edited": false,
+      "created_at": "2026-11-14T10:00:00Z",
+      "updated_at": "2026-11-14T10:00:00Z"
+    }
+  },
+  "workspace": {
+    "entries": [
+      {
+        "id": "12345678-1234-4234-8234-123456789012",
+        "category": "work_environment",
+        "key": "shell",
+        "value": "powershell",
+        "text": "Использую PowerShell",
+        "source_message_id": "memory_user",
+        "conversation_id": "memory_conversation",
+        "revision": 1,
+        "edited": false,
+        "created_at": "2026-11-14T10:00:00Z",
+        "updated_at": "2026-11-14T10:00:00Z"
+      }
+    ],
+    "pending": [],
+    "options": [
+      {
+        "category": "work_environment",
+        "key": "shell",
+        "value": "powershell",
+        "text": "Использую PowerShell"
+      }
+    ],
+    "context": {
+      "team": {
+        "id": "team_demo_backend",
+        "name": "Команда backend"
+      },
+      "role": "intern",
+      "mentor": {
+        "id": "mentor_demo_1",
+        "name": "Наставник"
+      },
+      "progress_percent": 0,
+      "requests": [],
+      "recent_requests": []
+    },
+    "profile_markdown": "# Персональный профиль\n- Использую PowerShell\n"
+  }
+}

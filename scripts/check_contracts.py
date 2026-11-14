@@ -20,6 +20,11 @@ def check(schema, value):
 
 f = json.loads((ROOT / 'contracts/examples/scenario.json').read_text(encoding='utf-8'))
 resolution = json.loads((ROOT / 'contracts/examples/resolution-drafts.json').read_text(encoding='utf-8'))
+memory = json.loads((ROOT / 'contracts/examples/personal-memory.json').read_text(encoding='utf-8'))
+for key, schema in [('entry', 'MemoryEntry'), ('proposals', 'MemoryProposals'), ('decision', 'MemoryDecision'), ('result', 'MemoryDecisionResult'), ('workspace', 'MemoryWorkspace')]:
+    check(schema, memory[key])
+assert memory['result']['entry']['id'] == memory['result']['proposal']['entry_id']
+assert memory['entry']['source_message_id'] == memory['proposals']['items'][0]['source_message_id']
 groups = json.loads((ROOT / 'contracts/examples/question-groups.json').read_text(encoding='utf-8'))
 context = json.loads((ROOT / 'contracts/examples/question-context.json').read_text(encoding='utf-8'))
 for key, schema in [('input', 'QuestionContextInput'), ('snapshot', 'QuestionContextSnapshot'), ('preview', 'QuestionContextSnapshot')]:
@@ -124,6 +129,11 @@ try: check('SendMessage',bad)
 except ValidationError: pass
 else: raise AssertionError('Whitespace-only text accepted')
 for schema,bad in [
+    ('MemoryDecision', {**memory['decision'], 'user_id': 'forged'}),
+    ('MemoryDecision', {**memory['decision'], 'decision': 'automatic'}),
+    ('MemoryDecision', {**memory['decision'], 'expected_revision': -1}),
+    ('EditMemoryEntry', {'value': 'powershell', 'revision': 0}),
+    ('EditMemoryEntry', {'value': 'powershell', 'revision': 1, 'category': 'hr'}),
     ('QuestionContextInput', {**context['input'], 'documents': None}),
     ('QuestionContextInput', {**context['input'], 'fragments': None}),
     ('QuestionContextInput', {**context['input'], 'specialist_id': 'forged'}),

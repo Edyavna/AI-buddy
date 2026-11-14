@@ -23,6 +23,261 @@ tags:
 - name: Requests
 - name: Mentor
 paths:
+  /memory:
+    get:
+      tags:
+        - Personal memory
+      operationId: readPersonalMemory
+      responses:
+        '200':
+          description: Authorized personal memory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryWorkspace'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+      description: >-
+        Owner-only confirmed preferences, pending proposals and freshly loaded application context. Profile is
+        bounded data, never authority.
+  /messages/{id}/memory-proposals:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Personal memory
+      operationId: readMessageMemoryProposals
+      responses:
+        '200':
+          description: Authorized personal memory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryProposals'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags:
+        - Personal memory
+      operationId: suggestPersonalMemory
+      responses:
+        '200':
+          description: Authorized personal memory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryProposals'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties: {}
+      description: >-
+        Bounded optional model selection from the authenticated intern own user message. Creates proposals only,
+        never confirmed memory. Failure does not affect the ordinary chat. Ready/skipped extractions are
+        replayed; failed selection can be explicitly retried.
+  /memory/proposals/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    put:
+      tags:
+        - Personal memory
+      operationId: decidePersonalMemory
+      responses:
+        '200':
+          description: Authorized personal memory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryDecisionResult'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MemoryDecision'
+      description: >-
+        Explicitly accept or dismiss a proposal. Acceptance compares both expected entry identity and revision;
+        replay never recreates a deleted entry.
+  /memory/entries/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+    get:
+      tags:
+        - Personal memory
+      operationId: readPersonalMemoryEntry
+      responses:
+        '200':
+          description: Authorized personal memory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryEntry'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      tags:
+        - Personal memory
+      operationId: editPersonalMemoryEntry
+      responses:
+        '200':
+          description: Authorized personal memory
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MemoryEntry'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EditMemoryEntry'
+    delete:
+      tags:
+        - Personal memory
+      operationId: deletePersonalMemoryEntry
+      responses:
+        '200':
+          description: Authorized personal memory
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required:
+                  - deleted
+                properties:
+                  deleted:
+                    type: boolean
+                    enum:
+                      - true
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteMemoryEntry'
   /meetings:
     get:
       operationId: listMeetings
@@ -3795,6 +4050,378 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
   schemas:
+    MemoryOption:
+      type: object
+      additionalProperties: false
+      required:
+        - category
+        - key
+        - value
+        - text
+      properties:
+        category:
+          type: string
+          enum:
+            - work_environment
+            - learning
+            - instruction_format
+        key:
+          type: string
+          enum:
+            - os
+            - shell
+            - technology
+            - format
+        value:
+          type: string
+          maxLength: 40
+        text:
+          type: string
+    MemoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - category
+        - key
+        - value
+        - text
+        - source_message_id
+        - conversation_id
+        - revision
+        - edited
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+          enum:
+            - work_environment
+            - learning
+            - instruction_format
+        key:
+          type: string
+          enum:
+            - os
+            - shell
+            - technology
+            - format
+        value:
+          type: string
+          maxLength: 40
+        text:
+          type: string
+        source_message_id:
+          type: string
+        conversation_id:
+          type: string
+        revision:
+          type: integer
+          minimum: 1
+        edited:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    NullableMemoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - category
+        - key
+        - value
+        - text
+        - source_message_id
+        - conversation_id
+        - revision
+        - edited
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+          enum:
+            - work_environment
+            - learning
+            - instruction_format
+        key:
+          type: string
+          enum:
+            - os
+            - shell
+            - technology
+            - format
+        value:
+          type: string
+          maxLength: 40
+        text:
+          type: string
+        source_message_id:
+          type: string
+        conversation_id:
+          type: string
+        revision:
+          type: integer
+          minimum: 1
+        edited:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      nullable: true
+    MemoryProposal:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - category
+        - key
+        - value
+        - text
+        - source_message_id
+        - conversation_id
+        - state
+        - created_at
+        - entry_id
+        - replaces
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+          enum:
+            - work_environment
+            - learning
+            - instruction_format
+        key:
+          type: string
+          enum:
+            - os
+            - shell
+            - technology
+            - format
+        value:
+          type: string
+          maxLength: 40
+        text:
+          type: string
+        source_message_id:
+          type: string
+        conversation_id:
+          type: string
+        state:
+          type: string
+          enum:
+            - pending
+            - accepted
+            - dismissed
+        created_at:
+          type: string
+          format: date-time
+        entry_id:
+          type: string
+          nullable: true
+        replaces:
+          $ref: '#/components/schemas/NullableMemoryEntry'
+    MemoryProposals:
+      type: object
+      additionalProperties: false
+      required:
+        - state
+        - items
+      properties:
+        state:
+          type: string
+          enum:
+            - not_requested
+            - ready
+            - failed
+            - skipped
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryProposal'
+          maxItems: 40
+    MemoryDecision:
+      type: object
+      additionalProperties: false
+      required:
+        - decision
+        - expected_entry_id
+        - expected_revision
+      properties:
+        decision:
+          type: string
+          enum:
+            - accept
+            - dismiss
+        expected_entry_id:
+          type: string
+          nullable: true
+        expected_revision:
+          type: integer
+          minimum: 0
+    MemoryDecisionResult:
+      type: object
+      additionalProperties: false
+      required:
+        - proposal
+        - entry
+      properties:
+        proposal:
+          $ref: '#/components/schemas/MemoryProposal'
+        entry:
+          $ref: '#/components/schemas/NullableMemoryEntry'
+    EditMemoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - value
+        - revision
+      properties:
+        value:
+          type: string
+          minLength: 1
+          maxLength: 40
+        revision:
+          type: integer
+          minimum: 1
+    DeleteMemoryEntry:
+      type: object
+      additionalProperties: false
+      required:
+        - revision
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+    MemoryLiveContext:
+      type: object
+      additionalProperties: false
+      required:
+        - team
+        - role
+        - mentor
+        - progress_percent
+        - requests
+        - recent_requests
+      properties:
+        team:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - name
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        role:
+          type: string
+          enum:
+            - intern
+        mentor:
+          type: object
+          additionalProperties: false
+          required:
+            - id
+            - name
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+          nullable: true
+        progress_percent:
+          type: integer
+          minimum: 0
+          maximum: 100
+          nullable: true
+        requests:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - status
+              - count
+            properties:
+              status:
+                type: string
+              count:
+                type: integer
+                minimum: 0
+        recent_requests:
+          type: array
+          maxItems: 5
+          items:
+            type: object
+            additionalProperties: false
+            required:
+              - id
+              - resource_name
+              - permission
+              - status
+            properties:
+              id:
+                type: string
+              resource_name:
+                type: string
+              permission:
+                type: string
+                enum:
+                  - read
+                  - write
+              status:
+                type: string
+                enum:
+                  - draft
+                  - submitting
+                  - pending
+                  - granted
+                  - rejected
+                  - failed
+    MemoryWorkspace:
+      type: object
+      additionalProperties: false
+      required:
+        - entries
+        - pending
+        - options
+        - context
+        - profile_markdown
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryEntry'
+          maxItems: 32
+        pending:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryProposal'
+          maxItems: 40
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/MemoryOption'
+        context:
+          $ref: '#/components/schemas/MemoryLiveContext'
+        profile_markdown:
+          type: string
+          maxLength: 4096
     MeetingAgreementInput:
       type: object
       required:

@@ -18,6 +18,7 @@ import (
 	"github.com/Edyavna/AI-buddy/backend/internal/meetings"
 	"github.com/Edyavna/AI-buddy/backend/internal/mentor"
 	"github.com/Edyavna/AI-buddy/backend/internal/onboarding"
+	"github.com/Edyavna/AI-buddy/backend/internal/personalmemory"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/config"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/httpapi"
 	"github.com/Edyavna/AI-buddy/backend/internal/ports"
@@ -32,6 +33,7 @@ type Dependencies struct {
 	Questions           ports.OpenQuestionCounter
 	QuestionDocuments   knowledgegaps.Documents
 	ResolutionGenerator knowledge.ResolutionGenerator
+	MemorySelector      personalmemory.Selector
 }
 
 // NewHandler is the composition root. Supplying AccessChecker connects #13
@@ -57,7 +59,16 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 		plans := onboarding.Handler{Service: onboarding.Service{Store: onboarding.SQLStore{DB: db}, Access: deps.Access}}
 		mentors := mentor.Store{DB: db}
 		checkpoints := onboarding.CheckpointHandler{Service: onboarding.Checkpoints{DB: db, Access: deps.Access, Assignments: mentors}}
-		conversations := chat.Handler{Service: chat.Service{Store: chat.SQLStore{DB: db}, Agent: deps.Agent, Requests: deps.Requests, Knowledge: deps.Knowledge}, Logger: logger}
+		selector := deps.MemorySelector
+		if selector == nil && cfg.DemoMode {
+			selector = personalmemory.Model{Demo: true}
+		}
+		memory := personalmemory.Store{DB: db, Selector: selector}
+		chatAgent := deps.Agent
+		if chatAgent != nil {
+			chatAgent = personalmemory.Agent{Reader: memory, Next: chatAgent}
+		}
+		conversations := chat.Handler{Service: chat.Service{Store: chat.SQLStore{DB: db}, Agent: chatAgent, Requests: deps.Requests, Knowledge: deps.Knowledge}, Logger: logger}
 		uploads := knowledge.Uploads{DB: db}
 		if deps.QuestionDocuments == nil {
 			deps.QuestionDocuments = uploads
@@ -86,6 +97,7 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 			requests.Register(mux, session)
 			mux.Handle("GET /api/v1/documents/{document_id}", session.Require(knowledge.Handler(deps.Knowledge), false))
 			conversations.Register(mux, session)
+			memory.Register(mux, session)
 		}
 	}
 	return httpapi.New(opts)
