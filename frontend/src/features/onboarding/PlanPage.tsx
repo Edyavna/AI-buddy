@@ -1,3 +1,4 @@
+import { PlanAgreements } from '@/features/onboarding-operations/MeetingsPage';
 import React from 'react';
 import { EmptyState, InlineError, Spinner, StatusBadge } from '@/shared/ui';
 import { useCheckpointConfirmation, usePlan, useUpdateStep } from './hooks';
@@ -154,6 +155,7 @@ export const PlanPage: React.FC = () => {
         </div>
       </section>
 
+      <PlanAgreements />
       <section className={styles.stepsSection} aria-label="Шаги адаптации">
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Шаги адаптации</h2>
