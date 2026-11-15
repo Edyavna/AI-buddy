@@ -19,6 +19,8 @@ export function ChatPage() {
   const { conversationId } = useParams();
   const [params] = useSearchParams();
   const stepId = params.get('stepId');
+  const requestedDirection = params.get('direction');
+  const preferredDirection = requestedDirection === 'mentor' || requestedDirection === 'hr' ? requestedDirection : undefined;
   const {hash}=useLocation();
   const navigate = useNavigate(), client = useQueryClient();
   const [controller] = useState(() => new ChatController(client, () => navigate('/login', { replace: true })));
@@ -112,7 +114,7 @@ export function ChatPage() {
   }, []);
   const send = () => {
     if (!me.data || (conversationId && !conversation.data) || !contextReady || contextInvalid || !text.trim() || text.length > 8000 || busy) return;
-    void controller.send(text, me.data.id, contextId ?? null, id => navigate(`/chat/${encodeURIComponent(id)}`, { replace: true }));
+    void controller.send(text, me.data.id, contextId ?? null, id => navigate(`/chat/${encodeURIComponent(id)}${preferredDirection ? `?direction=${preferredDirection}` : ''}`, { replace: true }));
     setText('');
   };
   return <div className={styles.layout} data-chat-layout>
@@ -172,7 +174,7 @@ export function ChatPage() {
               <AccessRequestPanel requestId={requestId} onDiscuss={focusComposer} />
             </div>)}
             {message.role === 'assistant' && message.in_reply_to_message_id && message.status !== 'generating' &&
-              <QuestionComposer messageId={message.id} onOpenDocument={id=>{setSourceMessageId(undefined);setDocumentId(id);}} onOpenContextDocument={id=>openSource(message.id,id)}/>}
+              <QuestionComposer messageId={message.id} preferredDirection={preferredDirection} onOpenDocument={id=>{setSourceMessageId(undefined);setDocumentId(id);}} onOpenContextDocument={id=>openSource(message.id,id)}/>}
             {canEscalate && !message.routing && me.data &&
               <MentorQuestionPanel key={me.data.id} messageId={message.id} onOpenDocument={id=>{setSourceMessageId(undefined);setDocumentId(id);}} existingOnly
                 canEscalate={canEscalate} isChatBusy={busy} canRepeatQuestion={!!original && contextReady && !contextInvalid && !error}

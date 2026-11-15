@@ -5681,6 +5681,11 @@ components:
       - instructions
       - resources
       properties:
+        blocked_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Начало сохранённой блокировки; отсутствует у шага без истории.
         id:
           type: string
         title:

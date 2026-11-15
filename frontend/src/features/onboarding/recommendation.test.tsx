@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { RouterProvider, createMemoryRouter } from 'react-router-dom';
@@ -7,9 +7,28 @@ import { renderWithQuery } from '@/test/render';
 import { server } from '@/test/server';
 import { createFullCheckpointPlan } from '@/mocks/fixtures/checkpoints';
 import { routes } from '@/app/router';
+import { QuestionComposer } from '@/features/hr';
 import { onboardingApi } from './api';
 import { RecommendationCard, formatWaitingDuration } from './RecommendationCard';
 import type { Recommendation } from './schemas';
+
+it.each([true, false])('uses the recommendation recipient only when currently available: %s', async hrAvailable => {
+  server.use(http.get('*/api/v1/messages/recommendation-source/questions', () => HttpResponse.json({
+    items: [], question: 'Вопрос по шагу',
+    drafts: [{ direction: 'mentor', question: 'Черновик наставнику', context_excerpt: '' }],
+    routing: { direction: 'mentor', reason: 'Тестовая классификация', clarification: null, split: false },
+    available_directions: hrAvailable ? ['mentor', 'hr'] : ['mentor'],
+  })));
+  const { queryClient } = renderWithQuery(<QuestionComposer messageId="recommendation-source" preferredDirection="hr" onOpenDocument={() => {}} />);
+  await userEvent.click(screen.getByRole('button', { name: 'Обратиться к специалисту' }));
+  const recipient = await screen.findByRole('combobox', { name: /Адресат/ });
+  expect(recipient).toHaveValue(hrAvailable ? 'hr' : 'mentor');
+  if (hrAvailable) {
+    await userEvent.selectOptions(recipient, 'mentor');
+    await act(() => queryClient.refetchQueries({ queryKey: ['hr', 'message', 'recommendation-source'] }));
+    expect(recipient).toHaveValue('mentor');
+  }
+});
 
 describe('formatWaitingDuration', () => {
   it('returns null for null, undefined, negative numbers or non-finite numbers', () => {
@@ -292,6 +311,13 @@ describe('PlanPage recommendation integration & URL persistence (#55)', () => {
     };
   };
 
+  it('returns to the recommended step when navigation clears an explicit step URL', async () => {
+    const { router } = renderPlanApp('/onboarding?stepId=step_organization');
+    await screen.findByRole('heading', { name: 'Организационные моменты' });
+    await act(() => router.navigate('/onboarding'));
+    expect(await screen.findByRole('heading', { name: 'Запустить проект' })).toBeInTheDocument();
+  });
+
   it('displays recommendation card on /onboarding and selects step via recommendation button', async () => {
     const { router } = renderPlanApp('/onboarding');
 
@@ -364,6 +390,7 @@ describe('PlanPage recommendation integration & URL persistence (#55)', () => {
 
     expect(await screen.findByRole('heading', { name: 'Организационные моменты' })).toBeInTheDocument();
     expect(router.state.location.search).toBe('?stepId=step_organization');
+    await waitFor(() => expect(document.getElementById('current-step')).toHaveFocus());
   });
 
   it('selects waiting step when clicking view waiting step button', async () => {

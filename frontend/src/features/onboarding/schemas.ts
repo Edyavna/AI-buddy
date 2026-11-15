@@ -32,6 +32,7 @@ export const stepSchema = z.object({
   awaiting_role: z.enum(['intern', 'mentor']).nullable().optional(),
   instructions: z.string().optional(),
   resources: z.array(checkpointResourceSchema).optional(),
+  blocked_at: z.iso.datetime({ offset: true }).nullable().optional(),
 }).transform((step) => ({
   ...step,
   template_key: step.template_key ?? step.id,

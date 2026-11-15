@@ -141,7 +141,9 @@ func TestPostgresSessionPlanLifecycle(t *testing.T) {
 		t.Fatal(err, hashes)
 	}
 	p := decodePlan(t, apiRequest(t, h, "GET", "/api/v1/onboarding/plan", "", cookie, 200))
-	if p.ID != "plan_demo_1" || len(p.Steps) != 17 || len(p.Steps[0].RequestIDs) != 0 || p.NextStepID == nil || *p.NextStepID != "step_local_setup" {
+	if p.ID != "plan_demo_1" || len(p.Steps) != 17 || len(p.Steps[0].RequestIDs) != 0 || p.NextStepID == nil || *p.NextStepID != "plan_demo_1:team-setup" ||
+		p.Recommendation.StepID == nil || *p.Recommendation.StepID != *p.NextStepID || p.Recommendation.WaitingStep == nil ||
+		p.Recommendation.WaitingStep.StepID != "step_local_setup" || p.Recommendation.WaitingStep.State != onboarding.StateWaitingAccess {
 		t.Fatal(p)
 	}
 	apiRequest(t, h, "PATCH", "/api/v1/onboarding/steps/step_local_setup", `{"status":"completed"}`, cookie, 409)

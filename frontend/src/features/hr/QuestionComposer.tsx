@@ -22,10 +22,12 @@ export function QuestionComposer({
   messageId,
   onOpenDocument,
   onOpenContextDocument = onOpenDocument,
+  preferredDirection,
 }: {
   messageId: string;
   onOpenDocument: (id: string) => void;
   onOpenContextDocument?: (id: string) => void;
+  preferredDirection?: Direction | undefined;
 }) {
   const [open, setOpen] = useState(false);
   return (
@@ -44,6 +46,7 @@ export function QuestionComposer({
           messageId={messageId}
           onOpenDocument={onOpenDocument}
           onOpenContextDocument={onOpenContextDocument}
+          preferredDirection={preferredDirection}
         />
       )}
     </section>
@@ -54,10 +57,12 @@ function MessageQuestions({
   messageId,
   onOpenDocument,
   onOpenContextDocument,
+  preferredDirection,
 }: {
   messageId: string;
   onOpenDocument: (id: string) => void;
   onOpenContextDocument: (id: string) => void;
+  preferredDirection?: Direction | undefined;
 }) {
   const key = ["hr", "message", messageId];
   const query = usePrivateQuery(
@@ -97,6 +102,8 @@ function MessageQuestions({
     (direction) => !data.items.some((q) => q.original_direction === direction),
   );
   const defaultDirection =
+    (preferredDirection && data.available_directions.includes(preferredDirection) && remaining.includes(preferredDirection)
+      ? preferredDirection : undefined) ??
     data.drafts.find((d) => remaining.includes(d.direction))?.direction ??
     (suggested &&
     suggested !== "needs_clarification" &&

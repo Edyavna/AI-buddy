@@ -17,6 +17,10 @@ registry = Registry().with_resource('urn:ai-buddy:openapi', Resource.from_conten
 def check(schema, value):
     OAS30Validator({'$ref': 'urn:ai-buddy:openapi#/components/schemas/' + schema}, registry=registry,
                    format_checker=FormatChecker()).validate(value)
+    if schema == 'Plan' and value.get('recommendation'):
+        rec = value['recommendation']
+        expected = rec.get('step_id') if rec['state'] == 'action_available' else None
+        assert value['next_step_id'] == expected, 'recommendation and next_step_id disagree'
 
 f = json.loads((ROOT / 'contracts/examples/scenario.json').read_text(encoding='utf-8'))
 resolution = json.loads((ROOT / 'contracts/examples/resolution-drafts.json').read_text(encoding='utf-8'))

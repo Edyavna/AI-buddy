@@ -42,14 +42,7 @@ export const PlanPage: React.FC = () => {
   const updateConfirmation = useCheckpointConfirmation();
   const [searchParams, setSearchParams] = useSearchParams();
   const stepIdFromUrl = searchParams.get('stepId');
-  const [selectedStepId, setSelectedStepId] = React.useState<string | null>(stepIdFromUrl);
   const [navigationDirection, setNavigationDirection] = React.useState<'forward' | 'backward'>('forward');
-
-  React.useEffect(() => {
-    if (stepIdFromUrl) {
-      setSelectedStepId(stepIdFromUrl);
-    }
-  }, [stepIdFromUrl]);
 
   if (plan.isPending) {
     return (
@@ -74,7 +67,7 @@ export const PlanPage: React.FC = () => {
   const completedCount = data.steps.filter((step) => step.status === 'completed').length;
   const nextStep = data.steps.find((step) => step.id === data.next_step_id);
   const currentStep =
-    data.steps.find((step) => step.id === (selectedStepId ?? stepIdFromUrl)) ??
+    data.steps.find((step) => step.id === stepIdFromUrl) ??
     nextStep ??
     data.steps[0];
   const currentIndex = currentStep ? data.steps.findIndex((step) => step.id === currentStep.id) : -1;
@@ -86,7 +79,6 @@ export const PlanPage: React.FC = () => {
     const step = data.steps[index];
     if (!step) return;
     setNavigationDirection(index < currentIndex ? 'backward' : 'forward');
-    setSelectedStepId(step.id);
     setSearchParams(
       (prev) => {
         const next = new URLSearchParams(prev);
@@ -101,6 +93,11 @@ export const PlanPage: React.FC = () => {
     const index = data.steps.findIndex((step) => step.id === stepId);
     if (index !== -1) {
       showStep(index);
+      requestAnimationFrame(() => {
+        const card = document.getElementById('current-step');
+        card?.focus();
+        card?.scrollIntoView?.({ block: 'nearest' });
+      });
     }
   };
 
@@ -220,6 +217,7 @@ export const PlanPage: React.FC = () => {
 
               <div
                 id="current-step"
+                tabIndex={-1}
                 className={`${styles.stepViewport} ${navigationDirection === 'forward' ? styles.stepForward : styles.stepBackward}`}
                 key={currentStep.id}
               >

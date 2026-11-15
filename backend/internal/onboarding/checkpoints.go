@@ -152,9 +152,10 @@ func (s Checkpoints) View(ctx context.Context, snapshot Snapshot, owner, actor i
 func (s Checkpoints) view(ctx context.Context, snapshot Snapshot, owner, actor identity.Principal, grants map[ports.AccessCheck]bool) Plan {
 	if s.Access != nil {
 		ownerContext := identity.WithPrincipal(ctx, owner)
-		completed := snapshot.completedSteps()
 		for _, step := range snapshot.Steps {
-			if step.Requirement == nil || !step.requires(actor.Role) || step.confirmedBy(actor.Role) != "" || !step.canConfirm(completed) {
+			// Recommendations also need the grants of blocked, already confirmed,
+			// and other-role steps, exactly as the ordinary plan read does.
+			if step.Requirement == nil {
 				continue
 			}
 			if _, checked := grants[*step.Requirement]; !checked {

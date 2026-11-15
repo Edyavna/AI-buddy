@@ -48,11 +48,10 @@ func checkInternTx(ctx context.Context, tx *sql.Tx, p identity.Principal) error 
 	return err
 }
 func readSteps(ctx context.Context, tx *sql.Tx, s *Snapshot) error {
-	var teamID string
-	if err := tx.QueryRowContext(ctx, `SELECT team_id FROM onboarding_plans WHERE id=$1`, s.ID).Scan(&teamID); err == nil && teamID != "" {
-		_ = tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM hr_team_assignments h JOIN users u ON u.id=h.hr_user_id AND u.role='hr' WHERE h.team_id=$1 AND h.active)`, teamID).Scan(&s.HasHR)
-	} else {
-		s.HasHR = true
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM hr_team_assignments h
+ JOIN users u ON u.id=h.hr_user_id AND u.role='hr'
+ JOIN onboarding_plans p ON p.team_id=h.team_id WHERE p.id=$1 AND h.active)`, s.ID).Scan(&s.HasHR); err != nil {
+		return err
 	}
 	rows, err := tx.QueryContext(ctx, `SELECT s.id,s.title,s.description,s.status,s.blocked_reason,s.resource_id,s.permission,
  COALESCE(s.template_key,s.id),s.period,s.completion_policy,COALESCE(s.instructions,s.description),s.resources,
@@ -203,7 +202,9 @@ func saveStepStatus(ctx context.Context, tx *sql.Tx, id, status string) error {
 func recordBlockingTx(ctx context.Context, tx *sql.Tx, stepID, reason string) error {
 	now := time.Now().UTC()
 	var prevBlockedAt sql.NullTime
-	_ = tx.QueryRowContext(ctx, `SELECT blocked_at FROM onboarding_steps WHERE id=$1`, stepID).Scan(&prevBlockedAt)
+	if err := tx.QueryRowContext(ctx, `SELECT blocked_at FROM onboarding_steps WHERE id=$1`, stepID).Scan(&prevBlockedAt); err != nil {
+		return err
+	}
 	if !prevBlockedAt.Valid {
 		eventID := fmt.Sprintf("%s:%d", stepID, now.UnixNano())
 		if _, err := tx.ExecContext(ctx, `INSERT INTO onboarding_step_blocking_history(id, step_id, blocked_reason, started_at) VALUES($1, $2, $3, $4)`, eventID, stepID, reason, now); err != nil {

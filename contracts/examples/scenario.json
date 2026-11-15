@@ -309,7 +309,7 @@
       "help_action": {
         "direction": "mentor",
         "label": "Задать вопрос наставнику",
-        "url": "/chat?stepId=step_local_setup",
+        "url": "/chat?direction=mentor&stepId=step_local_setup",
         "available": true
       }
     }

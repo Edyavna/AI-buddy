@@ -2,6 +2,7 @@ package onboarding
 
 import (
 	"fmt"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -124,7 +125,16 @@ func computeRecommendation(snapshot Snapshot, steps []Step, grants map[ports.Acc
 
 	// Priority step is waiting or blocked!
 	helpDir := determineHelpDirection(priorityStep)
-	waitingDuration := computeDuration(priorityRecord.BlockedAt)
+	waitingAt := priorityRecord.BlockedAt
+	if waitingState == StateWaitingMentor {
+		for _, confirmation := range priorityStep.Confirmations {
+			if confirmation.Role == identity.Intern && !confirmation.ConfirmedAt.IsZero() {
+				at := confirmation.ConfirmedAt.UTC()
+				waitingAt = &at
+			}
+		}
+	}
+	waitingDuration := computeDuration(waitingAt)
 
 	waitingInfo := &WaitingStepInfo{
 		StepID:                 priorityStep.ID,
@@ -134,7 +144,7 @@ func computeRecommendation(snapshot Snapshot, steps []Step, grants map[ports.Acc
 		State:                  waitingState,
 		AwaitingRole:           awaitingRole,
 		HelpDirection:          &helpDir,
-		BlockedAt:              priorityRecord.BlockedAt,
+		BlockedAt:              waitingAt,
 		WaitingDurationSeconds: waitingDuration,
 	}
 
@@ -175,6 +185,13 @@ func computeRecommendation(snapshot Snapshot, steps []Step, grants map[ports.Acc
 }
 
 func analyzeWaiting(r Record, s Step, completed map[string]bool, grants map[ports.AccessCheck]bool) (bool, RecommendationState, string, *identity.Role) {
+	if r.Requirement != nil && !grants[*r.Requirement] && prerequisitesMet(r.Prerequisites, completed) {
+		reason := "Ожидается получение доступа; подробности — в заявке и чате"
+		if s.BlockedReason != nil && *s.BlockedReason != "" {
+			reason = *s.BlockedReason
+		}
+		return true, StateWaitingAccess, reason, nil
+	}
 	if s.Status == "blocked" {
 		if !prerequisitesMet(r.Prerequisites, completed) {
 			reason := "Сначала завершите предыдущий шаг"
@@ -182,13 +199,6 @@ func analyzeWaiting(r Record, s Step, completed map[string]bool, grants map[port
 				reason = *s.BlockedReason
 			}
 			return true, StateBlockedDeps, reason, nil
-		}
-		if r.Requirement != nil && !grants[*r.Requirement] {
-			reason := "Ожидается получение доступа; подробности — в заявке и чате"
-			if s.BlockedReason != nil && *s.BlockedReason != "" {
-				reason = *s.BlockedReason
-			}
-			return true, StateWaitingAccess, reason, nil
 		}
 		reason := "Шаг заблокирован"
 		if s.BlockedReason != nil && *s.BlockedReason != "" {
@@ -236,8 +246,9 @@ func determineAction(step Step) (ActionType, string, RecommendationTarget) {
 		Action: "open_card",
 	}
 	lowerInst := strings.ToLower(step.Instructions + " " + step.Description)
-	if strings.Contains(lowerInst, "помощник") || strings.Contains(lowerInst, "чат") {
-		target.Route = "/chat?stepId=" + step.ID
+	chatWords := strings.FieldsFunc(lowerInst, func(r rune) bool { return r < 'а' || r > 'я' })
+	if strings.Contains(lowerInst, "помощник") || slices.ContainsFunc(chatWords, func(word string) bool { return strings.HasPrefix(word, "чат") }) {
+		target.Route = "/chat?" + url.Values{"stepId": {step.ID}}.Encode()
 		target.Action = "open_chat"
 		return ActionAssistant, "Спросить помощника", target
 	}
@@ -260,20 +271,20 @@ func determineHelpDirection(step Step) string {
 }
 
 func determineHelpAction(step Step, state RecommendationState, helpDir string, hasHR bool) RecommendationHelpAction {
-	url := "/chat?stepId=" + step.ID
+	chatURL := "/chat?" + url.Values{"stepId": {step.ID}, "direction": {helpDir}}.Encode()
 	if helpDir == "hr" {
 		label := "Обратиться к HR"
 		return RecommendationHelpAction{
 			Direction: "hr",
 			Label:     label,
-			URL:       url,
+			URL:       chatURL,
 			Available: hasHR,
 		}
 	}
 	return RecommendationHelpAction{
 		Direction: "mentor",
 		Label:     "Задать вопрос наставнику",
-		URL:       url,
+		URL:       chatURL,
 		Available: true,
 	}
 }

@@ -2141,6 +2141,11 @@ export interface components {
             steps: components["schemas"]["Step"][];
         };
         Step: {
+            /**
+             * Format: date-time
+             * @description Начало сохранённой блокировки; отсутствует у шага без истории.
+             */
+            blocked_at?: string | null;
             id: string;
             title: string;
             /** @description Markdown */
