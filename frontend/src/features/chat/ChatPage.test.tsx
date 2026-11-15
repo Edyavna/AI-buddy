@@ -80,6 +80,66 @@ it('sends with Enter, does not send with Shift or IME, and survives internal URL
   fireEvent.keyDown(input, { key: 'Enter' });
   expect(await screen.findByText(f.messages[1]!.text)).toBeInTheDocument(); expect(posts).toBe(1);
 });
+
+it.each([
+  ['intern', 403], ['mentor', 403], ['intern', 404], ['mentor', 404],
+] as const)('sends the first question after retrying a denied chat list: %s / %s', async (role, status) => {
+  let allowed = false;
+  const create = vi.fn(() => HttpResponse.json({ ...f.conversation, step_id: null }));
+  const history = vi.fn(() => HttpResponse.json([]));
+  const send = vi.fn(async ({ request }: { request: Request }) => {
+    expect(await request.json()).toMatchObject({ text: 'Первый вопрос после повтора' });
+    return new HttpResponse(
+      eventText('message.started', { user_message_id: 'msg_u1', message_id: 'msg_a1' }) +
+      eventText('message.completed', { message: f.messages[1] }),
+      { headers: { 'Content-Type': 'text/event-stream' } },
+    );
+  });
+  server.use(
+    http.get('*/api/v1/me', () => HttpResponse.json({ ...f.user, role })),
+    http.get('*/api/v1/conversations', () => allowed ? HttpResponse.json([]) : new HttpResponse(null, { status })),
+    http.post('*/api/v1/conversations', create),
+    http.get('*/api/v1/conversations/:id/messages', history),
+    http.post('*/api/v1/conversations/:id/messages', send),
+  );
+  const path = role === 'mentor' ? '/mentor/chat' : '/chat';
+  renderWithQuery(<MemoryRouter initialEntries={[path]}><Routes>
+    <Route path={`${path}/:conversationId?`} element={<ChatPage mentor={role === 'mentor'} />} />
+  </Routes></MemoryRouter>);
+  await screen.findByRole('button', { name: 'Повторить' });
+  expect(create).not.toHaveBeenCalled();
+  expect(history).not.toHaveBeenCalled();
+  allowed = true;
+  fireEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+  await screen.findByText('Диалогов пока нет');
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(history).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByRole('textbox', { name: 'Ваш вопрос' }), { target: { value: 'Первый вопрос после повтора' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
+  await screen.findByText(f.messages[1]!.text);
+  expect(create).toHaveBeenCalledTimes(1);
+  expect(send).toHaveBeenCalledTimes(1);
+});
+
+it.each([['hr', 'hr'], ['mentor', 'mentor'], ['unknown', 'mentor']])('preserves a valid help recipient through conversation creation: %s', async (direction, expected) => {
+  server.use(
+    http.get('*/api/v1/conversations/:id/messages', () => HttpResponse.json([])),
+    http.post('*/api/v1/conversations/:id/messages', () => new HttpResponse(
+      eventText('message.started', { user_message_id: 'msg_u1', message_id: 'msg_a1' }) +
+      eventText('message.completed', { message: f.messages[1] }),
+      { headers: { 'Content-Type': 'text/event-stream' } },
+    )),
+    http.get('*/api/v1/messages/:id/questions', () => HttpResponse.json({
+      items: [], drafts: [], question: 'Помощь по шагу', available_directions: ['mentor', 'hr'],
+      routing: { direction: 'mentor', reason: 'Технический вопрос', clarification: null, split: false },
+    })),
+  );
+  mount(`/chat?stepId=step_local_setup&direction=${direction}`);
+  await waitFor(() => expect(screen.getByLabelText('Ваш вопрос')).toHaveValue(`Помоги выполнить шаг: ${f.plan.steps[0]?.title}`));
+  fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Обратиться к специалисту' }));
+  expect(await screen.findByRole('combobox', { name: /Адресат/ })).toHaveValue(expected);
+});
 it('offers escalation only for a completed knowledge gap and repeats with a fresh message ID', async () => {
   const original = f.messages[0]!;
   const gap = { ...f.messages[1]!, outcome: 'knowledge_gap', sources: [], request_ids: [] };
@@ -118,4 +178,26 @@ it('redirects 401 and displays missing conversation without sending', async () =
   server.use(http.get('*/api/v1/me', () => HttpResponse.json({ error: { code: 'UNAUTHENTICATED', message: 'Войдите', trace_id: 't' } }, { status: 401 })));
   renderWithQuery(<MemoryRouter initialEntries={['/chat']}><Routes><Route path="/chat" element={<ChatPage />} /><Route path="/login" element={<p>Вход</p>} /></Routes></MemoryRouter>);
   expect(await screen.findByText('Вход')).toBeInTheDocument();
+});
+
+it('archives and restores a conversation while keeping its history accessible', async () => {
+  let archived = false;
+  server.use(
+    http.get('*/api/v1/conversations', ({ request }) => {
+      const archive = new URL(request.url).searchParams.get('archived') === 'true';
+      return HttpResponse.json(archived === archive ? [{ ...f.conversation, archived }] : []);
+    }),
+    http.patch('*/api/v1/conversations/:id', async ({ request }) => {
+      archived = (await request.json() as { archived: boolean }).archived;
+      return HttpResponse.json({ ...f.conversation, archived });
+    }),
+  );
+  mount('/chat/conversation_demo_1');
+  fireEvent.click(await screen.findByRole('button', { name: /^Архивировать диалог:/ }));
+  expect(await screen.findByText('Диалогов пока нет')).toBeVisible();
+  expect(screen.getByText(f.messages[1]!.text)).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Архив' }));
+  expect(await screen.findByRole('link', { name: f.conversation.title })).toBeVisible();
+  fireEvent.click(await screen.findByRole('button', { name: /^Вернуть из архива:/ }));
+  expect(await screen.findByText('Архив пуст')).toBeVisible();
 });

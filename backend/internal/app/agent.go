@@ -30,6 +30,7 @@ func demoDependencies(db *sql.DB, provider *integrations.Provider, ai *config.AI
 		Client: providerhttp.Client{BaseURL: ai.ModelBaseURL, Key: ai.ModelKey},
 		Model:  ai.ModelName,
 	}
+	deps.MentorAgent = agent.Mentor{Complete: model.CompleteWithoutTools}
 	deps.Agent = &agent.Agent{Model: model, Classifier: model,
 		Knowledge: k, Tasks: provider, Access: provider,
 		Checkpoints: onboarding.SQLStore{DB: db},

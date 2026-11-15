@@ -1,0 +1,6 @@
+frontend/src/features/chat/ChatPage.tsx	22,23,117,177	uncovered=177
+frontend/src/features/onboarding/PlanPage.tsx	43,44,70,82,84,85,86,92,93,94,95,96,97,98,99	uncovered=
+frontend/src/features/onboarding/RecommendationCard.tsx	13,14,15,16,17,18,19,20,22,23,24,30,40,44,54,56,61,62,63,64,66,67,69,72,77,81,82,83,84,94,95,96,107,120,187	uncovered=69,72
+frontend/src/features/onboarding/api.ts	13	uncovered=
+frontend/src/features/onboarding/schemas.ts	49,59,66,72,84,91,112,113,114,135	uncovered=
+frontend changed line coverage 95.38% (62/65)

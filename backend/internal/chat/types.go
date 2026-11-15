@@ -20,12 +20,14 @@ var (
 )
 
 type Conversation struct {
+	Archived  bool      `json:"archived"`
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`
 	StepID    *string   `json:"step_id"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	ClientID  string    `json:"client_conversation_id"`
+	Markdown  bool      `json:"markdown,omitempty"`
 }
 type Source struct {
 	ID         string     `json:"id"`
@@ -40,18 +42,19 @@ type APIError struct {
 	Error httpapi.Error `json:"error"`
 }
 type Message struct {
-	ID         string                   `json:"id"`
-	ClientID   *string                  `json:"client_message_id"`
-	Role       string                   `json:"role"`
-	Text       string                   `json:"text"`
-	Status     string                   `json:"status"`
-	Sources    []Source                 `json:"sources"`
-	RequestIDs []string                 `json:"request_ids"`
-	Routing    *ports.RoutingSuggestion `json:"routing,omitempty"`
-	Outcome    ports.Outcome            `json:"outcome,omitempty"`
-	Error      *APIError                `json:"error,omitempty"`
-	CreatedAt  time.Time                `json:"created_at"`
-	InReplyTo  *string                  `json:"in_reply_to_message_id"`
+	ConversationTitle string                   `json:"-"`
+	ID                string                   `json:"id"`
+	ClientID          *string                  `json:"client_message_id"`
+	Role              string                   `json:"role"`
+	Text              string                   `json:"text"`
+	Status            string                   `json:"status"`
+	Sources           []Source                 `json:"sources"`
+	RequestIDs        []string                 `json:"request_ids"`
+	Routing           *ports.RoutingSuggestion `json:"routing,omitempty"`
+	Outcome           ports.Outcome            `json:"outcome,omitempty"`
+	Error             *APIError                `json:"error,omitempty"`
+	CreatedAt         time.Time                `json:"created_at"`
+	InReplyTo         *string                  `json:"in_reply_to_message_id"`
 }
 type Reservation struct {
 	Conversation    Conversation
@@ -59,8 +62,9 @@ type Reservation struct {
 	Previous        []Message
 }
 type Store interface {
-	List(context.Context, identity.Principal) ([]Conversation, error)
-	Create(context.Context, identity.Principal, string, *string) (Conversation, bool, error)
+	List(context.Context, identity.Principal, bool) ([]Conversation, error)
+	SetArchived(context.Context, identity.Principal, string, bool) (Conversation, error)
+	Create(context.Context, identity.Principal, string, *string, bool) (Conversation, bool, error)
 	Get(context.Context, identity.Principal, string) (Conversation, error)
 	Messages(context.Context, identity.Principal, string) ([]Message, error)
 	Begin(context.Context, identity.Principal, string, string, string, string) (Reservation, error)
@@ -68,10 +72,11 @@ type Store interface {
 	Finish(context.Context, identity.Principal, string, Message) (Message, error)
 }
 type Service struct {
-	Knowledge ports.Knowledge
-	Store     Store
-	Agent     ports.Agent
-	Requests  ports.RequestReader
+	Knowledge   ports.Knowledge
+	Store       Store
+	Agent       ports.Agent
+	MentorAgent ports.Agent
+	Requests    ports.RequestReader
 }
 
 func principal(ctx context.Context) (identity.Principal, error) {
@@ -79,7 +84,7 @@ func principal(ctx context.Context) (identity.Principal, error) {
 	if err != nil {
 		return p, err
 	}
-	if p.Role != identity.Intern {
+	if p.Role != identity.Intern && p.Role != identity.Mentor {
 		return p, ports.ErrForbidden
 	}
 	return p, nil

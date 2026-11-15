@@ -29,6 +29,12 @@ func toolSchemas() []any {
 	return out
 }
 func (m *DeepSeek) Complete(ctx context.Context, msg []Message) (Message, error) {
+	return m.complete(ctx, msg, true)
+}
+func (m *DeepSeek) CompleteWithoutTools(ctx context.Context, msg []Message) (Message, error) {
+	return m.complete(ctx, msg, false)
+}
+func (m *DeepSeek) complete(ctx context.Context, msg []Message, tools bool) (Message, error) {
 	var response struct {
 		Choices []struct {
 			Message Message `json:"message"`
@@ -38,15 +44,18 @@ func (m *DeepSeek) Complete(ctx context.Context, msg []Message) (Message, error)
 	if m.Model == "" {
 		return Message{}, ports.ErrUnavailable
 	}
-	e := m.Client.Post(ctx, "/chat/completions", map[string]any{
+	body := map[string]any{
 		"model":           m.Model,
 		"messages":        msg,
-		"tools":           toolSchemas(),
 		"stream":          false,
 		"max_tokens":      4096,
 		"thinking":        map[string]string{"type": "disabled"},
 		"response_format": map[string]string{"type": "json_object"},
-	}, &response)
+	}
+	if tools {
+		body["tools"] = toolSchemas()
+	}
+	e := m.Client.Post(ctx, "/chat/completions", body, &response)
 	if e != nil {
 		return Message{}, e
 	}

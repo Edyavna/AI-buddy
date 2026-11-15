@@ -2,6 +2,8 @@ import { createServer } from 'node:http';
 
 const port = Number(process.env.HR_FIXTURE_PORT ?? 55662);
 const vector = Array(1024).fill(0);
+const mentorFailures = new Set();
+const markdownFailures = new Set();
 vector[0] = 1;
 
 createServer(async (request, response) => {
@@ -28,6 +30,35 @@ createServer(async (request, response) => {
       const mentor=profile.match(/Действующий наставник: "([^"\n]+)"/)?.[1]??'не назначен';
       const answer=/наставник/i.test(currentQuestion)?`Текущий наставник: ${mentor}`:profile.includes('Использую PowerShell')?'В PowerShell проверьте текущую папку: `Get-Location`.':profile.includes('Использую Bash')?'В Bash проверьте текущую папку: `pwd`.':/использую PowerShell/i.test(currentQuestion)?'Учту это в текущем диалоге. Предпочтение можно подтвердить ниже для следующих разговоров.':'Уточните рабочую оболочку; предпочтения пока не сохранены.';
       response.end(JSON.stringify({choices:[{finish_reason:'stop',message:{role:'assistant',content:JSON.stringify({answer,outcome:'answered'})}}]}));return;
+    }
+    if (input.messages[0].content.startsWith('Ты помогаешь наставнику подготовить инструкцию')) {
+      if (input.tools?.length) throw new Error('Markdown generation must not receive intern tools');
+      const previous = input.messages.findLast(message => message.role === 'assistant' && message.content.startsWith('# Доступ к репозиторию'))?.content;
+      let answer = '# Доступ к репозиторию\n\nКоманда использует team/repo.\n\n```powershell\ngit clone https://example.org/team/repo.git\n```\n';
+      let clarify = false;
+      if (currentQuestion === 'N75 нужна инструкция') {
+        answer = 'Какой репозиторий использует команда?'; clarify = true;
+      } else if (currentQuestion === 'N75 добавь пример') {
+        if (!previous) throw new Error('Previous Markdown version missing from model history');
+        answer = previous + '\n## Пример для стажёра\n\nПопросите у наставника доступ к team/repo.\n';
+      } else if (currentQuestion === 'N75 fail добавь отказ') {
+        if (!previous?.includes('## Пример для стажёра')) throw new Error('Updated Markdown version missing from model history');
+        if (!markdownFailures.has(currentQuestion)) {
+          markdownFailures.add(currentQuestion); response.statusCode = 503; response.end('{}'); return;
+        }
+        answer = previous + '\n## При отказе\n\nУточните причину у наставника.\n';
+      }
+      response.end(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify({ answer, clarify }) } }] }));
+      return;
+    }
+    if (input.messages[0].content.startsWith('Ты помощник наставника.')) {
+      if (input.tools?.length) throw new Error('Mentor chat must not receive intern tools');
+      if (currentQuestion.includes('N76 fail') && !mentorFailures.has(currentQuestion)) {
+        mentorFailures.add(currentQuestion); response.statusCode = 503; response.end('{}'); return;
+      }
+      const history = input.messages.filter(message => message.role === 'user').map(message => message.content).join(' | ');
+      response.end(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify({ answer: `Ответ наставнику: ${history}` }) } }] }));
+      return;
     }
     if (input.tools?.length && /N57/.test(currentQuestion)) {
       const turn = input.messages.slice(userIndex + 1);

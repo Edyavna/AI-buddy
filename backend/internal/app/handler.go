@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/Edyavna/AI-buddy/backend/internal/accessrequests"
+	"github.com/Edyavna/AI-buddy/backend/internal/actionqueue"
 	"github.com/Edyavna/AI-buddy/backend/internal/auth"
 	"github.com/Edyavna/AI-buddy/backend/internal/chat"
 	"github.com/Edyavna/AI-buddy/backend/internal/curator"
@@ -28,6 +29,7 @@ import (
 type Dependencies struct {
 	Access              ports.AccessChecker
 	Agent               ports.Agent
+	MentorAgent         ports.Agent
 	Requests            ports.RequestReader
 	Knowledge           ports.Knowledge
 	Questions           ports.OpenQuestionCounter
@@ -46,6 +48,9 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 		}
 		if deps.Agent == nil && cfg.DemoMode {
 			deps.Agent = demo.Agent{Delay: cfg.DemoChatDelay}
+		}
+		if deps.MentorAgent == nil && cfg.DemoMode {
+			deps.MentorAgent = demo.MentorAgent{}
 		}
 		requestStore := accessrequests.Store{DB: db}
 		requests := accessrequests.Handler{Store: requestStore, Checker: deps.Access}
@@ -68,7 +73,7 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 		if chatAgent != nil {
 			chatAgent = personalmemory.Agent{Reader: memory, Next: chatAgent}
 		}
-		conversations := chat.Handler{Service: chat.Service{Store: chat.SQLStore{DB: db}, Agent: chatAgent, Requests: deps.Requests, Knowledge: deps.Knowledge}, Logger: logger}
+		conversations := chat.Handler{Service: chat.Service{Store: chat.SQLStore{DB: db}, Agent: chatAgent, MentorAgent: deps.MentorAgent, Requests: deps.Requests, Knowledge: deps.Knowledge}, Logger: logger}
 		uploads := knowledge.Uploads{DB: db}
 		if deps.QuestionDocuments == nil {
 			deps.QuestionDocuments = uploads
@@ -87,6 +92,7 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 			plans.Register(mux, session)
 			mentor.Handler{Store: mentors, Questions: deps.Questions, Access: deps.Access}.Register(mux, session)
 			checkpoints.Register(mux, session)
+			actionqueue.Handler{Store: actionqueue.Store{DB: db, Checkpoints: checkpoints.Service}}.Register(mux, session)
 			knowledgegaps.Handler{Store: questions}.Register(mux, session)
 			reviewprep.Handler{Store: reviews}.Register(mux, session)
 			meetings.Store{DB: db}.Register(mux, session)

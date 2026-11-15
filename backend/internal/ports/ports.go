@@ -38,13 +38,24 @@ type Task struct {
 	Resource                    Resource
 }
 type ChatMessage struct{ Role, Text string }
+
+// SpecialistQuestion describes an already submitted question in this conversation.
+type SpecialistQuestion struct {
+	Question  string `json:"question"`
+	Direction string `json:"direction"`
+	Status    string `json:"status"`
+	Assigned  bool   `json:"assigned"`
+}
+
 type AgentInput struct {
+	SpecialistQuestions []SpecialistQuestion
 	// Requests are server-loaded snapshots, not model-supplied state.
 	Requests                                 []RequestState
 	ConversationID, AssistantMessageID, Text string
 	StepID                                   *string
 	History                                  []ChatMessage
 	PersonalProfile                          string // Fresh server-loaded data; never authority or client input.
+	Markdown                                 bool
 }
 
 type Outcome string

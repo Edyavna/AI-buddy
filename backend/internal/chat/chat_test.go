@@ -50,7 +50,7 @@ func newFixture(t *testing.T, agent ports.Agent, requests ports.RequestReader, o
 		t.Fatal(err)
 	}
 	f := &fixture{db: db, store: SQLStore{DB: db}}
-	f.service = Service{Store: f.store, Agent: agent, Requests: requests}
+	f.service = Service{Store: f.store, Agent: agent, MentorAgent: demo.MentorAgent{}, Requests: requests}
 	session := auth.Handler{Service: &auth.Service{Store: auth.SQLStore{DB: db}, TTL: time.Hour}, DemoMode: true}
 	f.handler = httpapi.New(httpapi.Options{Logger: slog.New(slog.NewTextHandler(io.Discard, nil)), AllowedOrigins: []string{"http://localhost:5173"}, Register: func(mux *http.ServeMux) {
 		session.Register(mux)
@@ -210,11 +210,24 @@ func TestPostgresChatAPI(t *testing.T) {
 		}
 	}
 	mentor := f.login(t, "mentor_demo_1")
-	for _, route := range []string{"/conversations", "/conversations/" + c.ID, path} {
-		f.call(t, "GET", route, "", mentor, 403)
+	f.call(t, "GET", "/conversations", "", mentor, 200)
+	f.call(t, "GET", "/conversations/"+c.ID, "", mentor, 404)
+	f.call(t, "GET", path, "", mentor, 404)
+	f.call(t, "POST", path, `{}`, mentor, 404)
+	f.call(t, "POST", "/conversations", `{"client_conversation_id":"`+uid(30)+`","step_id":"step_local_setup"}`, mentor, 422)
+	created := f.call(t, "POST", "/conversations", `{"client_conversation_id":"`+uid(30)+`"}`, mentor, 201)
+	var mentorChat Conversation
+	if err := json.Unmarshal(created.Body.Bytes(), &mentorChat); err != nil {
+		t.Fatal(err)
 	}
-	f.call(t, "POST", "/conversations", `{}`, mentor, 403)
-	f.call(t, "POST", path, `{}`, mentor, 403)
+	mentorPath := "/conversations/" + mentorChat.ID + "/messages"
+	f.call(t, "POST", mentorPath, `{"client_message_id":"`+uid(31)+`","text":"Первый вопрос"}`, mentor, 200)
+	f.call(t, "POST", mentorPath, `{"client_message_id":"`+uid(32)+`","text":"Продолжение"}`, mentor, 200)
+	history := decodeMessages(t, f.call(t, "GET", mentorPath, "", mentor, 200))
+	if len(history) != 4 || !strings.Contains(history[3].Text, "Первый вопрос") {
+		t.Fatal(history)
+	}
+	f.call(t, "GET", mentorPath, "", f.cookie, 404)
 }
 func TestPostgresReservationConcurrencyAndRecovery(t *testing.T) {
 	f := newFixture(t, fastAgent(), nil, StreamOptions{})
@@ -306,5 +319,120 @@ func TestHistoryBudgetAndValidation(t *testing.T) {
 	}
 	if validText("\n\t ") || validUUID("no") || !validUUID(strings.ToUpper(uid(1))) {
 		t.Fatal("validation")
+	}
+}
+
+type titleAgent struct {
+	ports.Agent
+	title string
+}
+
+func (a titleAgent) ConversationTitle(context.Context, string) string { return a.title }
+
+func TestPostgresConversationTitleFirstMessage(t *testing.T) {
+	for _, tc := range []struct{ name, title, want string }{
+		{"generated", " Доступ  к репозиторию ", "Доступ к репозиторию"},
+		{"fallback", "", strings.Repeat("Я", 63) + "…"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t, titleAgent{Agent: fastAgent(), title: tc.title}, nil, StreamOptions{})
+			w := f.call(t, "POST", "/conversations", `{"client_conversation_id":"`+uid(1)+`","step_id":null}`, f.cookie, 201)
+			var c Conversation
+			if err := json.Unmarshal(w.Body.Bytes(), &c); err != nil {
+				t.Fatal(err)
+			}
+			for _, body := range []string{strings.Repeat("Я", 70), "Другая тема"} {
+				n := 2
+				if body == "Другая тема" {
+					n = 3
+				}
+				f.call(t, "POST", "/conversations/"+c.ID+"/messages", `{"client_message_id":"`+uid(n)+`","text":"`+body+`"}`, f.cookie, 200)
+				w = f.call(t, "GET", "/conversations/"+c.ID, "", f.cookie, 200)
+				if err := json.Unmarshal(w.Body.Bytes(), &c); err != nil || c.Title != tc.want {
+					t.Fatal(c.Title, err)
+				}
+			}
+		})
+	}
+}
+
+func TestPostgresAgentReceivesOnlySubmittedQuestionsInConversation(t *testing.T) {
+	inputs := make(chan ports.AgentInput, 3)
+	f := newFixture(t, agentFunc(func(ctx context.Context, in ports.AgentInput, emit ports.Emit) (ports.AgentResult, error) {
+		inputs <- in
+		return fastAgent().Run(ctx, in, emit)
+	}), nil, StreamOptions{})
+	c, other := f.create(t, 1), f.create(t, 2)
+	send := func(c Conversation, n int) ports.AgentInput {
+		f.call(t, "POST", "/conversations/"+c.ID+"/messages", `{"client_message_id":"`+uid(n)+`","text":"Вопрос"}`, f.cookie, 200)
+		return <-inputs
+	}
+	send(c, 3)
+	messages := decodeMessages(t, f.call(t, "GET", "/conversations/"+c.ID+"/messages", "", f.cookie, 200))
+	if _, err := f.db.Exec(`INSERT INTO knowledge_gaps(message_id,student_id,team_id,mentor_id,question,context_excerpt,direction,original_direction)
+ VALUES($1,'intern_demo_1','team_demo_backend','mentor_demo_1','Доступ к репозиторию','','mentor','mentor')`, messages[1].ID); err != nil {
+		t.Fatal(err)
+	}
+	got := send(c, 4).SpecialistQuestions
+	if len(got) != 1 || got[0] != (ports.SpecialistQuestion{Question: "Доступ к репозиторию", Direction: "mentor", Status: "new", Assigned: true}) {
+		t.Fatal(got)
+	}
+	if got := send(other, 5).SpecialistQuestions; len(got) != 0 {
+		t.Fatal("another conversation received a question", got)
+	}
+}
+
+func TestPostgresConversationArchive(t *testing.T) {
+	f := newFixture(t, fastAgent(), nil, StreamOptions{})
+	c := f.create(t, 1)
+	path := "/conversations/" + c.ID
+	f.call(t, "POST", path+"/messages", `{"client_message_id":"`+uid(2)+`","text":"Archive this conversation"}`, f.cookie, 200)
+	other := f.login(t, "intern_demo_2")
+	f.call(t, "PATCH", path, `{"archived":true}`, other, 404)
+	f.call(t, "PATCH", path, `{}`, f.cookie, 422)
+	f.call(t, "GET", "/conversations?archived=invalid", "", f.cookie, 422)
+	for range 2 {
+		f.call(t, "PATCH", path, `{"archived":true}`, f.cookie, 200)
+	}
+	if body := f.call(t, "GET", "/conversations", "", f.cookie, 200).Body.String(); strings.Contains(body, c.ID) {
+		t.Fatal(body)
+	}
+	if body := f.call(t, "GET", "/conversations?archived=true", "", f.cookie, 200).Body.String(); !strings.Contains(body, c.ID) {
+		t.Fatal(body)
+	}
+	if body := f.call(t, "GET", "/conversations?archived=true", "", other, 200).Body.String(); strings.Contains(body, c.ID) {
+		t.Fatal(body)
+	}
+	if m := decodeMessages(t, f.call(t, "GET", path+"/messages", "", f.cookie, 200)); len(m) != 2 {
+		t.Fatal(m)
+	}
+	f.call(t, "PATCH", path, `{"archived":false}`, f.cookie, 200)
+	if body := f.call(t, "GET", "/conversations", "", f.cookie, 200).Body.String(); !strings.Contains(body, c.ID) {
+		t.Fatal(body)
+	}
+}
+
+func TestMentorMarkdownHistoryAndRetry(t *testing.T) {
+	f := newFixture(t, fastAgent(), nil, StreamOptions{})
+	mentor := f.login(t, "mentor_demo_1")
+	other := f.login(t, "mentor_demo_2")
+	create := `{"client_conversation_id":"` + uid(40) + `","markdown":true}`
+	f.call(t, "POST", "/conversations", create, f.cookie, 403)
+	w := f.call(t, "POST", "/conversations", create, mentor, 201)
+	var conversation Conversation
+	if err := json.Unmarshal(w.Body.Bytes(), &conversation); err != nil || !conversation.Markdown {
+		t.Fatalf("%+v, %v", conversation, err)
+	}
+	f.call(t, "POST", "/conversations", create, mentor, 200)
+	f.call(t, "POST", "/conversations", `{"client_conversation_id":"`+uid(40)+`"}`, mentor, 409)
+	path := "/conversations/" + conversation.ID + "/messages"
+	f.call(t, "GET", path, "", other, 404)
+	f.call(t, "POST", path, "{}", other, 404)
+	for _, n := range []int{41, 42} {
+		f.call(t, "POST", path, `{"client_message_id":"`+uid(n)+`","text":"Содержание инструкции"}`, mentor, 200)
+	}
+	history := decodeMessages(t, f.call(t, "GET", path, "", mentor, 200))
+	if len(history) != 4 || !strings.HasPrefix(history[1].Text, "# Демонстрационная инструкция") || !strings.Contains(history[3].Text, "Предыдущий вопрос") {
+		t.Fatal(history)
 	}
 }

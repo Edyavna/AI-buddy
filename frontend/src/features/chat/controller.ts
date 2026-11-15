@@ -5,8 +5,9 @@ import { acceptAccessRequest } from '@/features/access-requests';
 import { abortSessionRequests } from '@/shared/api/session-signal';
 import { createConversation, listMessages } from './api';
 import { applyEvent, protocolError, readSse, type StreamState } from './stream';
+import { chatAccessDenied, chatSignal, clearChatAccess } from './access';
 
-const pendingSchema = z.object({ conversationId: z.uuid(), messageId: z.uuid(), text: z.string().min(1).max(8000), stepId: z.string().nullable() });
+const pendingSchema = z.object({ conversationId: z.uuid(), messageId: z.uuid(), text: z.string().min(1).max(8000), stepId: z.string().nullable(), markdown: z.boolean().optional() });
 type Pending = z.infer<typeof pendingSchema>;
 export type State = StreamState & { phase: 'idle' | 'sending' | 'streaming' | 'recovering' | 'failed'; error: string; conversationId: string | null };
 export class ChatController {
@@ -19,9 +20,14 @@ export class ChatController {
   snapshot = () => this.state;
   update(patch: Partial<State>) { this.state = { ...this.state, ...patch }; this.listeners.forEach(listener => listener()); }
   stop() { this.abort.abort(); }
+  denyAccess(message = 'Диалог недоступен или удалён') {
+    this.stop(); this.pending = null;
+    Object.keys(sessionStorage).filter(key => key.startsWith('chat:create:')).forEach(key => sessionStorage.removeItem(key));
+    this.update({ messages: [], tools: {}, assistantId: null, userId: null, phase: 'failed', error: message });
+  }
   activate() { if (this.abort.signal.aborted) this.abort = new AbortController(); }
   retry(userId: string, navigate: (id: string) => void) {
-    if (this.pending) return this.send(this.pending.text, userId, this.pending.stepId, navigate);
+    if (this.pending) return this.send(this.pending.text, userId, this.pending.stepId, navigate, { markdown: Boolean(this.pending.markdown) });
   }
   get canRetry() { return this.pending !== null; }
   reset(id: string | null) {
@@ -37,19 +43,22 @@ export class ChatController {
       this.unauthorized();
       return;
     }
+    if (chatAccessDenied(error)) {
+      clearChatAccess(this.client); this.denyAccess(); return;
+    }
     this.update({ phase: 'failed', error: error instanceof Error ? error.message : 'Не удалось получить ответ' });
   }
-  restore(userId: string) {
+  restore(userId: string, markdown = false) {
     try {
-      const parsed = pendingSchema.safeParse(JSON.parse(sessionStorage.getItem(`chat:create:${userId}`) ?? 'null'));
-      if (parsed.success) this.pending = parsed.data;
+      const parsed = pendingSchema.safeParse(JSON.parse(sessionStorage.getItem(`chat:create:${userId}${markdown ? ':markdown' : ''}`) ?? 'null'));
+      this.pending = parsed.success ? parsed.data : null;
       return parsed.success ? parsed.data : null;
     } catch { return null; }
   }
   async recover(id: string) {
     if (this.abort.signal.aborted) return;
     this.update({ phase: 'recovering' });
-    const signal = this.abort.signal, started = Date.now();
+    const signal = chatSignal(this.client, this.abort.signal), started = Date.now();
     try {
       while (!signal.aborted) {
         const history = await listMessages(id, signal);
@@ -79,28 +88,30 @@ export class ChatController {
   private invalidate() {
     for (const key of [queryKeys.conversations(), queryKeys.plan(), queryKeys.requests()]) void this.client.invalidateQueries({ queryKey: key });
   }
-  async send(text: string, userId: string, stepId: string | null, navigate: (id: string) => void, options?: { newMessage: boolean }) {
+  async send(text: string, userId: string, stepId: string | null, navigate: (id: string) => void, options?: { newMessage?: boolean; markdown?: boolean }) {
     if (!text.trim() || text.length > 8000 || ['sending', 'streaming', 'recovering'].includes(this.state.phase)) return;
-    const signal = this.abort.signal;
+    const signal = chatSignal(this.client, this.abort.signal);
     if (signal.aborted) return;
-    const pending = !options?.newMessage && this.pending?.text === text ? this.pending : {
-      text, stepId, conversationId: crypto.randomUUID(), messageId: crypto.randomUUID(),
+    const markdown = options?.markdown ?? false;
+    const pending = !options?.newMessage && this.pending?.text === text && Boolean(this.pending.markdown) === markdown ? this.pending : {
+      text, stepId, markdown, conversationId: crypto.randomUUID(), messageId: crypto.randomUUID(),
     };
     this.pending = pending;
     this.update({ phase: 'sending', error: '', tools: {}, assistantId: null, userId: null });
     let id = this.state.conversationId;
     try {
       if (!id) {
-        sessionStorage.setItem(`chat:create:${userId}`, JSON.stringify(pending));
-        const conversation = await createConversation(pending.conversationId, pending.stepId, signal);
+        sessionStorage.setItem(`chat:create:${userId}${markdown ? ':markdown' : ''}`, JSON.stringify(pending));
+        const conversation = await createConversation(pending.conversationId, pending.stepId, signal, markdown);
         if (signal.aborted) return;
         id = conversation.id;
         this.update({ conversationId: id });
-        sessionStorage.removeItem(`chat:create:${userId}`);
+        sessionStorage.removeItem(`chat:create:${userId}${markdown ? ':markdown' : ''}`);
         navigate(id);
       }
       // Reconcile an unknown outcome before an explicit repeat under the same UUID.
       const history = await listMessages(id, signal);
+      signal.throwIfAborted();
       if (history.some(m => m.client_message_id === pending.messageId) || history.some(m => m.status === 'generating')) {
         this.pending = null; await this.recover(id); return;
       }
@@ -126,7 +137,7 @@ export class ChatController {
       this.update({ phase: this.state.messages.at(-1)?.status === 'failed' ? 'failed' : 'idle' });
     } catch (error) {
       if (signal.aborted) return;
-      if (error instanceof ClientError && error.status === 401) { this.fail(error); return; }
+      if (chatAccessDenied(error)) { this.fail(error); return; }
       this.fail(error);
       if (id && !(error instanceof ClientError && error.code === 'IDEMPOTENCY_CONFLICT')) await this.recover(id);
     } finally { if (!signal.aborted) this.invalidate(); }

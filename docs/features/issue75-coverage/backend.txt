@@ -1,0 +1,6 @@
+backend/internal/agent/mentor.go	20,21,22,24,34,35,37,43,44	uncovered=
+backend/internal/chat/http.go	95,105	uncovered=
+backend/internal/chat/postgres.go	29,53,60,64,85,86,94,95,107	uncovered=
+backend/internal/chat/service.go	54,65,66,68,133	uncovered=
+backend/internal/demo/mentor_agent.go	13,14	uncovered=
+backend changed line coverage 100.00% (27/27)

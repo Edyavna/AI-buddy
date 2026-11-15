@@ -22,11 +22,18 @@ type Handler struct {
 func (h Handler) Register(mux *http.ServeMux, session auth.Handler) {
 	for pattern, handler := range map[string]http.HandlerFunc{
 		"GET /api/v1/conversations": h.list, "POST /api/v1/conversations": h.create,
+		"PATCH /api/v1/conversations/{conversation_id}":         h.archive,
 		"GET /api/v1/conversations/{conversation_id}":           h.get,
 		"GET /api/v1/conversations/{conversation_id}/messages":  h.messages,
 		"POST /api/v1/conversations/{conversation_id}/messages": h.send,
 	} {
-		mux.Handle(pattern, session.Require(handler, true))
+		mux.Handle(pattern, session.Require(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if _, err := principal(r.Context()); err != nil {
+				writeError(w, r, err)
+				return
+			}
+			handler(w, r)
+		}), false))
 	}
 }
 func writeError(w http.ResponseWriter, r *http.Request, err error) {
@@ -50,17 +57,42 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	httpapi.WriteServiceError(w, r, err)
 }
 func (h Handler) list(w http.ResponseWriter, r *http.Request) {
-	result, err := h.Service.List(r.Context())
+	filter := r.URL.Query().Get("archived")
+	if filter != "" && filter != "true" && filter != "false" {
+		writeError(w, r, ports.ErrInvalid)
+		return
+	}
+	result, err := h.Service.List(r.Context(), filter == "true")
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
 	httpapi.WriteJSON(w, 200, result)
 }
+func (h Handler) archive(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Archived *bool `json:"archived"`
+	}
+	if err := httpapi.DecodeJSON(w, r, &body); err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	if body.Archived == nil {
+		writeError(w, r, ports.ErrInvalid)
+		return
+	}
+	c, err := h.Service.SetArchived(r.Context(), r.PathValue("conversation_id"), *body.Archived)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, 200, c)
+}
 func (h Handler) create(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		ClientID *string `json:"client_conversation_id"`
 		StepID   *string `json:"step_id"`
+		Markdown bool    `json:"markdown"`
 	}
 	if err := httpapi.DecodeJSON(w, r, &body); err != nil {
 		httpapi.WriteError(w, r, err)
@@ -70,7 +102,7 @@ func (h Handler) create(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, ports.ErrInvalid)
 		return
 	}
-	result, created, err := h.Service.Create(r.Context(), *body.ClientID, body.StepID)
+	result, created, err := h.Service.create(r.Context(), *body.ClientID, body.StepID, body.Markdown)
 	if err != nil {
 		writeError(w, r, err)
 		return
