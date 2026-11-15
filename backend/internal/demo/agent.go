@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Edyavna/AI-buddy/backend/internal/agent"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/identity"
 	"github.com/Edyavna/AI-buddy/backend/internal/ports"
 )
@@ -21,6 +22,13 @@ func (a Agent) Run(ctx context.Context, in ports.AgentInput, emit ports.Emit) (p
 	}
 	if p.Role != identity.Intern {
 		return result, ports.ErrForbidden
+	}
+	if answer := agent.RoleAnswer(in.Text, true); answer != "" {
+		if err := emit(ctx, ports.AgentEvent{Kind: "answer.delta", Text: answer}); err != nil {
+			return result, err
+		}
+		result.Outcome = ports.OutcomeAnswered
+		return result, nil
 	}
 	if err := emit(ctx, ports.AgentEvent{Kind: "tool.started", Tool: &ports.ToolEvent{CallID: "demo-context", Label: "Проверяю контекст шага"}}); err != nil {
 		return result, err

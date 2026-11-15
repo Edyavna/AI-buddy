@@ -20,18 +20,26 @@ var (
 )
 
 type Resource struct{ ID, Name, Permission string }
+
+const (
+	SourcePlaybook  = "avito-tech/playbook"
+	SourceWikipedia = "ru.wikipedia.org/Авито"
+)
+
 type Source struct {
 	ID, DocumentID, Title, Excerpt string
 	Direction                      string
 	Version                        int64
 	UpdatedAt                      time.Time
 	OriginalURL                    string `json:"-"`
+	Kind                           string `json:"-"`
 }
 type Document struct {
 	ID, Title, Content, Direction string
 	Version                       int64
 	UpdatedAt                     time.Time
 	OriginalURL                   string `json:"original_url,omitempty"`
+	Kind                          string `json:"source_kind,omitempty"`
 }
 type Task struct {
 	ID, Title, Description, URL string

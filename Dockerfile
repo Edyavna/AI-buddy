@@ -29,6 +29,7 @@ FROM alpine:3.23 AS backend-runtime
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
 COPY --from=build /out/server /out/migrate /out/seed /out/demo-control /out/knowledge-import /out/hr-scope /app/
 COPY demo/knowledge /app/knowledge
+COPY demo/wikipedia /app/wikipedia
 USER 10001:10001
 EXPOSE 8080
 CMD ["/app/server"]

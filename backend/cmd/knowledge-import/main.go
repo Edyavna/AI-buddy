@@ -3,17 +3,20 @@ package main
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"fmt"
+	"os"
+	"time"
+
 	"github.com/Edyavna/AI-buddy/backend/internal/knowledge"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/database"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/migrations"
-	"os"
-	"time"
 )
 
 func main() {
 	dir := flag.String("dir", "../demo/knowledge", "Markdown manifest directory")
+	wikipediaDir := flag.String("wikipedia-dir", "", "Import the pinned Wikipedia snapshot from this directory")
 	schema := flag.Bool("schema", false, "Print the knowledge migration")
 	flag.Parse()
 	if *schema {
@@ -25,14 +28,20 @@ func main() {
 		fmt.Print(string(sql))
 		return
 	}
-	if run(*dir) != nil {
+	if err := run(*dir, *wikipediaDir); err != nil {
 		fmt.Fprintln(os.Stderr, "Knowledge import failed; check database, manifest and embedding configuration")
+		if *wikipediaDir != "" {
+			fmt.Fprintln(os.Stderr, err)
+		}
 		os.Exit(1)
 	}
 }
-func run(dir string) error {
+func run(dir, wikipediaDir string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
+	if wikipediaDir != "" {
+		return importWikipedia(ctx, wikipediaDir)
+	}
 	docs, e := knowledge.LoadMarkdown(dir)
 	if e != nil {
 		return e
@@ -49,5 +58,19 @@ func run(dir string) error {
 		}
 	}
 	fmt.Printf("Imported %d synthetic documents\n", len(docs))
+	return nil
+}
+
+func importWikipedia(ctx context.Context, dir string) error {
+	db, err := database.Open(ctx, os.Getenv("DATABASE_URL"))
+	if err != nil {
+		return errors.New("could not connect to the knowledge database")
+	}
+	defer db.Close()
+	s := knowledge.Service{DB: db, Embedder: knowledge.JinaFromEnv()}
+	if err := s.ImportWikipedia(ctx, dir); err != nil {
+		return err
+	}
+	fmt.Println("Wikipedia snapshot ready")
 	return nil
 }

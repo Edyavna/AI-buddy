@@ -8,7 +8,7 @@ import { MarkdownContent } from './MarkdownContent';
 import { revokeDocumentContext } from './context-access';
 import styles from './DocumentDrawer.module.css';
 
-const documentSchema = z.object({ id: z.string(), title: z.string(), content: z.string(), updated_at: z.iso.datetime(),version:z.number().int().positive().optional(), original_url: z.url({ protocol: /^https$/, hostname: /^github\.com$/ }).optional() });
+const documentSchema = z.object({ id: z.string(), title: z.string(), content: z.string(), updated_at: z.iso.datetime(),version:z.number().int().positive().optional(), original_url: z.url({ protocol: /^https$/, hostname: /^(github\.com|ru\.wikipedia\.org)$/ }).optional() });
 export type DocumentDrawerProps = { documentId: string | null; onClose: () => void; sourceMessageId?:string|undefined; contextQuestion?:{id:string;direction:'mentor'|'hr'|'intern'} };
 
 export function DocumentDrawer({ documentId, onClose,sourceMessageId,contextQuestion }: DocumentDrawerProps) {
@@ -67,13 +67,17 @@ export function DocumentDrawer({ documentId, onClose,sourceMessageId,contextQues
   // A failed refetch retains query.data. Access errors must hide both the body
   // and the title, including the dialog's accessible name.
   const visibleDocument = unavailable ? undefined : query.data;
+  const originalURL = visibleDocument?.original_url;
+  const wikipediaLink = originalURL && new URL(originalURL).hostname === 'ru.wikipedia.org';
   return <div ref={root} onKeyDown={trapFocus} className={styles.host}>
     <Drawer isOpen={documentId !== null} onClose={onClose} title={visibleDocument?.title ?? 'Источник ответа'} width="lg" className={styles.documentDrawer ?? ''}>
       {query.isPending && <div role="status"><Spinner /><p>Загружаем документ…</p></div>}
       {query.isError && <InlineError message={notFound ? 'Документ недоступен или удалён' : query.error.message}
         {...(!notFound && { onRetry: () => void query.refetch(), isRetrying: query.isRefetching })} />}
       {query.data===null&&!query.isError&&<InlineError message="Документ недоступен или доступ изменился" onRetry={()=>void query.refetch()}/>}
-      {visibleDocument?.original_url && <a href={visibleDocument.original_url} target="_blank" rel="noopener noreferrer">Открыть в GitHub</a>}
+      {originalURL && <a href={originalURL} target="_blank" rel="noopener noreferrer">
+        {wikipediaLink ? 'Открыть редакцию в Википедии' : 'Открыть в GitHub'}
+      </a>}
       {visibleDocument && <MarkdownContent content={visibleDocument.content} />}
     </Drawer>
   </div>;
