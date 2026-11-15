@@ -12,9 +12,9 @@ export const setConversationArchived = (id: string, archived: boolean, signal: A
   apiRequest(`/conversations/${encodeURIComponent(id)}`, conversationSchema, { method: 'PATCH', body: { archived }, signal });
 export const getConversation = (id: string, signal?: AbortSignal) => getData(`/conversations/${encodeURIComponent(id)}`, conversationSchema, signal);
 export const listMessages = (id: string, signal?: AbortSignal) => getData(`/conversations/${encodeURIComponent(id)}/messages`, z.array(messageSchema), signal);
-export async function createConversation(id: string, stepId: string | null, signal: AbortSignal) {
+export async function createConversation(id: string, stepId: string | null, signal: AbortSignal, markdown = false) {
   const result = await apiRequest('/conversations', conversationSchema, {
-    method: 'POST', signal, body: { client_conversation_id: id, ...(stepId && { step_id: stepId }) },
+    method: 'POST', signal, body: { client_conversation_id: id, ...(stepId && { step_id: stepId }), ...(markdown && { markdown }) },
   });
   if (!result.data) throw new ClientError('protocol', 'Диалог не создан');
   return result.data;

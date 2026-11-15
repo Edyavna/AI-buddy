@@ -20,6 +20,8 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
   const chatPath = mentor ? "/mentor/chat" : "/chat";
   const { conversationId } = useParams();
   const [params] = useSearchParams();
+  const newMarkdown = mentor && !conversationId && params.get('mode') === 'markdown';
+  const previousNewMarkdown = useRef(newMarkdown);
   const stepId = mentor ? null : params.get('stepId');
   const requestedDirection = mentor ? null : params.get('direction');
   const preferredDirection = requestedDirection === 'mentor' || requestedDirection === 'hr' ? requestedDirection : undefined;
@@ -86,6 +88,7 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
   const messagesKey = queryKeys.messages(conversationId ?? '');
   const conversation = useQuery({ queryKey: conversationKey, queryFn: ({ signal }) => readChat(conversationKey, request => getConversation(conversationId!, request), signal), enabled: !!conversationId && !!me.data });
   const history = useQuery({ queryKey: messagesKey, queryFn: ({ signal }) => readChat(messagesKey, request => listMessages(conversationId!, request), signal), enabled: !!conversation.data && !busy });
+  const markdown = newMarkdown || conversation.data?.markdown === true;
   const contextId = mentor ? null : conversationId ? conversation.data?.step_id : stepId;
   const plan = usePlan(Boolean(contextId && me.data));
   const step = plan.data?.steps.find(item => item.id === contextId);
@@ -107,17 +110,19 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
   }, [conversationId, conversations.isSuccess, conversations.data, conversations.dataUpdatedAt, controller]);
   useEffect(() => {
     // Internal replace after creation keeps the same controller and active request.
-    if (controller.state.conversationId !== (conversationId ?? null)) {
+    if (controller.state.conversationId !== (conversationId ?? null) || (!conversationId && previousNewMarkdown.current !== newMarkdown)) {
       controller.reset(conversationId ?? null); setText(''); setDocumentId(null); nearBottom.current = true;
     }
-  }, [conversationId, controller]);
+    previousNewMarkdown.current = newMarkdown;
+  }, [conversationId, controller, newMarkdown]);
   useEffect(() => {
     if (!conversationId && me.data) {
-      const restored = controller.restore(me.data.id);
+      const restored = controller.restore(me.data.id, newMarkdown);
       if (restored) setText(restored.text);
       else if (step) setText(previous => previous || `Помоги выполнить шаг: ${step.title}`);
+      else if (mentor) setText('');
     }
-  }, [controller, conversationId, me.data, step]);
+  }, [controller, conversationId, me.data, step, newMarkdown, mentor]);
   useEffect(() => {
     if (history.data && !busy && controller.state.messages.length === 0) {
       controller.activate();
@@ -147,7 +152,7 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
   const openConversation = (id: string) => navigate(`${chatPath}/${encodeURIComponent(id)}${preferredDirection ? `?direction=${preferredDirection}` : ''}`, { replace: true });
   const send = () => {
     if (!me.data || (conversationId && !conversation.data) || !contextReady || contextInvalid || !text.trim() || text.length > 8000 || busy) return;
-    void controller.send(text, me.data.id, contextId ?? null, openConversation);
+    void controller.send(text, me.data.id, contextId ?? null, openConversation, { markdown });
     setText('');
   };
   return <div className={styles.layout} data-chat-layout>
@@ -176,7 +181,7 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
       </div>
     </aside>
     <section className={styles.chat} aria-label="Чат с помощником">
-      <header><h1>{mentor ? 'Помощник наставника' : 'Помощник стажёра'}</h1><p>{mentor ? 'Вопросы к ИИ' : step ? `Шаг: ${step.title}` : 'Инструкции, доступы и первые задачи'}</p></header>
+      <header><h1>{markdown ? 'Подготовка Markdown-инструкции' : mentor ? 'Помощник наставника' : 'Помощник стажёра'}</h1><p>{mentor ? 'Вопросы к ИИ' : step ? `Шаг: ${step.title}` : 'Инструкции, доступы и первые задачи'}</p></header>
       {archive.error && <InlineError message={archive.error.message} />}
       {error && <InlineError message={error.message} onRetry={() => { void client.invalidateQueries(); }} />}
       {contextInvalid && <InlineError message="Шаг не найден в вашем плане. Вернитесь к плану адаптации." />}
@@ -186,7 +191,7 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
         if (nearBottom.current) setNewMessages(false);
       }}>
         <div ref={messageContent} className={styles.messageContent}>
-        {!state.messages.length && !busy && <div className={styles.welcome}><h2>С чего начнём?</h2><p>{mentor ? 'Задайте вопрос помощнику.' : 'Задайте вопрос о настройке окружения или выберите шаг в плане.'}</p>{!mentor && <Link to="/onboarding">Открыть мой план</Link>}</div>}
+        {!state.messages.length && !busy && <div className={styles.welcome}><h2>С чего начнём?</h2><p>{markdown ? 'Опишите, какую инструкцию нужно подготовить.' : mentor ? 'Задайте вопрос помощнику.' : 'Задайте вопрос о настройке окружения или выберите шаг в плане.'}</p>{!mentor && <Link to="/onboarding">Открыть мой план</Link>}</div>}
         {state.messages.map(message => {
           const canEscalate = !mentor && canEscalateMessage(message);
           const original = canEscalate ? state.messages.find(m => m.id === message.in_reply_to_message_id && m.role === 'user') : undefined;
@@ -203,6 +208,8 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
                 </button>
               </li>)}
             </ul>}
+            {markdown && message.role === 'assistant' && message.status === 'completed' && message.outcome === 'answered' &&
+              <a download="instruction.md" href={`data:text/markdown;charset=utf-8,${encodeURIComponent(message.text)}`}>Скачать .md</a>}
             {!mentor && [...new Set(message.request_ids)].map(requestId => <div className={styles.request} key={requestId}>
               <AccessRequestPanel requestId={requestId} onDiscuss={focusComposer} />
             </div>)}
