@@ -25,6 +25,12 @@ createServer(async (request, response) => {
     // #57 exercises genuine read tools without changing other fixture scenarios.
     const userIndex = input.messages.findLastIndex(message => message.role === 'user');
     const currentQuestion = input.messages[userIndex]?.content ?? '';
+    if(input.tools?.length && /N79/.test(currentQuestion)) {
+      const profile=input.messages.find(message=>message.role==='user'&&message.content.startsWith('Ниже персональный Markdown-профиль:'))?.content??'';
+      const mentor=profile.match(/Действующий наставник: "([^"\n]+)"/)?.[1]??'не назначен';
+      const answer=/наставник/i.test(currentQuestion)?`Текущий наставник: ${mentor}`:profile.includes('Использую PowerShell')?'В PowerShell проверьте текущую папку: `Get-Location`.':profile.includes('Использую Bash')?'В Bash проверьте текущую папку: `pwd`.':/использую PowerShell/i.test(currentQuestion)?'Учту это в текущем диалоге. Предпочтение можно подтвердить ниже для следующих разговоров.':'Уточните рабочую оболочку; предпочтения пока не сохранены.';
+      response.end(JSON.stringify({choices:[{finish_reason:'stop',message:{role:'assistant',content:JSON.stringify({answer,outcome:'answered'})}}]}));return;
+    }
     if (input.messages[0].content.startsWith('Ты помогаешь наставнику подготовить инструкцию')) {
       if (input.tools?.length) throw new Error('Markdown generation must not receive intern tools');
       const previous = input.messages.findLast(message => message.role === 'assistant' && message.content.startsWith('# Доступ к репозиторию'))?.content;
@@ -66,7 +72,19 @@ createServer(async (request, response) => {
     }
     let result = { answer: 'Порядок работы можно уточнить у наставника.', outcome: 'answered' };
     if (input.response_format?.type === 'json_object' && !input.tools?.length) {
-      if (input.messages[0].content.startsWith('Подготовь обезличенную')) {
+      if(input.messages[0].content.startsWith('Придумай короткое название диалога') && /N79/.test(last)) {
+        result={title:'Личный диалог'};
+      } else if(input.messages[0].content.startsWith('Предложи факты для персональной памяти')) {
+        const payload=JSON.parse(last);
+        // Selection receives only catalog phrases, including no browser markers.
+        if(/изучаю Docker/i.test(payload.text)) {response.statusCode=503;response.end('{}');return;}
+        const facts=[];
+        for(const option of payload.catalog) {
+          const match=payload.text.match(new RegExp(option.text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'));
+          if(match&&facts.length<4)facts.push({category:option.category,key:option.key,value:option.value,source_quote:match[0]});
+        }
+        result={facts};
+      } else if (input.messages[0].content.startsWith('Подготовь обезличенную')) {
         result = { title: 'Инструкция команды', content: JSON.parse(last).answer };
       } else if (input.messages[0].content.startsWith('Определи тему')) {
         const hr = /отпуск|кадров|трудов/i.test(last);

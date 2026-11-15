@@ -5,6 +5,7 @@ import { PlanPage } from '@/features/onboarding';
 import { ChatPage } from '@/features/chat';
 import { MeetingsPage } from '@/features/onboarding-operations/MeetingsPage';
 import { CuratorPage } from '@/features/onboarding-operations/CuratorPage';
+import { MemoryPage } from '@/features/personal-memory';
 import { ResolutionDraftPage } from '@/features/resolution-drafts/ResolutionDraftPage';
 import { QuestionGroupsPage,QuestionGroupPage } from '@/features/question-groups/QuestionGroupsPage';
 import { RoleHome, MentorGate, InternGate, MentorQuestionsPage, MentorQuestionPage, MentorDocumentsPage, MentorInternsPage, MentorInternPlanPage } from '@/features/mentor';
@@ -40,6 +41,7 @@ export const routes: RouteObject[] = [
         element: <InternGate><PlanPage /></InternGate>,
       },
       { path: 'meetings', element: <InternGate><MeetingsPage /></InternGate> },
+      { path: 'memory', element: <InternGate><MemoryPage /></InternGate> },
       { path: 'curator', element: <CuratorPage /> },
       {
         path: 'chat',

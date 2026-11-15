@@ -13,6 +13,7 @@ import { QuestionComposer } from '@/features/hr';
 import { canEscalateMessage, MentorQuestionPanel } from '@/features/mentor-questions';
 import { AccessRequestPanel } from '@/features/access-requests';
 import { DocumentDrawer, MarkdownContent } from '@/features/documents';
+import { MemorySuggestions } from '@/features/personal-memory';
 import styles from './ChatPage.module.css';
 import { chatAccessDenied, chatSignal, clearChatAccess } from './access';
 
@@ -49,6 +50,7 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
     if(target){nearBottom.current=false;target.scrollIntoView?.({block:'center'});visitedSource.current=key;}
   },[hash,state.conversationId,state.messages.length]);
   const busy = ['sending', 'streaming', 'recovering'].includes(state.phase);
+  const memorySource=state.messages.filter(message=>message.role==='user'&&state.messages.some(answer=>answer.role==='assistant'&&answer.status==='completed'&&answer.in_reply_to_message_id===message.id)).at(-1)?.id;
   function denyChat(key?: QueryKey) {
     clearChatAccess(client, key); controller.denyAccess(key ? '' : undefined);
     setText(''); setDocumentId(null); setSourceMessageId(undefined);
@@ -181,7 +183,7 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
       </div>
     </aside>
     <section className={styles.chat} aria-label="Чат с помощником">
-      <header><h1>{markdown ? 'Подготовка Markdown-инструкции' : mentor ? 'Помощник наставника' : 'Помощник стажёра'}</h1><p>{mentor ? 'Вопросы к ИИ' : step ? `Шаг: ${step.title}` : 'Инструкции, доступы и первые задачи'}</p></header>
+      <header><h1>{markdown ? 'Подготовка Markdown-инструкции' : mentor ? 'Помощник наставника' : 'Помощник стажёра'}</h1><p>{mentor ? 'Вопросы к ИИ' : step ? `Шаг: ${step.title}` : 'Инструкции, доступы и первые задачи'}</p>{!mentor && me.data?.role === 'intern' && <Link to="/memory">Моя память</Link>}</header>
       {archive.error && <InlineError message={archive.error.message} />}
       {error && <InlineError message={error.message} onRetry={() => { void client.invalidateQueries(); }} />}
       {contextInvalid && <InlineError message="Шаг не найден в вашем плане. Вернитесь к плану адаптации." />}
@@ -232,6 +234,7 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
             )}
           </article>;
         })}
+        {!mentor&&memorySource&&me.data?.role==='intern'&&!busy&&!error&&<MemorySuggestions key={`${me.data.id}:${memorySource}`} messageId={memorySource}/>}
         </div>
       </div>
       {newMessages && <Button variant="secondary" onClick={() => { nearBottom.current = true; setNewMessages(false); if (list.current) list.current.scrollTop = list.current.scrollHeight; }}>Новые сообщения</Button>}
