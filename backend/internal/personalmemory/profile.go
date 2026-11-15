@@ -195,6 +195,15 @@ type Agent struct {
 	Next   ports.Agent
 }
 
+func (a Agent) ConversationTitle(ctx context.Context, text string) string {
+	if generator, ok := a.Next.(interface {
+		ConversationTitle(context.Context, string) string
+	}); ok {
+		return generator.ConversationTitle(ctx, text)
+	}
+	return ""
+}
+
 func (a Agent) Run(ctx context.Context, in ports.AgentInput, emit ports.Emit) (ports.AgentResult, error) {
 	profile, err := a.Reader.Profile(ctx)
 	if err != nil && !errors.Is(err, ports.ErrUnavailable) {

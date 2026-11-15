@@ -106,6 +106,32 @@ func (f profileFunc) Profile(ctx context.Context) (string, error) { return f(ctx
 
 type nextFunc func(context.Context, ports.AgentInput, ports.Emit) (ports.AgentResult, error)
 
+type titledNext struct {
+	nextFunc
+}
+
+func (titledNext) ConversationTitle(context.Context, string) string {
+	return "Сохранённое название"
+}
+
+func TestAgentPreservesConversationTitleGenerator(t *testing.T) {
+	for _, tc := range []struct {
+		next ports.Agent
+		want string
+	}{
+		{titledNext{}, "Сохранённое название"},
+		{nextFunc(nil), ""},
+	} {
+		wrapped := Agent{Next: tc.next}
+		generator, ok := any(wrapped).(interface {
+			ConversationTitle(context.Context, string) string
+		})
+		if !ok || generator.ConversationTitle(t.Context(), "Первый вопрос") != tc.want {
+			t.Fatal("personal memory wrapper removed title generation", ok)
+		}
+	}
+}
+
 func (f nextFunc) Run(ctx context.Context, in ports.AgentInput, emit ports.Emit) (ports.AgentResult, error) {
 	return f(ctx, in, emit)
 }

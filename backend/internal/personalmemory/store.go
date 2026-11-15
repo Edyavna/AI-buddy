@@ -103,13 +103,13 @@ type source struct{ Conversation, Text string }
 
 func readSource(ctx context.Context, tx *sql.Tx, p identity.Principal, id string) (source, error) {
 	var out source
-	err := tx.QueryRowContext(ctx, `SELECT c.id,m.text FROM chat_messages m JOIN conversations c ON c.id=m.conversation_id WHERE m.id=$1 AND m.role='user' AND m.status='completed' AND c.user_id=$2 AND c.team_id=$3 FOR SHARE OF c,m`, id, p.UserID, p.TeamID).Scan(&out.Conversation, &out.Text)
+	err := tx.QueryRowContext(ctx, `SELECT c.id,m.text FROM chat_messages m JOIN conversations c ON c.id=m.conversation_id WHERE m.id=$1 AND m.role='user' AND m.status='completed' AND c.user_id=$2 AND c.team_id=$3 AND NOT c.markdown FOR SHARE OF c,m`, id, p.UserID, p.TeamID).Scan(&out.Conversation, &out.Text)
 	return out, err
 }
 
 type scanner interface{ Scan(...any) error }
 
-const sourceJoin = ` JOIN chat_messages m ON m.id=e.source_message_id AND m.role='user' AND m.status='completed' JOIN conversations c ON c.id=m.conversation_id AND c.user_id=e.user_id AND c.team_id=e.team_id `
+const sourceJoin = ` JOIN chat_messages m ON m.id=e.source_message_id AND m.role='user' AND m.status='completed' JOIN conversations c ON c.id=m.conversation_id AND c.user_id=e.user_id AND c.team_id=e.team_id AND NOT c.markdown `
 const entryColumns = `e.id::text,e.category,e.fact_key,e.value,e.source_message_id,c.id,e.revision,e.edited,e.created_at,e.updated_at`
 
 func scanEntry(row scanner) (Entry, error) {

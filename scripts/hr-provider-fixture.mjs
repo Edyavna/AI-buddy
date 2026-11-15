@@ -72,7 +72,9 @@ createServer(async (request, response) => {
     }
     let result = { answer: 'Порядок работы можно уточнить у наставника.', outcome: 'answered' };
     if (input.response_format?.type === 'json_object' && !input.tools?.length) {
-      if(input.messages[0].content.startsWith('Предложи факты для персональной памяти')) {
+      if(input.messages[0].content.startsWith('Придумай короткое название диалога') && /N79/.test(last)) {
+        result={title:'Личный диалог'};
+      } else if(input.messages[0].content.startsWith('Предложи факты для персональной памяти')) {
         const payload=JSON.parse(last);
         if(payload.text.includes('N79 fail')) {response.statusCode=503;response.end('{}');return;}
         const facts=[];

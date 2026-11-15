@@ -31,6 +31,37 @@ func memoryFixture(t *testing.T) (Store, context.Context) {
 	}
 	return Store{DB: db, Selector: Model{Demo: true}}, identity.WithPrincipal(t.Context(), identity.Principal{UserID: "intern_demo_1", TeamID: "team_demo_backend", Role: identity.Intern})
 }
+
+func TestPostgresMemoryCannotUseMentorOnlyMarkdownSources(t *testing.T) {
+	s, ctx := memoryFixture(t)
+	p := mustSuggest(t, s, ctx, "memory-user", "shell")
+	e := accept(t, s, ctx, p)
+	// Archiving does not revoke access. Mentor-only mode does, even for the author.
+	mustSQL(t, s, `UPDATE conversations SET archived=true WHERE id='memory-conversation'`)
+	if _, err := s.GetEntry(ctx, e.ID); err != nil {
+		t.Fatal(err)
+	}
+	mustSQL(t, s, `UPDATE conversations SET markdown=true WHERE id='memory-conversation'`)
+	for name, check := range map[string]func() error{
+		"source":       func() error { _, err := s.Proposals(ctx, "memory-user"); return err },
+		"selection":    func() error { _, err := s.Suggest(ctx, "memory-user"); return err },
+		"confirmation": func() error { _, err := s.Decide(ctx, p.ID, Decision{Decision: "accept"}); return err },
+		"entry":        func() error { _, err := s.GetEntry(ctx, e.ID); return err },
+		"edit":         func() error { _, err := s.Edit(ctx, e.ID, "bash", e.Revision); return err },
+		"delete":       func() error { return s.Delete(ctx, e.ID, e.Revision) },
+	} {
+		if err := check(); !errors.Is(err, ports.ErrNotFound) {
+			t.Errorf("%s: mentor-only source was accessible: %v", name, err)
+		}
+	}
+	w, err := s.Workspace(ctx)
+	if err != nil || len(w.Entries) != 0 || len(w.Pending) != 0 || strings.Contains(w.Markdown, "PowerShell") {
+		t.Fatal("inaccessible source leaked into workspace or model profile", w, err)
+	}
+	if profile, err := s.Profile(ctx); err != nil || strings.Contains(profile, "PowerShell") {
+		t.Fatal("inaccessible source leaked into next model request", profile, err)
+	}
+}
 func mustSQL(t *testing.T, s Store, query string, args ...any) {
 	t.Helper()
 	if _, err := s.DB.Exec(query, args...); err != nil {

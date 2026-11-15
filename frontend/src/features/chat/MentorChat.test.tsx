@@ -10,6 +10,21 @@ import { ChatController } from './controller';
 import { queryKeys } from '@/shared/api';
 
 const fixture = createScenario();
+
+it.each([false, true])('keeps intern memory out of mentor chat, Markdown=%s', async markdown => {
+  const memory = vi.fn(() => HttpResponse.json({ state: 'ready', items: [] }));
+  server.use(
+    http.get('*/api/v1/conversations/:id', () => HttpResponse.json({ ...fixture.conversation, step_id: null, markdown })),
+    http.get('*/api/v1/conversations/:id/messages', () => HttpResponse.json(fixture.messages)),
+    http.get('*/api/v1/messages/:id/memory-proposals', memory),
+    http.post('*/api/v1/messages/:id/memory-proposals', memory),
+  );
+  mount(`/mentor/chat/${fixture.conversation.id}`);
+  await screen.findByText(fixture.messages[1]!.text);
+  expect(screen.queryByRole('link', { name: 'Моя память' })).not.toBeInTheDocument();
+  expect(screen.queryByRole('region', { name: 'Предложения персональной памяти' })).not.toBeInTheDocument();
+  expect(memory).not.toHaveBeenCalled();
+});
 function mount(path: string) {
   server.use(http.get('*/api/v1/me', () => HttpResponse.json({ ...fixture.user, role: 'mentor' })));
   return renderWithQuery(
