@@ -1062,7 +1062,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Свои диалоги, updated_at по убыванию. В ограниченном demo без пагинации. */
+        /** @description Свои активные диалоги по умолчанию или архив по запросу. */
         get: operations["listConversations"];
         put?: never;
         /** @description Создать диалог. client_conversation_id генерируется фронтом один раз; уникален для пользователя. Повтор с теми же параметрами возвращает тот же диалог (200), первый вызов — 201. Другой step_id при том же ID — 409 IDEMPOTENCY_CONFLICT. Пропущенный step_id эквивалентен null. Ключ хранится весь срок жизни диалога. */
@@ -1551,7 +1551,8 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** @description Архивирует или восстанавливает свой диалог с сохранением истории. */
+        patch: operations["setConversationArchived"];
         trace?: never;
     };
 }
@@ -2237,6 +2238,7 @@ export interface components {
             step_id: string | null;
             /** Format: date-time */
             created_at: string;
+            archived?: boolean;
             /** Format: date-time */
             updated_at: string;
             /** Format: uuid */
@@ -4992,7 +4994,9 @@ export interface operations {
     };
     listConversations: {
         parameters: {
-            query?: never;
+            query?: {
+                archived?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -6062,6 +6066,35 @@ export interface operations {
             429: components["responses"]["Error"];
             500: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    setConversationArchived: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    archived: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Обновлённый диалог */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Conversation"];
+                };
+            };
             default: components["responses"]["Error"];
         };
     };

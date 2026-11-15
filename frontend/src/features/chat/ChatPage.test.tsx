@@ -119,3 +119,25 @@ it('redirects 401 and displays missing conversation without sending', async () =
   renderWithQuery(<MemoryRouter initialEntries={['/chat']}><Routes><Route path="/chat" element={<ChatPage />} /><Route path="/login" element={<p>Вход</p>} /></Routes></MemoryRouter>);
   expect(await screen.findByText('Вход')).toBeInTheDocument();
 });
+
+it('archives and restores a conversation while keeping its history accessible', async () => {
+  let archived = false;
+  server.use(
+    http.get('*/api/v1/conversations', ({ request }) => {
+      const archive = new URL(request.url).searchParams.get('archived') === 'true';
+      return HttpResponse.json(archived === archive ? [{ ...f.conversation, archived }] : []);
+    }),
+    http.patch('*/api/v1/conversations/:id', async ({ request }) => {
+      archived = (await request.json() as { archived: boolean }).archived;
+      return HttpResponse.json({ ...f.conversation, archived });
+    }),
+  );
+  mount('/chat/conversation_demo_1');
+  fireEvent.click(await screen.findByRole('button', { name: /^Архивировать диалог:/ }));
+  expect(await screen.findByText('Диалогов пока нет')).toBeVisible();
+  expect(screen.getByText(f.messages[1]!.text)).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Архив' }));
+  expect(await screen.findByRole('link', { name: f.conversation.title })).toBeVisible();
+  fireEvent.click(await screen.findByRole('button', { name: /^Вернуть из архива:/ }));
+  expect(await screen.findByText('Архив пуст')).toBeVisible();
+});
