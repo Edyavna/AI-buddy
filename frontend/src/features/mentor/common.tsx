@@ -6,7 +6,7 @@ import { queryRequestSignal, revokeQueryAccess } from '@/shared/api/query-access
 import { InlineError, Spinner } from '@/shared/ui';
 
 export const accessDenied = (error: unknown) => error instanceof ClientError && [401, 403, 404].includes(error.status ?? 0);
-export function useMentorQuery<T>(key: QueryKey, load: (signal: AbortSignal) => Promise<T>) {
+export function useMentorQuery<T>(key: QueryKey, load: (signal: AbortSignal) => Promise<T>, gcTime?: number) {
   const queryClient = useQueryClient();
   const query = useQuery<T | null>({
     queryKey: key,
@@ -28,6 +28,7 @@ export function useMentorQuery<T>(key: QueryKey, load: (signal: AbortSignal) => 
       }
     },
     retry: false,
+    ...(gcTime !== undefined && { gcTime }),
     refetchInterval: q => q.state.data === null || accessDenied(q.state.error) ? false : 5000,
     refetchIntervalInBackground: false,
   });

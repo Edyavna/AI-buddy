@@ -270,3 +270,15 @@
   .userSection { display: flex; grid-column: 2; grid-row: 1; }
   .switchAccountButton { display: inline-flex; }
 }
+
+/* Chat fills the space below the real header, including its wrapped mobile layout. */
+.layout:has([data-chat-layout]) {
+  height: 100dvh;
+  min-height: 0;
+}
+.mainContent:has(> [data-chat-layout]) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-block: var(--space-3);
+}

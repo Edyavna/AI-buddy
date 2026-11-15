@@ -18,12 +18,19 @@ type Prepared struct {
 	StartedAt time.Time
 }
 
-func (s Service) List(ctx context.Context) ([]Conversation, error) {
+func (s Service) List(ctx context.Context, archived bool) ([]Conversation, error) {
 	p, err := principal(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return s.Store.List(ctx, p)
+	return s.Store.List(ctx, p, archived)
+}
+func (s Service) SetArchived(ctx context.Context, id string, archived bool) (Conversation, error) {
+	p, err := principal(ctx)
+	if err != nil {
+		return Conversation{}, err
+	}
+	return s.Store.SetArchived(ctx, p, id, archived)
 }
 func (s Service) Get(ctx context.Context, id string) (Conversation, error) {
 	p, err := principal(ctx)
@@ -97,6 +104,17 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 	if s.runner(p.Role) == nil {
 		return Prepared{}, ports.ErrUnavailable
 	}
+	var questions []ports.SpecialistQuestion
+	if store, ok := s.Store.(interface {
+		SpecialistQuestions(context.Context, string, string, string) ([]ports.SpecialistQuestion, error)
+	}); ok {
+		lookup, cancel := context.WithTimeout(ctx, 5*time.Second)
+		questions, err = store.SpecialistQuestions(lookup, id, p.UserID, p.TeamID)
+		cancel()
+		if err != nil {
+			return Prepared{}, err
+		}
+	}
 	started := time.Now()
 	work, stop := context.WithTimeout(ctx, 5*time.Second)
 	defer stop()
@@ -105,7 +123,7 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 		return Prepared{}, err
 	}
 	s.checkSources(work, r.Previous)
-	in := ports.AgentInput{ConversationID: id, AssistantMessageID: r.Assistant.ID, StepID: r.Conversation.StepID, Text: text, History: history(r.Previous, text), Requests: []ports.RequestState{}}
+	in := ports.AgentInput{SpecialistQuestions: questions, ConversationID: id, AssistantMessageID: r.Assistant.ID, StepID: r.Conversation.StepID, Text: text, History: history(r.Previous, text), Requests: []ports.RequestState{}}
 	if p.Role == identity.Mentor {
 		return Prepared{Reservation: r, Input: in, StartedAt: started}, nil
 	}
@@ -241,6 +259,18 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 	}
 	runCtx, cancel := o.Deadline(ctx, timeout)
 	defer cancel()
+	var titleResults chan string
+	if len(p.Previous) == 0 && p.Conversation.StepID == nil {
+		if titler, ok := s.Agent.(interface {
+			ConversationTitle(context.Context, string) string
+		}); ok {
+			titleResults = make(chan string, 1)
+			go func() {
+				defer func() { _ = recover(); close(titleResults) }()
+				titleResults <- titler.ConversationTitle(runCtx, p.Input.Text)
+			}()
+		}
+	}
 	events := make(chan ports.AgentEvent, 16)
 	done := make(chan runResult, 1)
 	go func() {
@@ -364,6 +394,14 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 		disconnected = ctx.Err() != nil
 	}
 	timedOut := errors.Is(cause, context.DeadlineExceeded) || errors.Is(runCtx.Err(), context.DeadlineExceeded)
+	title := ""
+	if titleResults != nil {
+		select {
+		case title = <-titleResults:
+		case <-runCtx.Done():
+		case <-time.After(2 * time.Second):
+		}
+	}
 	cancel()
 	cleanup, stop := context.WithTimeout(context.WithoutCancel(ctx), o.CleanupTimeout)
 	defer stop()
@@ -443,6 +481,12 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 			message.Outcome = result.Outcome
 		}
 	}
+	if len(p.Previous) == 0 && p.Conversation.StepID == nil {
+		message.ConversationTitle = shortTitle(title)
+		if message.ConversationTitle == "" {
+			message.ConversationTitle = shortTitle(p.Input.Text)
+		}
+	}
 	saved, err := s.Store.Finish(cleanup, owner, p.Conversation.ID, message)
 	if err != nil {
 		return err
@@ -457,6 +501,15 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 	visible := []Message{saved}
 	s.checkSources(ctx, visible)
 	return sink.Event(event, map[string]Message{"message": visible[0]})
+}
+
+func shortTitle(text string) string {
+	text = strings.Join(strings.Fields(text), " ")
+	runes := []rune(text)
+	if len(runes) > 64 {
+		return strings.TrimSpace(string(runes[:63])) + "…"
+	}
+	return text
 }
 
 func (s Service) checkSources(ctx context.Context, messages []Message) {

@@ -321,3 +321,93 @@ func TestHistoryBudgetAndValidation(t *testing.T) {
 		t.Fatal("validation")
 	}
 }
+
+type titleAgent struct {
+	ports.Agent
+	title string
+}
+
+func (a titleAgent) ConversationTitle(context.Context, string) string { return a.title }
+
+func TestPostgresConversationTitleFirstMessage(t *testing.T) {
+	for _, tc := range []struct{ name, title, want string }{
+		{"generated", " Доступ  к репозиторию ", "Доступ к репозиторию"},
+		{"fallback", "", strings.Repeat("Я", 63) + "…"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFixture(t, titleAgent{Agent: fastAgent(), title: tc.title}, nil, StreamOptions{})
+			w := f.call(t, "POST", "/conversations", `{"client_conversation_id":"`+uid(1)+`","step_id":null}`, f.cookie, 201)
+			var c Conversation
+			if err := json.Unmarshal(w.Body.Bytes(), &c); err != nil {
+				t.Fatal(err)
+			}
+			for _, body := range []string{strings.Repeat("Я", 70), "Другая тема"} {
+				n := 2
+				if body == "Другая тема" {
+					n = 3
+				}
+				f.call(t, "POST", "/conversations/"+c.ID+"/messages", `{"client_message_id":"`+uid(n)+`","text":"`+body+`"}`, f.cookie, 200)
+				w = f.call(t, "GET", "/conversations/"+c.ID, "", f.cookie, 200)
+				if err := json.Unmarshal(w.Body.Bytes(), &c); err != nil || c.Title != tc.want {
+					t.Fatal(c.Title, err)
+				}
+			}
+		})
+	}
+}
+
+func TestPostgresAgentReceivesOnlySubmittedQuestionsInConversation(t *testing.T) {
+	inputs := make(chan ports.AgentInput, 3)
+	f := newFixture(t, agentFunc(func(ctx context.Context, in ports.AgentInput, emit ports.Emit) (ports.AgentResult, error) {
+		inputs <- in
+		return fastAgent().Run(ctx, in, emit)
+	}), nil, StreamOptions{})
+	c, other := f.create(t, 1), f.create(t, 2)
+	send := func(c Conversation, n int) ports.AgentInput {
+		f.call(t, "POST", "/conversations/"+c.ID+"/messages", `{"client_message_id":"`+uid(n)+`","text":"Вопрос"}`, f.cookie, 200)
+		return <-inputs
+	}
+	send(c, 3)
+	messages := decodeMessages(t, f.call(t, "GET", "/conversations/"+c.ID+"/messages", "", f.cookie, 200))
+	if _, err := f.db.Exec(`INSERT INTO knowledge_gaps(message_id,student_id,team_id,mentor_id,question,context_excerpt,direction,original_direction)
+ VALUES($1,'intern_demo_1','team_demo_backend','mentor_demo_1','Доступ к репозиторию','','mentor','mentor')`, messages[1].ID); err != nil {
+		t.Fatal(err)
+	}
+	got := send(c, 4).SpecialistQuestions
+	if len(got) != 1 || got[0] != (ports.SpecialistQuestion{Question: "Доступ к репозиторию", Direction: "mentor", Status: "new", Assigned: true}) {
+		t.Fatal(got)
+	}
+	if got := send(other, 5).SpecialistQuestions; len(got) != 0 {
+		t.Fatal("another conversation received a question", got)
+	}
+}
+
+func TestPostgresConversationArchive(t *testing.T) {
+	f := newFixture(t, fastAgent(), nil, StreamOptions{})
+	c := f.create(t, 1)
+	path := "/conversations/" + c.ID
+	f.call(t, "POST", path+"/messages", `{"client_message_id":"`+uid(2)+`","text":"Archive this conversation"}`, f.cookie, 200)
+	other := f.login(t, "intern_demo_2")
+	f.call(t, "PATCH", path, `{"archived":true}`, other, 404)
+	f.call(t, "PATCH", path, `{}`, f.cookie, 422)
+	f.call(t, "GET", "/conversations?archived=invalid", "", f.cookie, 422)
+	for range 2 {
+		f.call(t, "PATCH", path, `{"archived":true}`, f.cookie, 200)
+	}
+	if body := f.call(t, "GET", "/conversations", "", f.cookie, 200).Body.String(); strings.Contains(body, c.ID) {
+		t.Fatal(body)
+	}
+	if body := f.call(t, "GET", "/conversations?archived=true", "", f.cookie, 200).Body.String(); !strings.Contains(body, c.ID) {
+		t.Fatal(body)
+	}
+	if body := f.call(t, "GET", "/conversations?archived=true", "", other, 200).Body.String(); strings.Contains(body, c.ID) {
+		t.Fatal(body)
+	}
+	if m := decodeMessages(t, f.call(t, "GET", path+"/messages", "", f.cookie, 200)); len(m) != 2 {
+		t.Fatal(m)
+	}
+	f.call(t, "PATCH", path, `{"archived":false}`, f.cookie, 200)
+	if body := f.call(t, "GET", "/conversations", "", f.cookie, 200).Body.String(); !strings.Contains(body, c.ID) {
+		t.Fatal(body)
+	}
+}

@@ -4,6 +4,7 @@ import remarkGfm from 'remark-gfm';
 import { Link } from 'react-router-dom';
 import { Button, StatusBadge } from '@/shared/ui';
 import { AccessRequestPanel } from '@/features/access-requests';
+import { CheckpointInvitation } from '@/features/action-queue/CheckpointInvitation';
 import type { CheckpointConfirmation, Step, StepTarget } from './schemas';
 import styles from './StepCard.module.css';
 
@@ -217,6 +218,8 @@ export const StepCard: React.FC<StepCardProps> = ({
           ))}
         </div>
       )}
+
+      {step.template_key === 'team-setup' && <CheckpointInvitation step={step.id} />}
 
       <div className={styles.stepFooter}>
         <Link
