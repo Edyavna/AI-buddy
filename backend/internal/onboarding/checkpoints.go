@@ -154,7 +154,13 @@ func (s Checkpoints) view(ctx context.Context, snapshot Snapshot, owner, actor i
 		ownerContext := identity.WithPrincipal(ctx, owner)
 		completed := snapshot.completedSteps()
 		for _, step := range snapshot.Steps {
-			if step.Requirement == nil || !step.requires(actor.Role) || step.confirmedBy(actor.Role) != "" || !step.canConfirm(completed) {
+			if step.Requirement == nil {
+				continue
+			}
+			// Intern recommendations consider the entire plan. Mentor views
+			// only need grants for steps the mentor can still confirm.
+			if actor.Role != identity.Intern &&
+				(!step.requires(actor.Role) || step.confirmedBy(actor.Role) != "" || !step.canConfirm(completed)) {
 				continue
 			}
 			if _, checked := grants[*step.Requirement]; !checked {

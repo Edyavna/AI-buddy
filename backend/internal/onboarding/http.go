@@ -13,6 +13,7 @@ type Handler struct{ Service Service }
 
 func (h Handler) Register(mux *http.ServeMux, session auth.Handler) {
 	mux.Handle("GET /api/v1/onboarding/plan", session.Require(http.HandlerFunc(h.get), true))
+	mux.Handle("GET /api/v1/onboarding/recommendation", session.Require(http.HandlerFunc(h.getRecommendation), true))
 	mux.Handle("PATCH /api/v1/onboarding/steps/{step_id}", session.Require(http.HandlerFunc(h.patch), true))
 }
 func (h Handler) get(w http.ResponseWriter, r *http.Request) {
@@ -22,6 +23,14 @@ func (h Handler) get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpapi.WriteJSON(w, 200, plan)
+}
+func (h Handler) getRecommendation(w http.ResponseWriter, r *http.Request) {
+	plan, err := h.Service.Get(r.Context())
+	if err != nil {
+		httpapi.WriteServiceError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, 200, plan.Recommendation)
 }
 func (h Handler) patch(w http.ResponseWriter, r *http.Request) {
 	var body struct {

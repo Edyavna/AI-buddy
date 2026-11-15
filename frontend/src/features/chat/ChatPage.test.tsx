@@ -80,6 +80,26 @@ it('sends with Enter, does not send with Shift or IME, and survives internal URL
   fireEvent.keyDown(input, { key: 'Enter' });
   expect(await screen.findByText(f.messages[1]!.text)).toBeInTheDocument(); expect(posts).toBe(1);
 });
+
+it.each([['hr', 'hr'], ['mentor', 'mentor'], ['unknown', 'mentor']])('preserves a valid help recipient through conversation creation: %s', async (direction, expected) => {
+  server.use(
+    http.get('*/api/v1/conversations/:id/messages', () => HttpResponse.json([])),
+    http.post('*/api/v1/conversations/:id/messages', () => new HttpResponse(
+      eventText('message.started', { user_message_id: 'msg_u1', message_id: 'msg_a1' }) +
+      eventText('message.completed', { message: f.messages[1] }),
+      { headers: { 'Content-Type': 'text/event-stream' } },
+    )),
+    http.get('*/api/v1/messages/:id/questions', () => HttpResponse.json({
+      items: [], drafts: [], question: 'Помощь по шагу', available_directions: ['mentor', 'hr'],
+      routing: { direction: 'mentor', reason: 'Технический вопрос', clarification: null, split: false },
+    })),
+  );
+  mount(`/chat?stepId=step_local_setup&direction=${direction}`);
+  await waitFor(() => expect(screen.getByLabelText('Ваш вопрос')).toHaveValue(`Помоги выполнить шаг: ${f.plan.steps[0]?.title}`));
+  fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Обратиться к специалисту' }));
+  expect(await screen.findByRole('combobox', { name: /Адресат/ })).toHaveValue(expected);
+});
 it('offers escalation only for a completed knowledge gap and repeats with a fresh message ID', async () => {
   const original = f.messages[0]!;
   const gap = { ...f.messages[1]!, outcome: 'knowledge_gap', sources: [], request_ids: [] };

@@ -104,6 +104,19 @@ func TestPostgresActionQueue(t *testing.T) {
 	if page := get("?kind=question", mentor); len(page.Items) != 1 || page.Items[0].ID != work.ID || page.Items[0].Action != "answer_question" {
 		t.Fatal(page)
 	}
+	// A failed grant lookup for a completed intern-only step must not
+	// hide unrelated confirmations, invitations, or questions.
+	if _, err := db.Exec("UPDATE onboarding_steps SET status='completed' WHERE id='step_local_setup'"); err != nil {
+		t.Fatal(err)
+	}
+	failingAccess := requestHandler(db, Dependencies{Access: queueAccess{err: errors.New("grant source unavailable")}})
+	failingMentor := loginCookie(t, failingAccess, "mentor_demo_1", nil)
+	stillVisible := hrResponse[actionqueue.Page](t, failingAccess, "GET", "/action-queue?intern_id=intern_demo_1", nil, failingMentor, 200)
+	for _, id := range []string{step, hrKey(1), work.ID} {
+		if !slices.ContainsFunc(stillVisible.Items, func(item actionqueue.Item) bool { return item.ID == id }) {
+			t.Fatalf("queue lost %s: %+v", id, stillVisible)
+		}
+	}
 	if page := get("?intern_id=intern_demo_1", otherMentor); page.Total != 0 {
 		t.Fatal(page)
 	}
