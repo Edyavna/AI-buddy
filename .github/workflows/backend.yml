@@ -51,7 +51,7 @@ jobs:
           set -o pipefail
           go run ../scripts/go_line_coverage.go coverage.out | tee -a line-coverage.txt "$GITHUB_STEP_SUMMARY"
       - name: Changed backend lines above 90 percent
-        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/62-hr') || startsWith(github.head_ref, 'feature/resolution-knowledge-drafts') || startsWith(github.head_ref, 'feature/shared-question-resolutions') || startsWith(github.head_ref, 'feature/question-context-preview') || github.head_ref == 'feat/meetings-and-curator')
+        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/issue-76-mentor-chat') || startsWith(github.head_ref, 'feat/54-action-queue') || startsWith(github.head_ref, 'feat/62-hr') || startsWith(github.head_ref, 'feature/resolution-knowledge-drafts') || startsWith(github.head_ref, 'feature/shared-question-resolutions') || startsWith(github.head_ref, 'feature/question-context-preview') || startsWith(github.head_ref, 'feature/issue-55-next-step') || startsWith(github.head_ref, 'feat/55-') || github.head_ref == 'feat/meetings-and-curator')
         shell: bash
         env:
           COVERAGE_BASE: ${{ github.event.pull_request.base.sha }}
@@ -126,6 +126,104 @@ jobs:
         run: |
           docker compose up -d --wait --wait-timeout 120 api
           python scripts/smoke_chat.py recover
+      - if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down
+
+  mentor-chat-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/issue-76-mentor-chat')
+    env:
+      COMPOSE_FILE: compose.yaml:scripts/compose.hr-test.yaml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.node-version
+      - run: npm install --no-save --package-lock=false playwright-core@1.60.0
+      - run: npx playwright-core install --with-deps chromium
+      - run: docker compose up --build --wait --wait-timeout 180 frontend hr-fixture
+      - run: docker compose --profile demo run --rm seed
+      - run: node scripts/mentor-chat-browser.mjs
+      - name: Preserve mentor conversations after restart and seed
+        run: |
+          docker compose restart api hr-fixture
+          docker compose up -d --wait api hr-fixture
+          docker compose --profile demo run --rm seed
+          node scripts/mentor-chat-browser.mjs --verify
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: mentor-chat-browser
+          path: tmp/mentor-chat-browser/
+      - if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down
+
+  recommendation-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feature/issue-55-next-step')
+    env:
+      COMPOSE_FILE: compose.yaml:scripts/compose.hr-test.yaml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.node-version
+      - run: npm install --no-save --package-lock=false playwright-core@1.60.0
+      - run: npx playwright-core install --with-deps chromium
+      - run: docker compose up --build --wait --wait-timeout 180 frontend hr-fixture
+      - run: docker compose --profile demo run --rm seed
+      - name: Prepare synthetic recommendation scenarios
+        run: docker compose exec -T db psql -U buddy -d buddy -v ON_ERROR_STOP=1 < scripts/recommendation-browser-fixture.sql
+      - run: node scripts/recommendation-browser.mjs
+      - name: Preserve recommendation and recipient after restart and seed
+        run: |
+          docker compose restart api hr-fixture
+          docker compose up -d --wait api hr-fixture
+          docker compose --profile demo run --rm seed
+          node scripts/recommendation-browser.mjs --verify
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: recommendation-browser
+          path: tmp/recommendation-browser/
+      - if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down
+
+  action-queue-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 18
+    if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feat/54-action-queue') || startsWith(github.head_ref, 'feature/issue-55-next-step'))
+    env:
+      COMPOSE_FILE: compose.yaml:scripts/compose.hr-test.yaml
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.node-version
+      - run: npm install --no-save --package-lock=false playwright-core@1.60.0
+      - run: npx playwright-core install --with-deps chromium
+      - run: docker compose up --build --wait --wait-timeout 180 frontend hr-fixture
+      - run: docker compose --profile demo run --rm seed
+      - run: node scripts/action-queue-browser.mjs
+      - name: Verify state after API restart and repeated seed
+        run: |
+          docker compose restart api hr-fixture
+          docker compose up -d --wait api hr-fixture
+          docker compose --profile demo run --rm seed
+          node scripts/action-queue-browser.mjs --verify
+      - if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: action-queue-browser
+          path: tmp/action-queue-browser/
       - if: failure()
         run: docker compose logs
       - if: always()

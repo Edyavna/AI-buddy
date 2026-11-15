@@ -66,3 +66,15 @@ func TestMentorChatUsesModelHistoryWithoutTools(t *testing.T) {
 		t.Fatalf("%+v, %q, %v", result, answer, err)
 	}
 }
+
+func TestMentorChatMissingModelIsUnavailable(t *testing.T) {
+	defer func() {
+		if value := recover(); value != nil {
+			t.Fatalf("unconfigured mentor model panicked: %v", value)
+		}
+	}()
+	_, err := (Mentor{}).Run(t.Context(), ports.AgentInput{Text: "Вопрос"}, func(context.Context, ports.AgentEvent) error { t.Fatal("unexpected answer"); return nil })
+	if !errors.Is(err, ports.ErrUnavailable) {
+		t.Fatal(err)
+	}
+}

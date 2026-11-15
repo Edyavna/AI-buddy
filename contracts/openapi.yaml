@@ -23,6 +23,191 @@ tags:
 - name: Requests
 - name: Mentor
 paths:
+  /action-queue:
+    get:
+      tags: [Mentor, HR]
+      operationId: listActionQueue
+      description: Ожидающие действия текущего наставника или HR. Сортировка по времени ожидания, типу и ID.
+      parameters:
+      - name: intern_id
+        in: query
+        schema:
+          type: string
+      - name: kind
+        in: query
+        schema:
+          $ref: '#/components/schemas/ActionQueueKind'
+      - name: offset
+        in: query
+        schema: { type: integer, minimum: 0, default: 0 }
+      - name: limit
+        in: query
+        schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        '200':
+          description: Действия, доступные стажёры и счётчики
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionQueuePage'
+        '422':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /onboarding/steps/{step_id}/invitation:
+    get:
+      tags: [Onboarding]
+      operationId: getCheckpointInvitation
+      description: Последний запрос на ручное приглашение из чекпоинта «Организационные моменты» собственного плана.
+      parameters:
+      - name: step_id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Текущий статус ручного приглашения
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckpointInvitationState'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      tags: [Onboarding]
+      operationId: setCheckpointInvitation
+      description: Создать запрос с клиентским UUID или отменить открытый запрос с этим UUID.
+      parameters:
+      - name: step_id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetCheckpointInvitation'
+      responses:
+        '200':
+          description: Сохранённый запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckpointInvitationState'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '415':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+  /mentor/interns/{intern_id}/invitations/{id}:
+    get:
+      tags: [Mentor]
+      operationId: getAssignedInternInvitation
+      description: Запрос назначенного стажёра. Используется для сверки результата после потери ответа.
+      parameters:
+      - name: intern_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Сохранённый запрос
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckpointInvitation'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      tags: [Mentor]
+      operationId: completeAssignedInternInvitation
+      description: Наставник фиксирует, что приглашение уже выполнено вручную. Повтор сохраняет первоначальную отметку.
+      parameters:
+      - name: intern_id
+        in: path
+        required: true
+        schema:
+          type: string
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteCheckpointInvitation'
+      responses:
+        '200':
+          description: Отметка о ручном приглашении
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckpointInvitation'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '404':
+          $ref: '#/components/responses/Error'
+        '409':
+          $ref: '#/components/responses/Error'
+        '415':
+          $ref: '#/components/responses/Error'
+        '422':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /meetings:
     get:
       operationId: listMeetings
@@ -2391,6 +2576,27 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+  /onboarding/recommendation:
+    get:
+      tags:
+      - Onboarding
+      operationId: getMyRecommendation
+      description: Рекомендация следующего доступного действия для стажёра по его плану.
+      responses:
+        '200':
+          description: Рекомендация доступного шага и статус ожидания приоритетного шага
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Recommendation'
+        '401':
+          $ref: '#/components/responses/Error'
+        '403':
+          $ref: '#/components/responses/Error'
+        '503':
+          $ref: '#/components/responses/Error'
+        default:
+          $ref: '#/components/responses/Error'
   /onboarding/plan:
     get:
       tags:
@@ -2519,7 +2725,13 @@ paths:
       tags:
       - Chat
       operationId: listConversations
-      description: Свои диалоги, updated_at по убыванию. В ограниченном demo без пагинации.
+      description: Свои активные диалоги стажёра или наставника по умолчанию либо архив по запросу. Владение и команда проверяются сервером; HR этот API недоступен.
+      parameters:
+      - name: archived
+        in: query
+        schema:
+          type: boolean
+          default: false
       responses:
         '200':
           description: Диалоги
@@ -2552,6 +2764,7 @@ paths:
       description: Создать диалог. client_conversation_id генерируется фронтом один раз; уникален для пользователя.
         Повтор с теми же параметрами возвращает тот же диалог (200), первый вызов — 201. Другой step_id при том
         же ID — 409 IDEMPOTENCY_CONFLICT. Пропущенный step_id эквивалентен null. Ключ хранится весь срок жизни диалога.
+        Наставник создаёт обычный диалог без step_id; привязка к шагу стажёра для него возвращает 422.
       requestBody:
         required: true
         content:
@@ -3773,6 +3986,29 @@ paths:
           $ref: '#/components/responses/Error'
         '503':
           $ref: '#/components/responses/Error'
+    patch:
+      tags: [Chat]
+      operationId: setConversationArchived
+      description: Архивирует или восстанавливает свой диалог с сохранением истории.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [archived]
+              properties:
+                archived:
+                  type: boolean
+      responses:
+        '200':
+          description: Обновлённый диалог
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        default:
+          $ref: '#/components/responses/Error'
 components:
   securitySchemes:
     sessionCookie:
@@ -3795,6 +4031,81 @@ components:
           schema:
             $ref: '#/components/schemas/ApiError'
   schemas:
+    ActionQueueKind:
+      type: string
+      enum: [invitation, confirmation, question]
+    ActionQueuePerson:
+      type: object
+      required: [id, name]
+      properties:
+        id: { type: string }
+        name: { type: string }
+    ActionQueueItem:
+      type: object
+      required: [kind, id, intern, step_id, step_title, question_preview, action, since, updated_at]
+      properties:
+        kind:
+          $ref: '#/components/schemas/ActionQueueKind'
+        id: { type: string }
+        intern:
+          $ref: '#/components/schemas/ActionQueuePerson'
+        step_id: { type: string, nullable: true }
+        step_title: { type: string, nullable: true }
+        question_preview: { type: string, nullable: true, maxLength: 160 }
+        action:
+          type: string
+          enum: [record_invitation, review_checkpoint, claim_question, answer_question]
+        since: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    ActionQueuePage:
+      type: object
+      required: [items, interns, counts, total]
+      properties:
+        items:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/ActionQueueItem'
+        interns:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionQueuePerson'
+        counts:
+          description: Счётчики по типам с учётом фильтра по стажёру, до фильтра по типу и пагинации.
+          type: object
+          required: [invitation, confirmation, question]
+          properties:
+            invitation: { type: integer, minimum: 0 }
+            confirmation: { type: integer, minimum: 0 }
+            question: { type: integer, minimum: 0 }
+        total: { type: integer, minimum: 0, description: Размер выборки после обоих фильтров. }
+    CheckpointInvitation:
+      type: object
+      required: [id, state, requested_at, closed_at, note]
+      properties:
+        id: { type: string, format: uuid }
+        state: { type: string, enum: [pending, canceled, completed] }
+        requested_at: { type: string, format: date-time }
+        closed_at: { type: string, format: date-time, nullable: true }
+        note: { type: string, nullable: true, maxLength: 500 }
+    CheckpointInvitationState:
+      type: object
+      required: [invitation]
+      properties:
+        invitation:
+          nullable: true
+          allOf:
+          - $ref: '#/components/schemas/CheckpointInvitation'
+    SetCheckpointInvitation:
+      type: object
+      required: [id, action]
+      properties:
+        id: { type: string, format: uuid }
+        action: { type: string, enum: [request, cancel] }
+    CompleteCheckpointInvitation:
+      type: object
+      properties:
+        note: { type: string, maxLength: 500 }
     MeetingAgreementInput:
       type: object
       required:
@@ -5454,6 +5765,132 @@ components:
               type: string
             name:
               type: string
+    RecommendationState:
+      type: string
+      enum:
+      - action_available
+      - waiting_mentor
+      - waiting_access
+      - blocked_dependencies
+      - blocked
+      - completed
+      - empty_plan
+      description: Состояние рекомендации следующего шага
+    RecommendationActionType:
+      type: string
+      enum:
+      - confirm
+      - read_instructions
+      - assistant
+      - view_step
+      - null
+      nullable: true
+      description: Тип рекомендуемого действия стажёра
+    RecommendationTarget:
+      type: object
+      nullable: true
+      required:
+      - step_id
+      - route
+      - action
+      properties:
+        step_id:
+          type: string
+        route:
+          type: string
+        action:
+          type: string
+          enum:
+          - open_card
+          - open_instructions
+          - open_chat
+    WaitingStepInfo:
+      type: object
+      nullable: true
+      required:
+      - step_id
+      - title
+      - reason
+      - state
+      properties:
+        step_id:
+          type: string
+        title:
+          type: string
+        period:
+          type: string
+          nullable: true
+        reason:
+          type: string
+        state:
+          $ref: '#/components/schemas/RecommendationState'
+        awaiting_role:
+          type: string
+          enum: [intern, mentor, null]
+          nullable: true
+        help_direction:
+          type: string
+          enum: [mentor, hr, null]
+          nullable: true
+        blocked_at:
+          type: string
+          format: date-time
+          nullable: true
+        waiting_duration_seconds:
+          type: integer
+          nullable: true
+    RecommendationHelpAction:
+      type: object
+      nullable: true
+      required:
+      - direction
+      - label
+      - url
+      - available
+      properties:
+        direction:
+          $ref: '#/components/schemas/QuestionDirection'
+        label:
+          type: string
+        url:
+          type: string
+        available:
+          type: boolean
+          description: Доступен ли данный адресат (например, false если у команды нет HR)
+    Recommendation:
+      type: object
+      required:
+      - state
+      - reason
+      properties:
+        state:
+          $ref: '#/components/schemas/RecommendationState'
+        step_id:
+          type: string
+          nullable: true
+        title:
+          type: string
+          nullable: true
+        period:
+          type: string
+          nullable: true
+        reason:
+          type: string
+        action_type:
+          $ref: '#/components/schemas/RecommendationActionType'
+          nullable: true
+        action_label:
+          type: string
+          nullable: true
+        target:
+          $ref: '#/components/schemas/RecommendationTarget'
+          nullable: true
+        waiting_step:
+          $ref: '#/components/schemas/WaitingStepInfo'
+          nullable: true
+        help_action:
+          $ref: '#/components/schemas/RecommendationHelpAction'
+          nullable: true
     Plan:
       type: object
       required:
@@ -5461,6 +5898,7 @@ components:
       - title
       - progress_percent
       - next_step_id
+      - recommendation
       - steps
       properties:
         id:
@@ -5475,6 +5913,9 @@ components:
         next_step_id:
           type: string
           nullable: true
+          description: Идентификатор следующего доступного для выполнения шага стажёра (совпадает с recommendation.step_id), либо null
+        recommendation:
+          $ref: '#/components/schemas/Recommendation'
         steps:
           type: array
           items:
@@ -5501,6 +5942,11 @@ components:
       - instructions
       - resources
       properties:
+        blocked_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: Начало сохранённой блокировки; отсутствует у шага без истории.
         id:
           type: string
         title:
@@ -5636,6 +6082,8 @@ components:
         created_at:
           type: string
           format: date-time
+        archived:
+          type: boolean
         updated_at:
           type: string
           format: date-time

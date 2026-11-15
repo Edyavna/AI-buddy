@@ -1,0 +1,56 @@
+PR #72 review, 2026-11-15, base dev bb6d4bb.
+Branch: feature/issue-55-next-step. No other PR branch changed.
+
+Frontend (all commands from frontend/):
+  npm run typecheck
+  npm run lint
+  npm run test:coverage -- --maxWorkers=2
+    49 files, 433 tests passed. Existing thresholds preserved.
+    Lines: 95.50% (2276/2383); statements: 92.81% (2763/2977).
+  npm run test:e2e: 1 passed
+  npm run check:api
+  npm run build
+  node ../scripts/hr-coverage.mjs origin/dev frontend
+    Changed executable lines: 95.38% (62/65), strictly >90%.
+  The first concurrent local run hit an existing review-preparation test's
+    5-second timeout; repeated with 2 workers without changing test timeouts.
+
+Backend (Go 1.26.5 Linux + PostgreSQL 17 with pgvector):
+  TEST_DATABASE_URL targets isolated per-test databases, never application data.
+  go test -race -p 1 -count=1 -timeout=5m -coverpkg=./... -coverprofile=coverage.out ./...
+  go vet ./...
+  go build ./...
+  All passed after synchronizing the URL-encoded full-demo-plan fixture.
+  Local Docker Desktop uses a 5-minute package limit; CI keeps its original 2m.
+  go run ../scripts/go_line_coverage.go coverage.out
+    All instrumented lines: 85.58% (6127/7159), existing >=80% gate preserved.
+  go run ../scripts/go_line_coverage.go --lines coverage.out > coverage/lines.tsv
+  node ../scripts/hr-coverage.mjs origin/dev backend
+    Changed executable lines: 94.50% (189/200), strictly >90%.
+
+Contracts:
+  pip install -r contracts/requirements-check.txt
+  python scripts/check_contracts.py
+  PASS: OpenAPI 0.2.0, 105 operations, fixtures, SSE schemas, negative cases,
+    Markdown links and recommendation/next_step_id consistency.
+
+Browser with real Go + PostgreSQL, Chrome via Playwright core 1.60.0:
+  Prepare disposable seeded DB using scripts/recommendation-browser-fixture.sql.
+  node scripts/recommendation-browser.mjs
+    360/768/1440: independent/dependent steps, both policy, keyboard/focus,
+    explicit step URL/reload, mentor revocation/re-confirmation via polling,
+    100% completion and revocation, mentor/HR recipient through chat creation
+    and reload, explicit recipient change, confirmed checkpoint in HR request,
+    and team without HR. Passed; no page errors or horizontal overflow.
+  Restart Go and reapply demo seed without resetting the database.
+  node scripts/recommendation-browser.mjs --verify
+    Confirmations, recommendation and sent HR source context survived. Passed.
+  Screenshots and state are in tmp/recommendation-browser/.
+  CI repeats the same script through production Nginx SPA/Go/PostgreSQL and
+    uploads the recommendation-browser artifact.
+
+Changed-file/line reports: frontend.txt, backend.txt.
+CI uses the exact PR base SHA and the existing coverage tool exclusions.
+Live external model not tested; deterministic HTTP provider used only for chat.
+Recommendations do not invoke the model. Existing JS bundle >500 kB warning remains.
+Legacy/projected waits without persisted timestamps retain null durations.

@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useParams, Link } from 'react-router-dom';
 import { useQueryClient } from '@tanstack/react-query';
 import { ClientError } from '@/shared/api';
 import { useMe } from '@/features/session';
@@ -20,7 +20,7 @@ export function safeResourceUrl(value: string | null): string | null {
   catch { return null; }
 }
 function Checkpoint({ step, busy, pending, onChange }: { step: Step; busy: boolean; pending: boolean; onChange: (confirmed: boolean) => void }) {
-  return <li className={styles.card} data-step-id={step.id}>
+  return <li className={styles.card} data-step-id={step.id} id={`step-${encodeURIComponent(step.id)}`} tabIndex={-1}>
     <div className={styles.row}><span className={styles.tag}>{statuses[step.status]}</span>{step.period && <span className={styles.muted}>Период: {step.period}</span>}</div>
     <h2>{step.title}</h2>
     {step.description && step.description !== step.instructions && step.description !== step.title && <p>{step.description}</p>}
@@ -51,6 +51,11 @@ function MentorPlan({ id }: { id: string }) {
   const query = useMentorQuery(mentorKeys.plan(id), async signal => acceptMentorPlan(client, id, await mentorApi.plan(id, signal), signal));
   const summary = useMentorQuery(mentorKeys.interns, mentorApi.interns);
   const intern = summary.data?.items.find(i => i.id === id), plan = query.data;
+  const { hash } = useLocation();
+  const planID = plan?.id;
+  useEffect(() => {
+    if (planID && hash.startsWith('#step-')) document.getElementById(hash.slice(1))?.focus();
+  }, [hash, planID]);
   function change(step: Step, confirmed: boolean) {
     if (!me.data || step.completion_policy === 'intern' || !step.allowed_actions.includes(confirmed ? 'confirm' : 'revoke')) return;
     const mentorId = me.data.id;

@@ -20,6 +20,7 @@ var (
 )
 
 type Conversation struct {
+	Archived  bool      `json:"archived"`
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`
 	StepID    *string   `json:"step_id"`
@@ -41,18 +42,19 @@ type APIError struct {
 	Error httpapi.Error `json:"error"`
 }
 type Message struct {
-	ID         string                   `json:"id"`
-	ClientID   *string                  `json:"client_message_id"`
-	Role       string                   `json:"role"`
-	Text       string                   `json:"text"`
-	Status     string                   `json:"status"`
-	Sources    []Source                 `json:"sources"`
-	RequestIDs []string                 `json:"request_ids"`
-	Routing    *ports.RoutingSuggestion `json:"routing,omitempty"`
-	Outcome    ports.Outcome            `json:"outcome,omitempty"`
-	Error      *APIError                `json:"error,omitempty"`
-	CreatedAt  time.Time                `json:"created_at"`
-	InReplyTo  *string                  `json:"in_reply_to_message_id"`
+	ConversationTitle string                   `json:"-"`
+	ID                string                   `json:"id"`
+	ClientID          *string                  `json:"client_message_id"`
+	Role              string                   `json:"role"`
+	Text              string                   `json:"text"`
+	Status            string                   `json:"status"`
+	Sources           []Source                 `json:"sources"`
+	RequestIDs        []string                 `json:"request_ids"`
+	Routing           *ports.RoutingSuggestion `json:"routing,omitempty"`
+	Outcome           ports.Outcome            `json:"outcome,omitempty"`
+	Error             *APIError                `json:"error,omitempty"`
+	CreatedAt         time.Time                `json:"created_at"`
+	InReplyTo         *string                  `json:"in_reply_to_message_id"`
 }
 type Reservation struct {
 	Conversation    Conversation
@@ -60,7 +62,8 @@ type Reservation struct {
 	Previous        []Message
 }
 type Store interface {
-	List(context.Context, identity.Principal) ([]Conversation, error)
+	List(context.Context, identity.Principal, bool) ([]Conversation, error)
+	SetArchived(context.Context, identity.Principal, string, bool) (Conversation, error)
 	Create(context.Context, identity.Principal, string, *string, bool) (Conversation, bool, error)
 	Get(context.Context, identity.Principal, string) (Conversation, error)
 	Messages(context.Context, identity.Principal, string) ([]Message, error)

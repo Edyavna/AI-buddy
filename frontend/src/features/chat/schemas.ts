@@ -10,7 +10,7 @@ export const userSchema = z.object({
 });
 export const conversationSchema = z.object({
   id: z.string(), client_conversation_id: z.uuid(), title: z.string(),
-  markdown: z.boolean().optional(), step_id: z.string().nullable(), created_at: date, updated_at: date,
+  markdown: z.boolean().optional(), step_id: z.string().nullable(), created_at: date, updated_at: date, archived: z.boolean().optional(),
 });
 const source = z.object({ id: z.string(), document_id: z.string(), title: z.string(), excerpt: z.string(), version: z.number().int().positive().optional(), direction: z.enum(['mentor', 'hr']).optional(), updated_at: z.string().optional() });
 export const messageSchema = z.object({

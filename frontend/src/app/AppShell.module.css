@@ -260,6 +260,12 @@
   }
 }
 .mentorHeader { min-height: var(--header-height); }
+@media (min-width: 1024px) {
+  .mentorNavigation { height: auto; }
+  .mentorNavigation .headerInner { grid-template-columns: minmax(0, 1fr) auto; padding-block: var(--space-2); row-gap: 0; }
+  .mentorNavigation .navigation { grid-row: 2; grid-column: 1 / -1; justify-self: stretch; flex-wrap: wrap; gap: 0 var(--space-4); }
+  .mentorNavigation .userSection { grid-column: 2; grid-row: 1; }
+}
 @media (max-width: 1023px) {
   .mentorHeader .switchAccountButton { display: inline-flex; }
 }
@@ -269,4 +275,16 @@
   .navigation { grid-row: 2; grid-column: 1 / -1; justify-self: stretch; flex-wrap: wrap; gap: 0 var(--space-4); }
   .userSection { display: flex; grid-column: 2; grid-row: 1; }
   .switchAccountButton { display: inline-flex; }
+}
+
+/* Chat fills the space below the real header, including its wrapped mobile layout. */
+.layout:has([data-chat-layout]) {
+  height: 100dvh;
+  min-height: 0;
+}
+.mainContent:has(> [data-chat-layout]) {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  padding-block: var(--space-3);
 }
