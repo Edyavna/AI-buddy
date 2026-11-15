@@ -11,6 +11,7 @@ import { RoleHome, MentorGate, InternGate, MentorQuestionsPage, MentorQuestionPa
 import { ReviewPreparationPage, MentorReviewPreparationsPage, MentorReviewPreparationPage } from '@/features/review-preparation';
 
 import { HRDocumentsPage, HRQuestionPage, HRQuestionsPage } from '@/features/hr';
+import { ActionQueuePage } from '@/features/action-queue/ActionQueuePage';
 
 function HRGate() {
   const me = useMe();
@@ -54,6 +55,7 @@ export const routes: RouteObject[] = [
       },
       { path: 'mentor', element: <MentorGate />, children: [
         { index: true, element: <Navigate to="questions" replace /> },
+        { path: 'action-queue', element: <ActionQueuePage role="mentor" /> },
         { path: 'questions', element: <MentorQuestionsPage /> },
         { path: 'questions/:id', element: <MentorQuestionPage /> },
         { path: 'questions/:id/instruction', element: <ResolutionDraftPage direction="mentor" /> },
@@ -69,6 +71,7 @@ export const routes: RouteObject[] = [
       ] },
       { path: 'hr', element: <HRGate />, children: [
         { index: true, element: <Navigate to="questions" replace /> },
+        { path: 'action-queue', element: <ActionQueuePage role="hr" /> },
         { path: 'questions', element: <HRQuestionsPage /> },
         { path: 'questions/:id', element: <HRQuestionPage /> },
         { path: 'questions/:id/instruction', element: <ResolutionDraftPage direction="hr" /> },
