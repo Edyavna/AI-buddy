@@ -12,13 +12,26 @@ const browser=await chromium.launch({headless:true,...(process.env.MEMORY_BROWSE
 const run=Date.now().toString(36),report=[];
 async function login(page,name){await page.goto(origin+'/login');await page.getByRole('radio',{name:new RegExp(name)}).click();await page.getByRole('button',{name:/Войти как/}).click();await page.waitForURL(url=>!url.pathname.endsWith('/login'));}
 async function json(page,path){const response=await page.request.get(origin+'/api/v1'+path);assert.equal(response.status(),200,path+': '+await response.text());return response.json();}
-async function capture(page,name){assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);await page.evaluate(()=>{window.scrollTo(0,0);document.activeElement?.blur();});await page.screenshot({path:`${directory}/${name}.png`,fullPage:true,animations:'disabled'});}
+async function capture(page,name){
+  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
+  await page.evaluate(()=>{window.scrollTo(0,0);document.activeElement?.blur();});
+  if(await page.locator('[data-chat-layout]').count()) {
+    assert.equal(await page.getByRole('textbox',{name:'Ваш вопрос'}).evaluate(input=>{
+      const send=input.closest('form').querySelector('button[type="submit"]');
+      const log=document.querySelector('[role="log"]');
+      return input.getBoundingClientRect().bottom<=innerHeight&&send.getBoundingClientRect().bottom<=innerHeight&&log.getBoundingClientRect().height>0;
+    }),true,'Memory proposals must leave the composer and scrollable history visible');
+  }
+  await page.screenshot({path:`${directory}/${name}.png`,fullPage:true,animations:'disabled'});
+}
 async function ask(page,text){
   await page.goto(origin+'/chat');await page.getByRole('textbox',{name:'Ваш вопрос'}).fill(text);await page.getByRole('button',{name:'Отправить',exact:true}).click();
   await page.getByRole('button',{name:'Обратиться к специалисту'}).last().waitFor();
   const url=page.url(),id=new URL(url).pathname.split('/').at(-1);
   const messages=await json(page,`/conversations/${id}/messages`);
-  assert.equal(messages.at(-1).status,'completed');return {url,message:messages.find(m=>m.role==='user')};
+  assert.equal(messages.at(-1).status,'completed');
+  assert.equal((await json(page,`/conversations/${id}`)).title,'Личный диалог','Memory must preserve the configured title generator');
+  return {url,message:messages.find(m=>m.role==='user')};
 }
 async function confirmPowerShell(page){
   const button=page.getByRole('button',{name:'Запомнить: Использую PowerShell',exact:true});await button.waitFor();

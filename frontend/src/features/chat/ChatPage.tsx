@@ -234,9 +234,9 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
             )}
           </article>;
         })}
+        {!mentor&&memorySource&&me.data&&!busy&&!error&&<MemorySuggestions key={`${me.data.id}:${memorySource}`} messageId={memorySource}/>}
         </div>
       </div>
-      {!mentor&&memorySource&&me.data&&!busy&&!error&&<MemorySuggestions key={`${me.data.id}:${memorySource}`} messageId={memorySource}/>}
       {newMessages && <Button variant="secondary" onClick={() => { nearBottom.current = true; setNewMessages(false); if (list.current) list.current.scrollTop = list.current.scrollHeight; }}>Новые сообщения</Button>}
       <div role="status" aria-live="polite">{state.phase === 'sending' ? 'Отправляем вопрос…' : state.phase === 'recovering' ? 'Восстанавливаем ответ…' : ''}{Object.values(state.tools).map((label, i) => <p key={i}>{label}</p>)}</div>
       {!error && !archive.error && state.error && <InlineError message={state.error} />}
