@@ -1,0 +1,72 @@
+PR #78 / issue #75 review, 2026-11-15. Base dev e7ef2ff.
+Branch feature/issue-75-mentor-markdown. Only existing PR #78 updated.
+
+Frontend (from frontend/):
+  npm run typecheck
+  npm run lint
+  npm run check:api
+  npm run test:coverage -- --maxWorkers=2
+    52 files / 461 tests passed.
+    Lines 95.85% (2454/2560), statements 93.17% (2974/3192).
+  npm run test:e2e: 1 passed
+  npm run build: passed; existing JS bundle >500 kB warning remains.
+  node ../scripts/hr-coverage.mjs origin/dev frontend
+    Changed executable lines 100.00% (18/18), strictly >90%.
+  Mode-switch regression first failed before the fix, then passed.
+
+Backend (Go 1.26.5 Linux, PostgreSQL 17 + pgvector):
+  go test -race -p 1 -count=1 -timeout=5m -coverpkg=./... -coverprofile=coverage.out ./...
+    All packages exercised. One environment failure: Alpine image lacked git,
+    required by existing TestLoadPlaybookFromCommit in internal/knowledge.
+    All other packages passed (app 180.656s, chat 44.766s).
+  Install git into the local test image, then:
+  go test -race -count=1 -timeout=5m -coverpkg=./... -coverprofile=knowledge.out ./internal/knowledge
+    PASS, 3.478s. No source changes or skipped tests for the environment failure.
+  go vet ./...
+  go build ./...
+  test -z "$(gofmt -l .)"
+    All passed in the corrected Linux image.
+  For local coverage, combine coverage.out and knowledge.out under one mode: atomic
+    header. Existing line reporter combines duplicate blocks with logical OR.
+  go run ../scripts/go_line_coverage.go combined.out
+    All lines 85.93% (6384/7429), existing >=80% threshold preserved.
+  go run ../scripts/go_line_coverage.go --lines combined.out > coverage/lines.tsv
+  node ../scripts/hr-coverage.mjs origin/dev backend
+    Changed executable lines 100.00% (27/27), strictly >90%.
+  CI retains its original 2m package limit and runs the full suite with git present.
+    Local Docker Desktop uses -p 1 -timeout=5m; no CI threshold was weakened.
+
+New PostgreSQL/API tests verify the configured model, clarification, three versions,
+  previous document in actual model history, failure + fresh-UUID retry, reload,
+  idempotent create/mode conflict, archive, peer/intern/HR denial and role-demoted
+  author denial for list/read/history/archive/send.
+Migration test upgrades released dev through 000026 to 000027, repeats Apply/Verify,
+  preserves an archived mentor conversation and leaves it non-Markdown.
+
+Contracts:
+  pip install -r contracts/requirements-check.txt
+  python scripts/check_contracts.py
+    PASS: 110 operations, fixtures, SSE schemas, negative cases, references.
+
+Browser (real Go + PostgreSQL + cookie auth, Chrome/Playwright core 1.60.0):
+  node scripts/mentor-chat-browser.mjs
+    PASS: ordinary mentor SSE/history/retry/archive/ownership and intern context/forms.
+  node scripts/mentor-markdown-browser.mjs
+    PASS at 360/768/1440: knowledge-page entry, clarification, complete versions,
+    byte-exact UTF-8 files, previous version passed to model, failed generation,
+    fresh-UUID retry preserving older versions, reload, keyboard archive/restore,
+    peer isolation and intern rejection. No upload before explicit form submit.
+    Existing multipart form accepted chosen second version; indexing reached ready
+    and the stored document content exactly matched the selected file.
+  Restart the local Go API and repeat seed without resetting PostgreSQL.
+  node scripts/mentor-chat-browser.mjs --verify
+  node scripts/mentor-markdown-browser.mjs --verify
+    PASS: versions, downloads, uploaded content, ordinary history and ownership remain.
+  Local provider remained running. CI restarts both API and provider before verify.
+  Screenshots visually checked at 360/1440; no horizontal overflow at all three widths.
+  CI uses production Nginx SPA + Go + PostgreSQL with the same scripts and publishes
+    mentor-markdown-browser (screenshots, downloaded files, synthetic state).
+
+Source/line measurements: frontend.txt, backend.txt. Coverage gates compare the exact
+  PR base SHA; existing exclusions for generated/test/mock/dependency code unchanged.
+Live external model with a real key not tested; deterministic HTTP provider used.
