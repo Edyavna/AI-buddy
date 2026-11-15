@@ -2519,7 +2519,13 @@ paths:
       tags:
       - Chat
       operationId: listConversations
-      description: Свои диалоги, updated_at по убыванию. В ограниченном demo без пагинации.
+      description: Свои активные диалоги по умолчанию или архив по запросу.
+      parameters:
+      - name: archived
+        in: query
+        schema:
+          type: boolean
+          default: false
       responses:
         '200':
           description: Диалоги
@@ -3772,6 +3778,29 @@ paths:
         '500':
           $ref: '#/components/responses/Error'
         '503':
+          $ref: '#/components/responses/Error'
+    patch:
+      tags: [Chat]
+      operationId: setConversationArchived
+      description: Архивирует или восстанавливает свой диалог с сохранением истории.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [archived]
+              properties:
+                archived:
+                  type: boolean
+      responses:
+        '200':
+          description: Обновлённый диалог
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Conversation'
+        default:
           $ref: '#/components/responses/Error'
 components:
   securitySchemes:
@@ -5633,6 +5662,8 @@ components:
         created_at:
           type: string
           format: date-time
+        archived:
+          type: boolean
         updated_at:
           type: string
           format: date-time
