@@ -5,13 +5,13 @@ Frontend (from frontend/):
   npm run typecheck
   npm run lint
   npm run test:coverage -- --maxWorkers=2
-    51 files / 454 tests passed. Existing thresholds unchanged.
-    Lines 95.80% (2445/2552), statements 93.08% (2963/3183).
+    51 files / 458 tests passed. Existing thresholds unchanged.
+    Lines 95.84% (2448/2554), statements 93.12% (2967/3186).
   npm run test:e2e: 1 passed
   npm run check:api
   npm run build
   node ../scripts/hr-coverage.mjs origin/dev frontend
-    Changed executable lines 100.00% (57/57), strictly >90%.
+    Changed executable lines 100.00% (59/59), strictly >90%.
 
 Backend (Go 1.26.5 Linux, PostgreSQL 17 + pgvector):
   go test -race -p 1 -count=1 -timeout=5m -coverpkg=./... -coverprofile=coverage.out ./...
@@ -46,6 +46,14 @@ Browser (real Go + PostgreSQL + cookie auth, Chrome/Playwright core 1.60.0):
     restarts Go and provider, repeats seed and uploads mentor-chat-browser artifacts.
 
 Source/line measurements: frontend.txt, backend.txt.
+Follow-up list-retry regression:
+  ChatPage.test.tsx covers intern/mentor and 403/404 -> retry -> empty list 200
+    -> first question -> SSE answer. All four cases failed before the fix.
+  ChatPage, MentorChat and controller tests: 33 passed, including cancellation,
+    late-200 and later-503 cases. Full frontend checks rerun as listed above.
+  Chrome + local Go/PostgreSQL: list 403 injected in browser; retry uses real API,
+    then first question receives SSE and a persisted completed answer for both roles.
+  Backend source unchanged in this follow-up; full backend and browser CI rerun on push.
 CI uses the exact PR base SHA and existing coverage exclusions.
 Live external model with a real key not tested; deterministic HTTP provider used.
 Markdown file export belongs to #75. Existing JS >500 kB warning remains.

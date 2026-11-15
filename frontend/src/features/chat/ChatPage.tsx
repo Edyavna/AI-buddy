@@ -101,6 +101,11 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
 
   useEffect(() => { controller.activate(); return () => controller.stop(); }, [controller]);
   useEffect(() => {
+    // A new chat has no history read to reactivate it after access is restored.
+    // Only a successful list read may start a fresh controller generation.
+    if (!conversationId && conversations.isSuccess && conversations.data) controller.activate();
+  }, [conversationId, conversations.isSuccess, conversations.data, conversations.dataUpdatedAt, controller]);
+  useEffect(() => {
     // Internal replace after creation keeps the same controller and active request.
     if (controller.state.conversationId !== (conversationId ?? null)) {
       controller.reset(conversationId ?? null); setText(''); setDocumentId(null); nearBottom.current = true;
