@@ -13,6 +13,9 @@ type Mentor struct {
 }
 
 func (a Mentor) Run(ctx context.Context, in ports.AgentInput, emit ports.Emit) (ports.AgentResult, error) {
+	if a.Complete == nil {
+		return ports.AgentResult{}, ports.ErrUnavailable
+	}
 	const prompt = `Ты помощник наставника. Отвечай на обычные вопросы, учитывая историю. Если рабочих фактов недостаточно, попроси их уточнить. Верни один объект JSON с полем "answer" (текст в Markdown).`
 	messages := []Message{{Role: "system", Content: prompt}}
 	for _, previous := range in.History {

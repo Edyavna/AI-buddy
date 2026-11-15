@@ -7,6 +7,7 @@ import { server } from '@/test/server';
 import { createScenario } from '@/mocks/fixtures/scenario';
 import { ChatController } from './controller';
 import { eventText } from '@/test/chat-stream';
+import { messageSchema } from './schemas';
 
 const f = createScenario();
 afterEach(() => { sessionStorage.clear(); vi.useRealTimers(); });
@@ -33,6 +34,23 @@ function setup() {
   const unauthorized = vi.fn(); const controller = new ChatController(client, unauthorized);
   return { controller, client, unauthorized };
 }
+
+it.each([403, 404])('drops private state and does not recover automatically after a denied send: %s', async status => {
+  const { controller, client } = setup();
+  controller.reset(f.conversation.id);
+  controller.update({ messages: f.messages.map(message => messageSchema.parse(message)) });
+  client.setQueryData(queryKeys.messages(f.conversation.id), f.messages);
+  const read = vi.fn(() => HttpResponse.json(f.messages));
+  server.use(http.get('*/api/v1/conversations/:id/messages', read),
+    http.post('*/api/v1/conversations/:id/messages', () => new HttpResponse(null, { status })));
+  await controller.send('Следующий вопрос', f.user.id, null, vi.fn());
+  expect(controller.state.messages).toEqual([]);
+  expect(controller.state.error).toBe('Диалог недоступен или удалён');
+  expect(controller.canRetry).toBe(false);
+  expect(client.getQueryData(queryKeys.messages(f.conversation.id))).toBeNull();
+  expect(read).toHaveBeenCalledTimes(1);
+  controller.stop(); client.clear();
+});
 it('creates on explicit action, retains stream on navigate, ignores concurrent send and replaces deltas', async () => {
   const { controller } = setup();
   const listener = vi.fn(); const unsub = controller.subscribe(listener);

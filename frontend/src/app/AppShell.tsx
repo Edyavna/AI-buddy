@@ -33,7 +33,7 @@ export const AppShell: React.FC = () => {
       <a className={styles.skipLink} href="#main-content">
         К содержимому
       </a>
-      <header className={clsx(styles.header, user?.role !== 'intern' && styles.mentorHeader)}>
+      <header className={clsx(styles.header, user?.role !== 'intern' && styles.mentorHeader, user?.role === 'mentor' && styles.mentorNavigation)}>
         <div className={styles.headerInner}>
           <div className={styles.brandSection}>
             <Link to={home} className={styles.logoLink} aria-label={user?.role === 'hr' ? 'AI-buddy — На главную (кадровые обращения)' : user?.role === 'mentor' ? 'AI-buddy — На главную (вопросы наставнику)' : 'AI-buddy — На главную (план адаптации)'}>

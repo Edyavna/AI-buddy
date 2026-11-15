@@ -107,7 +107,7 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 	var questions []ports.SpecialistQuestion
 	if store, ok := s.Store.(interface {
 		SpecialistQuestions(context.Context, string, string, string) ([]ports.SpecialistQuestion, error)
-	}); ok {
+	}); ok && p.Role == identity.Intern {
 		lookup, cancel := context.WithTimeout(ctx, 5*time.Second)
 		questions, err = store.SpecialistQuestions(lookup, id, p.UserID, p.TeamID)
 		cancel()
@@ -261,7 +261,7 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 	defer cancel()
 	var titleResults chan string
 	if len(p.Previous) == 0 && p.Conversation.StepID == nil {
-		if titler, ok := s.Agent.(interface {
+		if titler, ok := runner.(interface {
 			ConversationTitle(context.Context, string) string
 		}); ok {
 			titleResults = make(chan string, 1)

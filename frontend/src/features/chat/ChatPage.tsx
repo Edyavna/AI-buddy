@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryKey } from '@tanstack/react-query';
 import { Button, InlineError, Spinner } from '@/shared/ui';
 import { ClientError, queryKeys } from '@/shared/api';
 import { abortSessionRequests } from '@/shared/api/session-signal';
@@ -14,6 +14,7 @@ import { canEscalateMessage, MentorQuestionPanel } from '@/features/mentor-quest
 import { AccessRequestPanel } from '@/features/access-requests';
 import { DocumentDrawer, MarkdownContent } from '@/features/documents';
 import styles from './ChatPage.module.css';
+import { chatAccessDenied, chatSignal, clearChatAccess } from './access';
 
 export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
   const chatPath = mentor ? "/mentor/chat" : "/chat";
@@ -46,22 +47,46 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
     if(target){nearBottom.current=false;target.scrollIntoView?.({block:'center'});visitedSource.current=key;}
   },[hash,state.conversationId,state.messages.length]);
   const busy = ['sending', 'streaming', 'recovering'].includes(state.phase);
+  function denyChat(key?: QueryKey) {
+    clearChatAccess(client, key); controller.denyAccess(key ? '' : undefined);
+    setText(''); setDocumentId(null); setSourceMessageId(undefined);
+  }
+  async function readChat<T>(key: QueryKey, load: (signal: AbortSignal) => Promise<T>, owner: AbortSignal) {
+    const signal = chatSignal(client, owner);
+    try {
+      const data = await load(signal);
+      signal.throwIfAborted();
+      return data;
+    } catch (error) {
+      if (!signal.aborted && chatAccessDenied(error)) denyChat(key);
+      throw error;
+    }
+  }
   const me = useQuery({ queryKey: queryKeys.me(), queryFn: ({ signal }) => getData('/me', userSchema, signal) });
   const [showArchive, setShowArchive] = useState(false);
-  const conversations = useQuery({ queryKey: showArchive ? [...queryKeys.conversations(), 'archive'] : queryKeys.conversations(), queryFn: ({ signal }) => listConversations(signal, showArchive), enabled: !!me.data });
+  const conversationsKey = showArchive ? [...queryKeys.conversations(), 'archive'] : queryKeys.conversations();
+  const conversations = useQuery({ queryKey: conversationsKey, queryFn: ({ signal }) => readChat(conversationsKey, request => listConversations(request, showArchive), signal), enabled: !!me.data });
   const archive = useMutation({
     mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
       const key = queryKeys.conversation(id);
-      const signal = queryRequestSignal(client, key);
-      const result = await setConversationArchived(id, archived, signal);
-      signal.throwIfAborted();
-      if (result.data) client.setQueryData(key, result.data);
-      await client.invalidateQueries({ queryKey: queryKeys.conversations() });
+      const signal = chatSignal(client, queryRequestSignal(client, key));
+      try {
+        const result = await setConversationArchived(id, archived, signal);
+        signal.throwIfAborted();
+        if (result.data) client.setQueryData(key, result.data);
+        await client.invalidateQueries({ queryKey: queryKeys.conversations() });
+      } catch (error) {
+        if (signal.aborted) return;
+        if (chatAccessDenied(error)) denyChat();
+        throw error;
+      }
     },
   });
-  const conversation = useQuery({ queryKey: queryKeys.conversation(conversationId ?? ''), queryFn: ({ signal }) => getConversation(conversationId!, signal), enabled: !!conversationId && !!me.data });
-  const history = useQuery({ queryKey: queryKeys.messages(conversationId ?? ''), queryFn: ({ signal }) => listMessages(conversationId!, signal), enabled: !!conversation.data && !busy });
-  const contextId = conversationId ? conversation.data?.step_id : stepId;
+  const conversationKey = queryKeys.conversation(conversationId ?? '');
+  const messagesKey = queryKeys.messages(conversationId ?? '');
+  const conversation = useQuery({ queryKey: conversationKey, queryFn: ({ signal }) => readChat(conversationKey, request => getConversation(conversationId!, request), signal), enabled: !!conversationId && !!me.data });
+  const history = useQuery({ queryKey: messagesKey, queryFn: ({ signal }) => readChat(messagesKey, request => listMessages(conversationId!, request), signal), enabled: !!conversation.data && !busy });
+  const contextId = mentor ? null : conversationId ? conversation.data?.step_id : stepId;
   const plan = usePlan(Boolean(contextId && me.data));
   const step = plan.data?.steps.find(item => item.id === contextId);
   const contextInvalid = !!contextId && !!plan.data && !step;
@@ -90,11 +115,12 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
   }, [controller, conversationId, me.data, step]);
   useEffect(() => {
     if (history.data && !busy && controller.state.messages.length === 0) {
-      controller.update({ messages: history.data });
+      controller.activate();
+      controller.update({ messages: history.data, phase: 'idle', error: '' });
       if (history.data.some(m => m.status === 'generating') && conversationId) void controller.recover(conversationId);
     }
   }, [history.data, busy, controller, conversationId]);
-  const error = me.error ?? conversations.error ?? conversation.error ?? history.error ?? plan.error;
+  const error = me.error ?? conversations.error ?? conversation.error ?? history.error ?? (mentor ? null : plan.error);
   useEffect(() => {
     if (error instanceof ClientError && error.status === 401) {
       controller.stop(); abortSessionRequests(client); client.clear(); navigate('/login', { replace: true });
@@ -198,7 +224,7 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
       </div>
       {newMessages && <Button variant="secondary" onClick={() => { nearBottom.current = true; setNewMessages(false); if (list.current) list.current.scrollTop = list.current.scrollHeight; }}>Новые сообщения</Button>}
       <div role="status" aria-live="polite">{state.phase === 'sending' ? 'Отправляем вопрос…' : state.phase === 'recovering' ? 'Восстанавливаем ответ…' : ''}{Object.values(state.tools).map((label, i) => <p key={i}>{label}</p>)}</div>
-      {state.error && <InlineError message={state.error} />}
+      {!error && !archive.error && state.error && <InlineError message={state.error} />}
       {!busy && controller.canRetry && me.data && <Button variant="secondary" onClick={() => void controller.retry(me.data!.id, openConversation)}>Повторить исходный вопрос</Button>}
       {state.conversationId && <Button variant="ghost" disabled={busy} onClick={() => void controller.recover(state.conversationId!)}>Обновить историю</Button>}
       <form className={styles.composer} onSubmit={event => { event.preventDefault(); send(); }}>
