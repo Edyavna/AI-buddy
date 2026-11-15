@@ -494,6 +494,51 @@ paths:
                 $ref: '#/components/schemas/OperationRevision'
         default:
           $ref: '#/components/responses/Error'
+  /meetings/suggestion:
+    get:
+      operationId: suggestMeeting
+      description: Предложение для своего ответа в активном чате стажёра. Приглашение при этом не создаётся.
+      parameters:
+      - in: query
+        name: message_id
+        required: true
+        schema:
+          type: string
+      responses:
+        '200':
+          description: Черновик или null, если встреча не требуется.
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [proposal]
+                properties:
+                  proposal:
+                    allOf:
+                    - $ref: '#/components/schemas/MeetingProposal'
+                    nullable: true
+        default:
+          $ref: '#/components/responses/Error'
+  /meetings/{id}/calendar:
+    get:
+      operationId: downloadMeetingCalendar
+      description: Выгрузка события в формате iCalendar для участников принятой встречи.
+      parameters:
+      - in: path
+        name: id
+        required: true
+        schema:
+          type: string
+          format: uuid
+      responses:
+        '200':
+          description: Файл встречи.
+          content:
+            text/calendar:
+              schema:
+                type: string
+        default:
+          $ref: '#/components/responses/Error'
   /curator:
     get:
       operationId: getCuratorWorkspace
@@ -4756,6 +4801,68 @@ components:
         step_id:
           type: string
           nullable: true
+    MeetingProposal:
+      type: object
+      required: [id, reason, mentor_id, existing_id, date, time, timezone, title, topics, missing]
+      properties:
+        id:
+          type: string
+          format: uuid
+        reason:
+          type: string
+          enum: [explicit, priorities, feedback, blocker, overdue]
+        mentor_id:
+          type: string
+        existing_id:
+          type: string
+        date:
+          type: string
+        time:
+          type: string
+        timezone:
+          type: string
+        title:
+          type: string
+        topics:
+          type: array
+          items:
+            type: string
+        missing:
+          type: array
+          items:
+            type: string
+    MeetingAgendaChoice:
+      type: object
+      required: [kind, id, included]
+      properties:
+        kind:
+          type: string
+          enum: [checkpoint, question, agreement]
+        id:
+          type: string
+        included:
+          type: boolean
+    MeetingAgendaItem:
+      type: object
+      required: [kind, id, included, text, step_id, state]
+      properties:
+        kind:
+          type: string
+          enum: [checkpoint, question, agreement]
+        id:
+          type: string
+        included:
+          type: boolean
+        text:
+          type: string
+        step_id:
+          type: string
+          nullable: true
+        state:
+          type: string
+        reason:
+          type: string
+          nullable: true
     MeetingChange:
       type: object
       required:
@@ -4769,6 +4876,13 @@ components:
           type: string
           enum:
           - create
+          - invite
+          - accept
+          - decline
+          - agenda
+          - details
+          - topics-add
+          - topic-delete
           - reschedule
           - cancel
           - topic
@@ -4779,6 +4893,30 @@ components:
           type: integer
         intern_id:
           type: string
+        mentor_id:
+          type: string
+          description: Обязателен для invite, проверяется по текущему назначению.
+        title:
+          type: string
+          maxLength: 200
+        call_url:
+          type: string
+          maxLength: 2048
+          description: Ссылка HTTP(S) или пустая строка.
+        local_at:
+          type: string
+          description: Локальное время YYYY-MM-DDTHH:mm для invite. Используется вместе с timezone вместо scheduled_at.
+        topics:
+          type: array
+          maxItems: 20
+          items:
+            type: string
+            maxLength: 2000
+        agenda_choices:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/MeetingAgendaChoice'
         scheduled_at:
           type: string
           format: date-time
@@ -4918,6 +5056,7 @@ components:
       required:
       - participants
       - meetings
+      - candidates
       properties:
         hr_questions:
           type: array
@@ -4950,6 +5089,10 @@ components:
                 type: string
               team_id:
                 type: string
+        candidates:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeetingAgendaItem'
         meetings:
           type: array
           items:
@@ -4964,6 +5107,8 @@ components:
             - status
             - revision
             - result
+            - title
+            - call_url
             - topics
             - agenda
             - agreements
@@ -4986,11 +5131,18 @@ components:
                 type: string
                 enum:
                 - scheduled
+                - pending
+                - accepted
+                - declined
                 - completed
                 - cancelled
               revision:
                 type: integer
               result:
+                type: string
+              title:
+                type: string
+              call_url:
                 type: string
               topics:
                 type: array
@@ -5013,25 +5165,7 @@ components:
               agenda:
                 type: array
                 items:
-                  type: object
-                  required:
-                  - kind
-                  - text
-                  - step_id
-                  - state
-                  properties:
-                    kind:
-                      type: string
-                    text:
-                      type: string
-                    step_id:
-                      type: string
-                      nullable: true
-                    state:
-                      type: string
-                    reason:
-                      type: string
-                      nullable: true
+                  $ref: '#/components/schemas/MeetingAgendaItem'
               agreements:
                 type: array
                 items:

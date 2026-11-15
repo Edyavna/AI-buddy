@@ -51,7 +51,7 @@ jobs:
           set -o pipefail
           go run ../scripts/go_line_coverage.go coverage.out | tee -a line-coverage.txt "$GITHUB_STEP_SUMMARY"
       - name: Changed backend lines above 90 percent
-        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/intern-personal-memory') || startsWith(github.head_ref, 'feature/issue-75-mentor-markdown') || startsWith(github.head_ref, 'feature/issue-76-mentor-chat') || startsWith(github.head_ref, 'feat/54-action-queue') || startsWith(github.head_ref, 'feat/62-hr') || startsWith(github.head_ref, 'feature/resolution-knowledge-drafts') || startsWith(github.head_ref, 'feature/shared-question-resolutions') || startsWith(github.head_ref, 'feature/question-context-preview') || startsWith(github.head_ref, 'feature/issue-55-next-step') || startsWith(github.head_ref, 'feat/55-') || github.head_ref == 'feat/meetings-and-curator')
+        if: github.event_name == 'pull_request' && (startsWith(github.head_ref, 'feature/intern-personal-memory') || startsWith(github.head_ref, 'feat/80-') || startsWith(github.head_ref, 'feature/issue-75-mentor-markdown') || startsWith(github.head_ref, 'feature/issue-76-mentor-chat') || startsWith(github.head_ref, 'feat/54-action-queue') || startsWith(github.head_ref, 'feat/62-hr') || startsWith(github.head_ref, 'feature/resolution-knowledge-drafts') || startsWith(github.head_ref, 'feature/shared-question-resolutions') || startsWith(github.head_ref, 'feature/question-context-preview') || startsWith(github.head_ref, 'feature/issue-55-next-step') || startsWith(github.head_ref, 'feat/55-') || github.head_ref == 'feat/meetings-and-curator')
         shell: bash
         env:
           COVERAGE_BASE: ${{ github.event.pull_request.base.sha }}
@@ -260,6 +260,25 @@ jobs:
         with:
           name: action-queue-browser
           path: tmp/action-queue-browser/
+      - if: failure()
+        run: docker compose logs
+      - if: always()
+        run: docker compose down
+
+  meeting-invitation-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/80-')
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: frontend/.node-version
+      - run: npm install --no-save --package-lock=false playwright-core@1.60.0
+      - run: npx playwright-core install --with-deps chromium
+      - run: docker compose up --build --wait --wait-timeout 180 frontend
+      - run: docker compose --profile demo run --rm seed
+      - run: node scripts/meeting-invitation-browser.mjs
       - if: failure()
         run: docker compose logs
       - if: always()

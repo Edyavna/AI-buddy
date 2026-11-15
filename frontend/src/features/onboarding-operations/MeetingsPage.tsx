@@ -1,7 +1,8 @@
-import { useRef, useState, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 import { useMe } from '@/features/session';
+import { AgendaCheckbox, agendaEntry, agendaKey, InvitationForm, proposalLocation, topicLines, type Proposal } from './MeetingInvitation';
 import { isoDate, LoadState, localDate, styles, useWorkspace } from './shared';
 
 const agreement = z.object({
@@ -10,24 +11,29 @@ const agreement = z.object({
 });
 const meeting = z.object({
   id: z.string(), intern_id: z.string(), mentor_id: z.string(), previous_id: z.string().nullable(),
-  scheduled_at: z.string(), timezone: z.string(), status: z.enum(['scheduled', 'completed', 'cancelled']),
+  scheduled_at: z.string(), timezone: z.string(), status: z.enum(['scheduled', 'pending', 'accepted', 'declined', 'completed', 'cancelled']),
+  title: z.string().default(''), call_url: z.string().default(''),
   revision: z.number(), result: z.string(), topics: z.array(z.object({
     id: z.string(), author_id: z.string(), content: z.string(), private: z.boolean(),
-  })), agenda: z.array(z.object({ kind: z.string(), text: z.string(), step_id: z.string().nullable(), state: z.string(), reason: z.string().nullable().optional() })),
+  })), agenda: z.array(agendaEntry),
   agreements: z.array(agreement),
 });
 const workspace = z.object({
   participants: z.array(z.object({ intern_id: z.string(), mentor_id: z.string(), team_id: z.string() })),
   meetings: z.array(meeting),
+  candidates: z.array(agendaEntry).default([]),
   hr_questions: z.array(z.object({ id: z.string(), title: z.string(), conversation_id: z.string(), message_id: z.string() })).default([]),
 });
 type Meeting = z.infer<typeof meeting>;
 type Send = (payload: unknown) => Promise<boolean>;
 const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone ?? 'UTC';
-const statuses = { scheduled: 'Запланирована', completed: 'Завершена', cancelled: 'Отменена' };
+const statuses = { scheduled: 'Запланирована', pending: 'Ожидает ответа наставника', accepted: 'Принята', declined: 'Отклонена', completed: 'Завершена', cancelled: 'Отменена' };
 
-function MeetingCard({ item, user, send, pending, hrQuestions }: { hrQuestions: z.infer<typeof workspace>["hr_questions"]; item: Meeting; user: string; send: Send; pending: boolean }) {
+function MeetingCard({ item, user, send, pending, hrQuestions, draft }: { draft?: Proposal | undefined; hrQuestions: z.infer<typeof workspace>["hr_questions"]; item: Meeting; user: string; send: Send; pending: boolean }) {
   const [topic, setTopic] = useState({ id: '', content: '', private: false });
+  const [suggestedTopics, setSuggestedTopics] = useState(draft?.topics.join('\n') || draft?.title || '');
+  const editable = ['scheduled', 'pending', 'accepted'].includes(item.status);
+  const included = item.agenda.filter(entry => entry.included);
   const [agreements, setAgreements] = useState<number[]>([]);
   const nextKey = useRef(0);
   function submit(action: string, handler: (data: FormData) => object) {
@@ -36,16 +42,46 @@ function MeetingCard({ item, user, send, pending, hrQuestions }: { hrQuestions: 
       void send({ id: item.id, revision: item.revision, action, ...handler(new FormData(event.currentTarget)) });
     };
   }
-  return <article className={styles.card}>
-    <h2>Встреча {new Date(item.scheduled_at).toLocaleString('ru-RU', { timeZone: item.timezone })}</h2>
+  return <article className={styles.card} id={`meeting-${item.id}`}>
+    <h2>{item.title || 'Встреча'} · {new Date(item.scheduled_at).toLocaleString('ru-RU', { timeZone: item.timezone })}</h2>
     <p>{statuses[item.status]} · {item.timezone} · {item.intern_id} / {item.mentor_id}</p>
     <h3>Повестка</h3>
-    {item.agenda.length ? <ul>{item.agenda.map((entry, index) => <li key={index}>{entry.text}{entry.reason && ` — ${entry.reason}`}</li>)}</ul> : <p>Новых тем нет.</p>}
-    <ul>{item.topics.map((entry) => <li key={entry.id}>
+    {included.length ? <ul>{included.map(entry => <li key={agendaKey(entry)}>{entry.text}{entry.reason && ` — ${entry.reason}`}</li>)}</ul> : <p>Выбранных рабочих вопросов нет.</p>}
+    {item.call_url && <p><a href={item.call_url} target="_blank" rel="noreferrer">Перейти к звонку</a></p>}
+    {item.status === 'accepted' && <p><a href={`/api/v1/meetings/${item.id}/calendar`} download>Скачать .ics</a></p>}
+    {item.status === 'pending' && user === item.mentor_id && <div className={styles.actions}>
+      <button disabled={pending} onClick={() => void send({ id: item.id, revision: item.revision, action: 'accept' })}>Принять приглашение</button>
+      <button disabled={pending} onClick={() => void send({ id: item.id, revision: item.revision, action: 'decline' })}>Отклонить приглашение</button>
+    </div>}
+    <ul>{item.topics.map(entry => <li key={entry.id}>
       {entry.content} {entry.private ? '(личная заметка)' : '(общая тема)'}
-      {entry.author_id === user && item.status === 'scheduled' && <button onClick={() => setTopic(entry)}>Редактировать тему</button>}
+      {entry.author_id === user && editable && <>
+        <button onClick={() => setTopic(entry)}>Редактировать тему</button>
+        <button disabled={pending} onClick={() => void send({ action: 'topic-delete', id: item.id, revision: item.revision, topic_id: entry.id })}>Удалить тему</button>
+      </>}
     </li>)}</ul>
-    {item.status === 'scheduled' && <>
+    {editable && <>
+      {item.agenda.some(entry => entry.id) && <fieldset className={styles.form}>
+        <legend>Рабочие вопросы и блокеры</legend>
+        {item.agenda.filter(entry => entry.id).map(entry => <AgendaCheckbox key={agendaKey(entry)} item={entry}
+          checked={entry.included} disabled={pending} onChange={selected => void send({
+            id: item.id, revision: item.revision, action: 'agenda',
+            agenda_choices: [{ kind: entry.kind, id: entry.id, included: selected }],
+          })} />)}
+      </fieldset>}
+      {draft && <form className={styles.form} onSubmit={event => {
+        event.preventDefault();
+        void send({ id: item.id, revision: item.revision, action: 'topics-add', topics: topicLines(suggestedTopics) })
+          .then(ok => { if (ok) setSuggestedTopics(''); });
+      }}>
+        <label>Темы из чата, по одной на строку<textarea required value={suggestedTopics} onChange={event => setSuggestedTopics(event.target.value)} /></label>
+        <button disabled={pending}>Добавить в повестку</button>
+      </form>}
+      <form className={styles.form} onSubmit={submit('details', data => ({ title: data.get('meeting-title'), call_url: data.get('meeting-url') }))}>
+        <label>Тема встречи<input name="meeting-title" required maxLength={200} defaultValue={item.title} /></label>
+        <label>Ссылка на звонок<input name="meeting-url" type="url" maxLength={2048} defaultValue={item.call_url} /></label>
+        <button disabled={pending}>Сохранить данные встречи</button>
+      </form>
       <form className={styles.form} onSubmit={(event) => {
         event.preventDefault();
         const id = topic.id || crypto.randomUUID();
@@ -62,7 +98,7 @@ function MeetingCard({ item, user, send, pending, hrQuestions }: { hrQuestions: 
         <label>Новая дата и время ({timezone})<input name="scheduled_at" type="datetime-local" defaultValue={localDate(item.scheduled_at)} required /></label>
         <div className={styles.actions}><button disabled={pending}>Перенести встречу</button><button type="button" disabled={pending} onClick={() => void send({ id: item.id, revision: item.revision, action: 'cancel' })}>Отменить встречу</button></div>
       </form>
-      <form className={styles.form} onSubmit={submit('complete', (data) => ({
+      {item.status !== 'pending' && <form className={styles.form} onSubmit={submit('complete', (data) => ({
         content: data.get('result'),
         agreements: agreements.map((key) => ({
           content: data.get(`content-${key}`), owner_id: data.get(`owner-${key}`),
@@ -84,7 +120,7 @@ function MeetingCard({ item, user, send, pending, hrQuestions }: { hrQuestions: 
           <button type="button" disabled={agreements.length >= 20} onClick={() => { const key = nextKey.current++; setAgreements((rows) => [...rows, key]); }}>Добавить договорённость</button>
           <button disabled={pending}>Завершить встречу</button>
         </div>
-      </form>
+      </form>}
     </>}
     {item.result && <><h3>Итоги</h3><p>{item.result}</p></>}
     {item.agreements.length > 0 && <h3>Договорённости</h3>}
@@ -104,14 +140,39 @@ function MeetingCard({ item, user, send, pending, hrQuestions }: { hrQuestions: 
 }
 
 export function MeetingsPage() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [formVersion, setFormVersion] = useState(0);
   const user = useMe().data;
   const work = useWorkspace('/meetings', workspace);
   const createId = useRef<string | undefined>(undefined);
+  const decoded = proposalLocation.safeParse(location.state);
+  const draft = decoded.success && decoded.data.owner === user?.id ? decoded.data.draft : undefined;
+  const existing = draft?.existing_id && work.data?.meetings.some(item => item.id === draft.existing_id &&
+    ['scheduled', 'pending', 'accepted'].includes(item.status)) ? draft.existing_id : undefined;
+  const load = work.load;
+  useEffect(() => {
+    if (work.pending || user?.role !== 'intern' && user?.role !== 'mentor') return;
+    const refresh = () => { if (!document.hidden) void load(true); };
+    const timer = window.setInterval(refresh, 15000);
+    window.addEventListener('focus', refresh);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); };
+  }, [load, user?.role, work.pending]);
+  const focused = work.data?.meetings.some(item => location.hash === `#meeting-${item.id}`);
+  useEffect(() => {
+    if (focused) document.getElementById(location.hash.slice(1))?.scrollIntoView?.();
+  }, [focused, location.hash]);
   return <section className={styles.page}>
     <h1>Встречи 1:1</h1>
     {work.message && <p role="alert">{work.message}</p>}
     <LoadState loading={work.loading} error={work.error} retry={() => void work.load()}>
       {!work.data?.participants.length ? <p>Для встречи нужно действующее назначение наставника.</p> :
+      user?.role === 'intern' ? <InvitationForm key={`${user.id}:${draft?.id ?? ''}:${formVersion}`} owner={user.id}
+        mentor={work.data.participants[0]!.mentor_id} draft={existing ? undefined : draft}
+        candidates={work.data.candidates} pending={work.pending} send={work.send} onSent={id => {
+          setFormVersion(version => version + 1);
+          navigate(`/meetings#meeting-${id}`, { replace: true, state: null });
+        }} /> :
         <form className={styles.form} onSubmit={(event) => {
           event.preventDefault();
           const data = new FormData(event.currentTarget);
@@ -124,7 +185,7 @@ export function MeetingsPage() {
           <button disabled={work.pending}>Запланировать встречу</button>
         </form>}
       {!work.data?.meetings.length && <p>Встреч пока нет.</p>}
-      {work.data?.meetings.map((item) => <MeetingCard key={item.id} item={item} hrQuestions={work.data?.hr_questions ?? []} user={user?.id ?? ''} send={work.send} pending={work.pending} />)}
+      {work.data?.meetings.map((item) => <MeetingCard key={`${item.id}:${existing === item.id ? draft?.id : ''}`} item={item} draft={existing === item.id ? draft : undefined} hrQuestions={work.data?.hr_questions ?? []} user={user?.id ?? ''} send={work.send} pending={work.pending} />)}
     </LoadState>
   </section>;
 }

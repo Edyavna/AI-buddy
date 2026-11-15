@@ -48,10 +48,10 @@ func TestPostgresMeetingsAndAgreements(t *testing.T) {
 	create := func(id string) string {
 		return `{"action":"create","id":"` + id + `","intern_id":"intern_demo_1","scheduled_at":"2030-04-15T12:00:00Z","timezone":"Europe/Moscow"}`
 	}
-	apiRequest(t, h, "POST", path, create(first), intern, 200)
+	apiRequest(t, h, "POST", path, create(first), mentor, 200)
 	apiRequest(t, h, "POST", path, create(second), mentor, 200)
-	apiRequest(t, h, "POST", path, create(first), intern, 200)
-	apiRequest(t, h, "POST", path, strings.Replace(create(first), "Europe/Moscow", "UTC", 1), intern, 409)
+	apiRequest(t, h, "POST", path, create(first), mentor, 200)
+	apiRequest(t, h, "POST", path, strings.Replace(create(first), "Europe/Moscow", "UTC", 1), mentor, 409)
 	apiRequest(t, h, "POST", path, create(first), other, 404)
 	apiRequest(t, h, "POST", path, create(first), hr, 404)
 	apiRequest(t, h, "POST", path, `{"action":"topic","id":"`+first+`","topic_id":"`+topic+`","revision":1,"content":"Закрытая заметка","private":true}`, intern, 200)
@@ -106,7 +106,7 @@ func TestPostgresMeetingsAndAgreements(t *testing.T) {
 			t.Fatal(w.Body.String())
 		}
 	}
-	if strings.Count(w.Body.String(), "Продолжить работу") != 2 {
+	if strings.Count(w.Body.String(), "Продолжить работу") != 3 {
 		t.Fatal(w.Body.String())
 	}
 	complete := `{"action":"agreement-complete","id":"` + agreementID + `","revision":1}`
@@ -299,7 +299,7 @@ func TestPostgresMeetingHRLinkIsPrivate(t *testing.T) {
 	mentor := loginCookie(t, f.h, "mentor_demo_1", nil)
 	path := "/api/v1/meetings"
 	id := "aaaaaaaa-aaaa-4aaa-aaaa-aaaaaaaaaaaa"
-	apiRequest(t, f.h, "POST", path, `{"id":"`+id+`","action":"create","intern_id":"intern_demo_1","scheduled_at":"2030-04-15T12:00:00Z","timezone":"UTC"}`, f.student, 200)
+	apiRequest(t, f.h, "POST", path, `{"id":"`+id+`","action":"create","intern_id":"intern_demo_1","scheduled_at":"2030-04-15T12:00:00Z","timezone":"UTC"}`, mentor, 200)
 	finish := `{"id":"` + id + `","action":"complete","revision":1,"content":"Summary","agreements":[{"owner_id":"intern_demo_1","content":"Follow up","hr_question_id":"` + question + `"}]}`
 	apiRequest(t, f.h, "POST", path, finish, mentor, 422)
 	apiRequest(t, f.h, "POST", path, strings.Replace(finish, question, id, 1), f.student, 422)

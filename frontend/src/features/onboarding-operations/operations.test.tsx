@@ -39,7 +39,7 @@ describe('Встречи 1:1', () => {
     const fetch = vi.fn().mockImplementation((_path: string, options: RequestInit) =>
       Promise.resolve(options.method === 'POST' ? json({ revision: 2 }) : json({ participants, meetings: [item] })));
     vi.stubGlobal('fetch', fetch);
-    render(<MeetingsPage />);
+    render(<MemoryRouter><MeetingsPage /></MemoryRouter>);
     await screen.findByRole('button', { name: 'Запланировать встречу' });
     const send = async (name: string, action: string) => {
       const button = screen.getByRole('button', { name });
@@ -68,7 +68,7 @@ describe('Встречи 1:1', () => {
       .mockResolvedValueOnce(json({ revision: 2 }))
       .mockResolvedValueOnce(json({ participants, meetings: [{ ...item, revision: 2 }] }));
     vi.stubGlobal('fetch', fetch);
-    render(<MeetingsPage />);
+    render(<MemoryRouter><MeetingsPage /></MemoryRouter>);
     expect(await screen.findByText('Запустить проект — Нет доступа')).toBeVisible();
     fireEvent.click(screen.getByRole('button', { name: 'Редактировать тему' }));
     fireEvent.change(screen.getByLabelText('Тема или личная заметка'), { target: { value: 'Обновлённая заметка' } });

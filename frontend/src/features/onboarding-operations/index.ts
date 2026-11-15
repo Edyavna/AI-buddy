@@ -1,0 +1,1 @@
+export { MeetingSuggestion } from './MeetingInvitation';

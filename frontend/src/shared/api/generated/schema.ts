@@ -148,6 +148,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/meetings/suggestion": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Предложение для своего ответа в активном чате стажёра. Приглашение при этом не создаётся. */
+        get: operations["suggestMeeting"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/meetings/{id}/calendar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Выгрузка события в формате iCalendar для участников принятой встречи. */
+        get: operations["downloadMeetingCalendar"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/curator": {
         parameters: {
             query?: never;
@@ -1829,13 +1863,52 @@ export interface components {
             hr_question_id?: string | null;
             step_id?: string | null;
         };
+        MeetingProposal: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            reason: "explicit" | "priorities" | "feedback" | "blocker" | "overdue";
+            mentor_id: string;
+            existing_id: string;
+            date: string;
+            time: string;
+            timezone: string;
+            title: string;
+            topics: string[];
+            missing: string[];
+        };
+        MeetingAgendaChoice: {
+            /** @enum {string} */
+            kind: "checkpoint" | "question" | "agreement";
+            id: string;
+            included: boolean;
+        };
+        MeetingAgendaItem: {
+            /** @enum {string} */
+            kind: "checkpoint" | "question" | "agreement";
+            id: string;
+            included: boolean;
+            text: string;
+            step_id: string | null;
+            state: string;
+            reason?: string | null;
+        };
         MeetingChange: {
             /** Format: uuid */
             id: string;
             /** @enum {string} */
-            action: "create" | "reschedule" | "cancel" | "topic" | "complete" | "agreement-complete" | "agreement-reschedule";
+            action: "create" | "invite" | "accept" | "decline" | "agenda" | "details" | "topics-add" | "topic-delete" | "reschedule" | "cancel" | "topic" | "complete" | "agreement-complete" | "agreement-reschedule";
             revision?: number;
             intern_id?: string;
+            /** @description Обязателен для invite, проверяется по текущему назначению. */
+            mentor_id?: string;
+            title?: string;
+            /** @description Ссылка HTTP(S) или пустая строка. */
+            call_url?: string;
+            /** @description Локальное время YYYY-MM-DDTHH:mm для invite. Используется вместе с timezone вместо scheduled_at. */
+            local_at?: string;
+            topics?: string[];
+            agenda_choices?: components["schemas"]["MeetingAgendaChoice"][];
             /** Format: date-time */
             scheduled_at?: string;
             timezone?: string;
@@ -1902,6 +1975,7 @@ export interface components {
                 mentor_id: string;
                 team_id: string;
             }[];
+            candidates: components["schemas"]["MeetingAgendaItem"][];
             meetings: {
                 id: string;
                 intern_id: string;
@@ -1911,22 +1985,18 @@ export interface components {
                 scheduled_at: string;
                 timezone: string;
                 /** @enum {string} */
-                status: "scheduled" | "completed" | "cancelled";
+                status: "scheduled" | "pending" | "accepted" | "declined" | "completed" | "cancelled";
                 revision: number;
                 result: string;
+                title: string;
+                call_url: string;
                 topics: {
                     id: string;
                     author_id: string;
                     content: string;
                     private: boolean;
                 }[];
-                agenda: {
-                    kind: string;
-                    text: string;
-                    step_id: string | null;
-                    state: string;
-                    reason?: string | null;
-                }[];
+                agenda: components["schemas"]["MeetingAgendaItem"][];
                 agreements: {
                     id: string;
                     owner_id: string;
@@ -3345,6 +3415,54 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["OperationRevision"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    suggestMeeting: {
+        parameters: {
+            query: {
+                message_id: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Черновик или null, если встреча не требуется. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        proposal: components["schemas"]["MeetingProposal"] | null;
+                    };
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    downloadMeetingCalendar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Файл встречи. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "text/calendar": string;
                 };
             };
             default: components["responses"]["Error"];

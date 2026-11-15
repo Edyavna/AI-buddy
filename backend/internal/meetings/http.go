@@ -21,7 +21,11 @@ import (
 	"github.com/Edyavna/AI-buddy/backend/internal/ports"
 )
 
-type Store struct{ DB *sql.DB }
+type Store struct {
+	DB       *sql.DB
+	Proposer Proposer
+	Origins  []string
+}
 type agreement struct {
 	Content    string     `json:"content"`
 	Owner      string     `json:"owner_id"`
@@ -30,17 +34,23 @@ type agreement struct {
 	HRQuestion *string    `json:"hr_question_id,omitempty"`
 }
 type change struct {
-	ID         string      `json:"id"`
-	Revision   int64       `json:"revision"`
-	Intern     string      `json:"intern_id"`
-	At         time.Time   `json:"scheduled_at"`
-	Zone       string      `json:"timezone"`
-	Action     string      `json:"action"`
-	Topic      string      `json:"topic_id"`
-	Content    string      `json:"content"`
-	Private    bool        `json:"private"`
-	Agreements []agreement `json:"agreements"`
-	Due        *time.Time  `json:"due_at"`
+	LocalAt    string         `json:"local_at,omitempty"`
+	Mentor     string         `json:"mentor_id,omitempty"`
+	Title      string         `json:"title,omitempty"`
+	CallURL    string         `json:"call_url,omitempty"`
+	Topics     []string       `json:"topics,omitempty"`
+	Choices    []agendaChoice `json:"agenda_choices,omitempty"`
+	ID         string         `json:"id"`
+	Revision   int64          `json:"revision"`
+	Intern     string         `json:"intern_id"`
+	At         time.Time      `json:"scheduled_at"`
+	Zone       string         `json:"timezone"`
+	Action     string         `json:"action"`
+	Topic      string         `json:"topic_id"`
+	Content    string         `json:"content"`
+	Private    bool           `json:"private"`
+	Agreements []agreement    `json:"agreements"`
+	Due        *time.Time     `json:"due_at"`
 }
 
 const participants = `SELECT a.intern_id,a.mentor_id,a.team_id FROM mentor_assignments a
@@ -58,23 +68,29 @@ const meetingJSON = `jsonb_build_object('id',m.id,'intern_id',m.intern_id,'mento
  FROM onboarding_meeting_topics t WHERE t.meeting_id=m.id AND (NOT t.private OR t.author_id=$1)),'[]'::jsonb),
  'agreements',COALESCE((SELECT jsonb_agg(jsonb_build_object('id',g.id,'owner_id',g.owner_id,'content',g.content,'due_at',g.due_at,'step_id',g.step_id,'completed_at',g.completed_at,'revision',g.revision,'hr_question_id',CASE WHEN $3='intern' AND EXISTS(SELECT 1 FROM knowledge_gaps q WHERE q.id=g.hr_question_id AND q.student_id=m.intern_id AND q.team_id=m.team_id AND q.direction='hr') THEN g.hr_question_id END) ORDER BY g.id)
  FROM onboarding_agreements g WHERE g.meeting_id=m.id),'[]'::jsonb),
- 'agenda',COALESCE((SELECT jsonb_agg(item ORDER BY priority, key) FROM (
- SELECT 1 priority,s.id key,jsonb_build_object('kind','checkpoint','text',s.title,'step_id',s.id,'state',s.status,'reason',s.blocked_reason) item
+ 'title',m.title,'call_url',m.call_url,
+ 'agenda',COALESCE((SELECT jsonb_agg(items.item || jsonb_build_object('id',items.key,'included',
+ COALESCE(choice.included,NOT m.selected_agenda)) ORDER BY items.priority,items.key)
+ FROM (` + agendaRows + ` ORDER BY priority,key LIMIT 100) items
+ LEFT JOIN onboarding_meeting_agenda_choices choice ON choice.meeting_id=m.id AND choice.kind=items.kind AND choice.item_id=items.key),'[]'::jsonb))`
+
+const agendaRows = ` SELECT 1 priority,'checkpoint' kind,s.id key,jsonb_build_object('kind','checkpoint','text',s.title,'step_id',s.id,'state',s.status,'reason',s.blocked_reason) item
  FROM onboarding_steps s JOIN onboarding_plans p ON p.id=s.plan_id
  WHERE p.user_id=m.intern_id AND p.team_id=m.team_id AND (s.status='blocked' OR s.meeting_changed_at>COALESCE(prev.completed_at,'-infinity') AND s.meeting_changed_at<=COALESCE(m.completed_at,now()))
  UNION ALL
- SELECT 2,q.id::text,jsonb_build_object('kind','question','text',q.question,'step_id',q.step_id,'state',q.status)
+ SELECT 2,'question',q.id::text,jsonb_build_object('kind','question','text',q.question,'step_id',q.step_id,'state',q.status)
  FROM knowledge_gaps q WHERE q.team_id=m.team_id AND q.student_id=m.intern_id AND q.mentor_id=m.mentor_id AND q.direction='mentor' AND q.status<>'resolved'
- AND q.created_at>COALESCE(prev.completed_at,'-infinity') AND q.created_at<=COALESCE(m.completed_at,now())
+ AND q.created_at<=COALESCE(m.completed_at,now())
  UNION ALL
- SELECT 3,g.id::text,jsonb_build_object('kind','agreement','text',g.content,'step_id',g.step_id,'state','open')
+ SELECT 3,'agreement',g.id::text,jsonb_build_object('kind','agreement','text',g.content,'step_id',g.step_id,'state','open')
  FROM onboarding_agreements g JOIN onboarding_meetings older ON older.id=g.meeting_id
- WHERE older.intern_id=m.intern_id AND older.mentor_id=m.mentor_id AND older.team_id=m.team_id AND older.id<>m.id
- AND older.completed_at<=COALESCE(m.completed_at,now()) AND g.completed_at IS NULL
- ORDER BY priority,key LIMIT 100
- ) items),'[]'::jsonb))`
+ WHERE older.intern_id=m.intern_id AND older.mentor_id=m.mentor_id AND older.team_id=m.team_id AND older.id IS DISTINCT FROM m.id
+ AND older.completed_at<=COALESCE(m.completed_at,now()) AND g.completed_at IS NULL AND g.hr_question_id IS NULL
+`
 
 func (s Store) Register(mux *http.ServeMux, session auth.Handler) {
+	mux.Handle("GET /api/v1/meetings/{id}/calendar", session.Require(http.HandlerFunc(s.calendar), false))
+	mux.Handle("GET /api/v1/meetings/suggestion", session.Require(http.HandlerFunc(s.suggest), false))
 	mux.Handle("GET /api/v1/meetings", session.Require(http.HandlerFunc(s.list), false))
 	mux.Handle("POST /api/v1/meetings", session.Require(http.HandlerFunc(s.mutate), false))
 }
@@ -93,9 +109,14 @@ func (s Store) list(w http.ResponseWriter, r *http.Request) {
  JOIN conversations c ON c.id=m.conversation_id AND c.user_id=$1 AND c.team_id=$2
  WHERE $3='intern' AND q.student_id=$1 AND q.team_id=$2 AND q.direction='hr'
  ORDER BY q.created_at DESC,q.id LIMIT 50) q),'[]'::jsonb),
+ 'candidates',COALESCE((SELECT jsonb_agg(items.item || jsonb_build_object('id',items.key,'included',false) ORDER BY items.priority,items.key)
+ FROM (`+participants+`) a
+ CROSS JOIN LATERAL (SELECT a.*,NULL::uuid AS id,NULL::timestamptz AS completed_at) m
+ CROSS JOIN (SELECT now() AS completed_at) prev
+ CROSS JOIN LATERAL (`+agendaRows+` ORDER BY priority,key LIMIT 100) items WHERE $3='intern'),'[]'::jsonb),
  'meetings',COALESCE((SELECT jsonb_agg(item) FROM (SELECT `+meetingJSON+` item`+visible+`
- LEFT JOIN LATERAL (`+previousMeeting+`) latest ON m.status='scheduled'
- LEFT JOIN onboarding_meetings prev ON prev.id=CASE WHEN m.status='scheduled' THEN latest.id ELSE m.previous_id END
+ LEFT JOIN LATERAL (`+previousMeeting+`) latest ON m.status IN ('scheduled','pending','accepted')
+ LEFT JOIN onboarding_meetings prev ON prev.id=CASE WHEN m.status IN ('scheduled','pending','accepted') THEN latest.id ELSE m.previous_id END
  ORDER BY m.scheduled_at DESC,m.id LIMIT 100) meetings),'[]'::jsonb))`, p.UserID, p.TeamID, p.Role).Scan(&result)
 	if err != nil {
 		writeError(w, r, err)
@@ -114,6 +135,20 @@ func (s Store) mutate(w http.ResponseWriter, r *http.Request) {
 		httpapi.WriteError(w, r, e)
 		return
 	}
+	if in.LocalAt != "" {
+		if !in.At.IsZero() || in.Action != "invite" {
+			writeError(w, r, ports.ErrInvalid)
+			return
+		}
+		zone, timeErr := time.LoadLocation(in.Zone)
+		if timeErr == nil {
+			in.At, timeErr = parseLocal(in.LocalAt, zone)
+		}
+		if timeErr != nil {
+			httpapi.WriteError(w, r, &httpapi.Error{Status: 422, Code: "VALIDATION_ERROR", Message: "Укажите однозначные дату, время и часовой пояс."})
+			return
+		}
+	}
 	if !validChange(in) {
 		writeError(w, r, ports.ErrInvalid)
 		return
@@ -131,11 +166,24 @@ func (s Store) mutate(w http.ResponseWriter, r *http.Request) {
 	httpapi.WriteJSON(w, 200, map[string]int64{"revision": revision})
 }
 func validChange(in change) bool {
-	if !uuid(in.ID) || len(in.Agreements) > 20 {
+	if !uuid(in.ID) || len(in.Agreements) > 20 || len(in.Topics) > 20 || !validChoices(in.Choices) {
 		return false
 	}
 	switch in.Action {
+	case "topics-add":
+		return len(in.Topics) > 0 && validTopics(in.Topics)
+	case "invite":
+		if in.Mentor == "" || !validContent(in.Title, 200) || !validCallURL(in.CallURL) {
+			return false
+		}
+		if !validTopics(in.Topics) {
+			return false
+		}
+		fallthrough
 	case "create", "reschedule":
+		if !validCallURL(in.CallURL) || (in.Title != "" && !validContent(in.Title, 200)) {
+			return false
+		}
 		_, err := time.LoadLocation(in.Zone)
 		return err == nil && in.Zone != "" && in.Zone != "Local" && len(in.Zone) <= 100 && in.At.Year() >= 2000 && in.At.Year() < 2200
 	case "topic":
@@ -150,7 +198,13 @@ func validChange(in change) bool {
 			}
 		}
 		return true
-	case "cancel", "agreement-complete", "agreement-reschedule":
+	case "agenda":
+		return len(in.Choices) > 0
+	case "details":
+		return validContent(in.Title, 200) && validCallURL(in.CallURL)
+	case "topic-delete":
+		return uuid(in.Topic)
+	case "accept", "decline", "cancel", "agreement-complete", "agreement-reschedule":
 		return true
 	default:
 		return false
@@ -177,7 +231,7 @@ func validContent(value string, max int) bool {
 	return strings.TrimSpace(value) != "" && utf8.RuneCountInString(value) <= max
 }
 func (s Store) apply(ctx context.Context, tx *sql.Tx, p identity.Principal, in change) (int64, error) {
-	if in.Action == "create" {
+	if in.Action == "create" || in.Action == "invite" {
 		return create(ctx, tx, p, in)
 	}
 	if strings.HasPrefix(in.Action, "agreement-") {
@@ -186,7 +240,8 @@ func (s Store) apply(ctx context.Context, tx *sql.Tx, p identity.Principal, in c
 	var status, intern, mentor, team string
 	var finishedHash sql.NullString
 	var revision int64
-	err := tx.QueryRowContext(ctx, `SELECT m.status,m.revision,m.intern_id,m.mentor_id,m.team_id,m.finish_hash`+visible+` WHERE m.id=$4 FOR UPDATE OF m`, p.UserID, p.TeamID, p.Role, in.ID).Scan(&status, &revision, &intern, &mentor, &team, &finishedHash)
+	var decisionRevision sql.NullInt64
+	err := tx.QueryRowContext(ctx, `SELECT m.status,m.revision,m.intern_id,m.mentor_id,m.team_id,m.finish_hash,m.last_decision_revision`+visible+` WHERE m.id=$4 FOR UPDATE OF m`, p.UserID, p.TeamID, p.Role, in.ID).Scan(&status, &revision, &intern, &mentor, &team, &finishedHash, &decisionRevision)
 	if err != nil {
 		return 0, err
 	}
@@ -199,17 +254,36 @@ func (s Store) apply(ctx context.Context, tx *sql.Tx, p identity.Principal, in c
 		}
 		return revision, nil
 	}
-	if status != "scheduled" || in.Revision != revision {
+	if in.Action == "accept" || in.Action == "decline" {
+		if p.UserID != mentor {
+			return 0, ports.ErrNotFound
+		}
+		return decide(ctx, tx, in, p.UserID, status, revision, decisionRevision)
+	}
+	if !editableStatus(status) || in.Revision != revision || (in.Action == "complete" && status == "pending") {
 		return 0, ports.ErrConflict
 	}
 	switch in.Action {
 	case "reschedule":
+		if !in.At.After(time.Now()) && (p.Role == identity.Intern || status != "scheduled") {
+			return 0, ports.ErrInvalid
+		}
 		_, err = tx.ExecContext(ctx, `UPDATE onboarding_meetings SET scheduled_at=$2,timezone=$3,
+status=CASE WHEN $7='intern' THEN 'pending' ELSE status END,
+last_decision_revision=CASE WHEN $7='intern' THEN NULL ELSE last_decision_revision END,
 previous_id=(SELECT other.id FROM onboarding_meetings other WHERE other.intern_id=$4 AND other.mentor_id=$5
  AND other.team_id=$6 AND other.completed_at<$2 ORDER BY other.completed_at DESC,other.id LIMIT 1)
-WHERE id=$1`, in.ID, in.At, in.Zone, intern, mentor, team)
+WHERE id=$1`, in.ID, in.At, in.Zone, intern, mentor, team, p.Role)
 	case "cancel":
 		_, err = tx.ExecContext(ctx, `UPDATE onboarding_meetings SET status='cancelled' WHERE id=$1`, in.ID)
+	case "topics-add":
+		err = addTopics(ctx, tx, in, p.UserID)
+	case "agenda":
+		err = saveChoices(ctx, tx, in)
+	case "details":
+		_, err = tx.ExecContext(ctx, `UPDATE onboarding_meetings SET title=$2,call_url=$3 WHERE id=$1`, in.ID, in.Title, in.CallURL)
+	case "topic-delete":
+		err = deleteTopic(ctx, tx, in, p.UserID)
 	case "topic":
 		var result sql.Result
 		result, err = tx.ExecContext(ctx, `INSERT INTO onboarding_meeting_topics(id,meeting_id,author_id,content,private) VALUES($1,$2,$3,$4,$5)
@@ -231,8 +305,8 @@ WHERE id=$1`, in.ID, in.At, in.Zone, intern, mentor, team)
 }
 func lockAssignment(ctx context.Context, tx *sql.Tx, intern, mentor, team string) error {
 	var ok int
-	return tx.QueryRowContext(ctx, `SELECT 1 FROM mentor_assignments a JOIN users i ON i.id=a.intern_id AND i.role='intern'
- JOIN users m ON m.id=a.mentor_id AND m.role='mentor' WHERE a.intern_id=$1 AND a.mentor_id=$2 AND a.team_id=$3 FOR SHARE OF a,i,m`, intern, mentor, team).Scan(&ok)
+	return tx.QueryRowContext(ctx, `SELECT 1 FROM mentor_assignments a JOIN users i ON i.id=a.intern_id AND i.role='intern' AND i.team_id=a.team_id
+ JOIN users m ON m.id=a.mentor_id AND m.role='mentor' AND m.team_id=a.team_id WHERE a.intern_id=$1 AND a.mentor_id=$2 AND a.team_id=$3 FOR SHARE OF a,i,m`, intern, mentor, team).Scan(&ok)
 }
 func create(ctx context.Context, tx *sql.Tx, p identity.Principal, in change) (int64, error) {
 	intern := in.Intern
@@ -246,15 +320,33 @@ func create(ctx context.Context, tx *sql.Tx, p identity.Principal, in change) (i
 	if err := lockAssignment(ctx, tx, intern, mentor, team); err != nil {
 		return 0, err
 	}
+	status := "scheduled"
+	if in.Action == "invite" && (p.Role != identity.Intern || in.Mentor != mentor) {
+		return 0, ports.ErrNotFound
+	}
+	if p.Role == identity.Intern {
+		status = "pending"
+	}
 	hash := payloadHash(in)
-	result, err := tx.ExecContext(ctx, `INSERT INTO onboarding_meetings(id,intern_id,mentor_id,team_id,previous_id,scheduled_at,timezone,created_by,create_hash)
+	result, err := tx.ExecContext(ctx, `INSERT INTO onboarding_meetings(id,intern_id,mentor_id,team_id,previous_id,scheduled_at,timezone,created_by,create_hash,status,title,call_url,selected_agenda)
  VALUES($1,$2,$3,$4,(SELECT id FROM onboarding_meetings WHERE intern_id=$2 AND mentor_id=$3 AND team_id=$4 AND status='completed'
- AND completed_at<$5 ORDER BY completed_at DESC,id LIMIT 1),$5,$6,$7,$8) ON CONFLICT(id) DO NOTHING`, in.ID, intern, mentor, team, in.At, in.Zone, p.UserID, hash)
+ AND completed_at<$5 ORDER BY completed_at DESC,id LIMIT 1),$5,$6,$7,$8,$9,$10,$11,$12) ON CONFLICT(id) DO NOTHING`, in.ID, intern, mentor, team, in.At, in.Zone, p.UserID, hash, status, in.Title, in.CallURL, in.Action == "invite")
 	if err != nil {
 		return 0, err
 	}
 	if count, _ := result.RowsAffected(); count == 1 {
-		return 1, record(ctx, tx, in.ID, p.UserID, "create", 1)
+		if status == "pending" && !in.At.After(time.Now()) {
+			return 0, ports.ErrInvalid
+		}
+		if in.Action == "invite" {
+			if err := saveChoices(ctx, tx, in); err != nil {
+				return 0, err
+			}
+			if err := addTopics(ctx, tx, in, p.UserID); err != nil {
+				return 0, err
+			}
+		}
+		return 1, record(ctx, tx, in.ID, p.UserID, in.Action, 1)
 	}
 	var previous string
 	var rev int64

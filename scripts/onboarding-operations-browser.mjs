@@ -46,9 +46,10 @@ try {
       const mentor = await browser.newPage({ viewport: { width, height: 900 } });
       await login(intern, /Тестовый стажер/);
       await login(mentor, /Тестовый наставник/);
+      await mentor.goto(origin + '/mentor/meetings');
+      await mentor.getByLabel(/^Дата и время/).fill('2030-05-01T09:00');
+      await action(mentor, 'meetings', mentor.getByRole('button', { name: 'Запланировать встречу' }));
       await intern.goto(origin + '/meetings');
-      await intern.getByLabel(/^Дата и время/).fill('2030-05-01T09:00');
-      await action(intern, 'meetings', intern.getByRole('button', { name: 'Запланировать встречу' }));
       const card = intern.getByRole('article').filter({ has: intern.getByRole('button', { name: 'Завершить встречу' }) }).first();
       const secret = 'Личная заметка ' + width;
       const agreement = 'Договорённость ' + width;
