@@ -2057,6 +2057,11 @@ export interface components {
             /** @enum {string} */
             direction: "mentor" | "hr";
             version: number;
+            /**
+             * Format: uri
+             * @description Ссылка на импортированную редакцию внешнего источника.
+             */
+            original_url?: string;
         };
         GroupQuestion: {
             id: string;
@@ -5670,7 +5675,7 @@ export interface operations {
                         updated_at: string;
                         /**
                          * Format: uri
-                         * @description Для AvitoTech Playbook ссылка на GitHub с коммитом импортированного текста.
+                         * @description Ссылка на импортированную редакцию внешнего источника (AvitoTech Playbook или русскоязычная Википедия).
                          */
                         original_url?: string;
                     };

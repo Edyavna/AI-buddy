@@ -276,9 +276,9 @@ func (s Uploads) HRPublish(ctx context.Context, id string, version int64, action
 	return d, hrDocumentError(err)
 }
 
-const documentDirection = `CASE WHEN pb.document_id IS NULL THEN d.direction ELSE '' END`
+const documentDirection = `CASE WHEN pb.document_id IS NULL AND d.source<>'` + ports.SourceWikipedia + `' THEN d.direction ELSE '' END`
 
-const readableDocument = `((pb.document_id IS NOT NULL AND $3='intern')
+const readableDocument = `(((pb.document_id IS NOT NULL OR d.source='` + ports.SourceWikipedia + `') AND $3='intern')
 OR ($3='intern' AND pb.document_id IS NULL AND d.direction='mentor' AND d.team_id=$1 AND (d.users='[]'::jsonb OR d.users ? $2))
 OR (d.direction='hr' AND EXISTS(SELECT 1 FROM hr_documents doc JOIN hr_document_teams t
  ON t.document_id=doc.id AND t.version=doc.published_version

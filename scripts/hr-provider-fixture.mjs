@@ -87,8 +87,14 @@ createServer(async (request, response) => {
       } else if (input.messages[0].content.startsWith('Подготовь обезличенную')) {
         result = { title: 'Инструкция команды', content: JSON.parse(last).answer };
       } else if (input.messages[0].content.startsWith('Определи тему')) {
+        const company = input.messages[0].content.includes('direction="company"') && /Когда основали Авито/i.test(last);
         const hr = /отпуск|кадров|трудов/i.test(last);
         result = { direction: hr ? 'hr' : 'mentor', reason: hr ? 'Вопрос об отпуске' : 'Рабочий вопрос', clarification: null, split: false };
+        if (company) result = { direction: 'company', reason: 'История Авито', clarification: null, split: false };
+      } else if (input.messages[0].content.includes('редакции статьи из Википедии')) {
+        const { Excerpts } = JSON.parse(last);
+        if (!Excerpts.some(text => text.includes('2007') && text.includes('Йонас'))) throw new Error('Missing indexed Avito history');
+        result = { answer: 'Авито основали в 2007 году Йонас Нордландер и Филип Энгельберт.' };
       } else {
         const payload = JSON.parse(last);
         result = { answer: 'Подайте заявление через кадровый портал.', document_id: payload.documents[0].ID };

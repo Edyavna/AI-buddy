@@ -36,7 +36,7 @@ func decodeConversationRouting(text string, allowContinue bool) (ports.RoutingSu
 		return r, ports.ErrInvalid
 	}
 	switch r.Direction {
-	case "continue":
+	case "continue", companyDirection:
 		if !allowContinue || r.Clarification != nil || r.Split {
 			return r, ports.ErrInvalid
 		}
@@ -81,7 +81,7 @@ func (m *DeepSeek) ClassifyConversation(ctx context.Context, in ports.AgentInput
 	if err != nil {
 		return ports.RoutingSuggestion{}, err
 	}
-	prompt := routingPrompt + ` Классифицируй последнюю реплику с учётом History. Для вопросов о самом диалоге, об адресате или состоянии уже отправленного обращения, а также обычных реплик используй direction="continue", clarification=null и split=false. Для уточнения предметного вопроса учитывай связь с предыдущей репликой. Submitted — сведения о сохранённых обращениях. Не считай просьбу о статусе обращения новой темой.`
+	prompt := routingPrompt + ` Классифицируй последнюю реплику с учётом History. Для общих публичных сведений об Авито, например истории компании, основателей и развития её сервисов, используй direction="company", clarification=null и split=false. Внутренние процессы, сроки набора и персональные вопросы сохраняют свои направления. Для вопросов о личности и назначении AI Buddy, своей команде и назначенном наставнике, о самом диалоге, об адресате или состоянии уже отправленного обращения, а также обычных реплик используй direction="continue", clarification=null и split=false. Для уточнения предметного вопроса учитывай связь с предыдущей репликой. Submitted — сведения о сохранённых обращениях. Не считай просьбу о статусе обращения новой темой.`
 	raw, err := m.completeJSON(ctx, []Message{{Role: "system", Content: prompt}, {Role: "user", Content: string(payload)}}, 450)
 	if err != nil {
 		return ports.RoutingSuggestion{}, err
@@ -188,11 +188,11 @@ func (a *Agent) hrAnswer(ctx context.Context, question, profile string, emit por
 			continue
 		}
 		doc, err := a.Knowledge.Read(ctx, hit.DocumentID)
-		if err != nil || (doc.Direction != "hr" && doc.OriginalURL == "") || doc.Version != hit.Version {
+		if err != nil || (doc.Direction != "hr" && doc.Kind != ports.SourcePlaybook) || doc.Version != hit.Version {
 			continue
 		}
 		seen[hit.DocumentID] = true
-		if doc.OriginalURL == "" {
+		if doc.Kind != ports.SourcePlaybook {
 			doc.Content = string([]rune(doc.Content)[:min(12000, utf8.RuneCountInString(doc.Content))])
 		}
 		docs = append(docs, doc)
@@ -218,7 +218,7 @@ func (a *Agent) hrAnswer(ctx context.Context, question, profile string, emit por
 				}
 				out.Outcome = ports.OutcomeAnswered
 				out.Sources = []ports.Source{{ID: id + ":read", DocumentID: id, Title: doc.Title, Direction: doc.Direction, Version: doc.Version, UpdatedAt: doc.UpdatedAt}}
-				if doc.OriginalURL != "" {
+				if doc.Kind == ports.SourcePlaybook {
 					answer = attributePlaybook(answer)
 				}
 				out.PrivateAnswer = answer
