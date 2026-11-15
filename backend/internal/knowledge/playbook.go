@@ -10,7 +10,7 @@ import (
 )
 
 const (
-	playbookSource   = "avito-tech/playbook"
+	playbookSource   = ports.SourcePlaybook
 	playbookIDPrefix = "avito-playbook-"
 )
 

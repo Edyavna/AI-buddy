@@ -7,10 +7,10 @@ import { renderWithQuery } from '@/test/render';
 import { server } from '@/test/server';
 import { DocumentDrawer } from './DocumentDrawer';
 
-function Harness({ id = 'doc_local_setup' }: { id?: string }) {
+function Harness({ id = 'doc_local_setup', sourceMessageId }: { id?: string; sourceMessageId?: string }) {
   const [active, setActive] = useState<string | null>(null);
   const close = useCallback(() => setActive(null), []);
-  return <><button onClick={() => setActive(id)}>Открыть источник</button><DocumentDrawer documentId={active} onClose={close} /></>;
+  return <><button onClick={() => setActive(id)}>Открыть источник</button><DocumentDrawer documentId={active} onClose={close} sourceMessageId={sourceMessageId} /></>;
 }
 it('loads only when opened, traps keyboard focus and restores focus on Escape', async () => {
   const user = userEvent.setup();
@@ -43,6 +43,36 @@ it('keeps the Playbook text in the drawer and links to the cited GitHub commit',
   expect(link).toHaveAttribute('href', url);
   expect(link).toHaveAttribute('target', '_blank');
   expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+});
+
+it('shows the pinned Wikipedia revision from the cited chat source', async () => {
+  const url = 'https://ru.wikipedia.org/w/index.php?title=%D0%90%D0%B2%D0%B8%D1%82%D0%BE&oldid=155526969';
+  const path = '*/api/v1/messages/answer/context-documents/ru-wikipedia-avito-155526969';
+  server.use(
+    http.get(path, () => HttpResponse.json({
+      id: 'ru-wikipedia-avito-155526969', title: 'Авито — Википедия', content: '## История',
+      updated_at: '2026-10-10T05:13:44Z', original_url: url, version: 155526969,
+    })),
+    http.post(`${path}/opened`, () => HttpResponse.json({ opened: true })),
+  );
+  renderWithQuery(<Harness id="ru-wikipedia-avito-155526969" sourceMessageId="answer" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Открыть источник' }));
+  expect(await screen.findByRole('heading', { name: 'История' })).toBeInTheDocument();
+  const link = screen.getByRole('link', { name: 'Открыть редакцию в Википедии' });
+  expect(link).toHaveAttribute('href', url);
+  expect(link).toHaveAttribute('target', '_blank');
+  expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+});
+
+it('rejects a Wikipedia lookalike hostname in the original link', async () => {
+  server.use(http.get('*/api/v1/documents/:id', () => HttpResponse.json({
+    id: 'bad-link', title: 'Подмена', content: 'Текст', updated_at: '2026-10-10T05:13:44Z',
+    original_url: 'https://ru.wikipedia.org.example.org/w/index.php?oldid=155526969',
+  })));
+  renderWithQuery(<Harness id="bad-link" />);
+  fireEvent.click(screen.getByRole('button', { name: 'Открыть источник' }));
+  expect(await screen.findByRole('alert')).toBeInTheDocument();
+  expect(screen.queryByRole('link')).not.toBeInTheDocument();
 });
 it('reports 404 without showing stale content', async () => {
   renderWithQuery(<Harness id="missing" />);

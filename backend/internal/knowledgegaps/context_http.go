@@ -50,11 +50,12 @@ func (h Handler) registerContext(mux *http.ServeMux, session auth.Handler) {
 }
 func writeContextDocument(w http.ResponseWriter, r *http.Request, d ports.Document, err error) {
 	writeResult(w, r, struct {
-		ID        string    `json:"id"`
-		Title     string    `json:"title"`
-		Content   string    `json:"content"`
-		UpdatedAt time.Time `json:"updated_at"`
-		Direction string    `json:"direction"`
-		Version   int64     `json:"version"`
-	}{d.ID, d.Title, d.Content, d.UpdatedAt.UTC(), d.Direction, d.Version}, err)
+		ID          string    `json:"id"`
+		Title       string    `json:"title"`
+		Content     string    `json:"content"`
+		UpdatedAt   time.Time `json:"updated_at"`
+		Direction   string    `json:"direction"`
+		Version     int64     `json:"version"`
+		OriginalURL string    `json:"original_url,omitempty"`
+	}{d.ID, d.Title, d.Content, d.UpdatedAt.UTC(), d.Direction, d.Version, d.OriginalURL}, err)
 }

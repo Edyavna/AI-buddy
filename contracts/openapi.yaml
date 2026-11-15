@@ -3242,7 +3242,7 @@ paths:
                   original_url:
                     type: string
                     format: uri
-                    description: Для AvitoTech Playbook ссылка на GitHub с коммитом импортированного текста.
+                    description: Ссылка на импортированную редакцию внешнего источника (AvitoTech Playbook или русскоязычная Википедия).
         default:
           $ref: '#/components/responses/Error'
         '400':
@@ -5568,6 +5568,10 @@ components:
         version:
           type: integer
           minimum: 1
+        original_url:
+          type: string
+          format: uri
+          description: Ссылка на импортированную редакцию внешнего источника.
     GroupQuestion:
       type: object
       required:

@@ -63,7 +63,7 @@ func (k *routeKnowledge) Read(_ context.Context, id string) (ports.Document, err
 	}
 	if k.playbook {
 		return ports.Document{ID: id, Version: 2, Title: "AvitoTech Playbook · Академия", Content: "Приём на курс 2021–2022 открывался в июне 2021.",
-			OriginalURL: "https://github.com/avito-tech/playbook/blob/0c1d2aa1501ca6889357908f54b12695f0534e48/students.md"}, k.readError
+			Kind: ports.SourcePlaybook, OriginalURL: "https://github.com/avito-tech/playbook/blob/0c1d2aa1501ca6889357908f54b12695f0534e48/students.md"}, k.readError
 	}
 	return ports.Document{ID: id, Direction: "hr", Version: 2, Content: "Заявление подают заранее.", Title: "Порядок отпуска", UpdatedAt: time.Unix(0, 0)}, k.readError
 }

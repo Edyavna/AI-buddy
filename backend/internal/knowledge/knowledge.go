@@ -58,14 +58,24 @@ func vector(v []float64) (string, error) {
 	return string(b), e
 }
 func (s *Service) Import(ctx context.Context, d Document) error {
-	if d.ID == "" || d.Source == "" || d.SourceID == "" || d.Title == "" || d.TeamID == "" || d.UpdatedAt.IsZero() || strings.HasPrefix(d.ID, playbookIDPrefix) || d.Source == playbookSource || len([]rune(d.Content)) == 0 || len([]rune(d.Content)) > MaxMarkdownRunes {
+	if d.ID == "" || d.Source == "" || d.SourceID == "" || d.Title == "" || d.TeamID == "" || d.UpdatedAt.IsZero() || strings.HasPrefix(d.ID, playbookIDPrefix) || d.Source == playbookSource || strings.HasPrefix(d.ID, wikipediaIDPrefix) || d.Source == ports.SourceWikipedia || len([]rune(d.Content)) == 0 || len([]rune(d.Content)) > MaxMarkdownRunes {
 		return ports.ErrInvalid
 	}
+	return s.importDocument(ctx, d)
+}
+
+func (s *Service) importDocument(ctx context.Context, d Document) error {
 	digest := contentDigest(d)
 	var old string
 	err := s.DB.QueryRowContext(ctx, `SELECT hash FROM knowledge_documents WHERE id=$1`, d.ID).Scan(&old)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		return ports.ErrUnavailable
+	}
+	if d.Source == ports.SourceWikipedia && old != "" {
+		if old != digest {
+			return ports.ErrConflict
+		}
+		return nil
 	}
 	var chunks []string
 	var vectors []string
@@ -80,12 +90,21 @@ func (s *Service) Import(ctx context.Context, d Document) error {
 		return ports.ErrUnavailable
 	}
 	defer tx.Rollback()
+	if d.Source == ports.SourceWikipedia {
+		// Serialize the first insert as well as updates to an existing revision.
+		if _, err := tx.ExecContext(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, d.ID); err != nil {
+			return ports.ErrUnavailable
+		}
+	}
 	var current string
 	lockErr := tx.QueryRowContext(ctx, `SELECT hash FROM knowledge_documents WHERE id=$1 FOR UPDATE`, d.ID).Scan(&current)
 	if lockErr != nil && !errors.Is(lockErr, sql.ErrNoRows) {
 		return ports.ErrUnavailable
 	}
 	if current != old {
+		if d.Source == ports.SourceWikipedia && current == digest {
+			return nil
+		}
 		return ports.ErrConflict
 	}
 	if err := writeIndex(ctx, tx, d, digest, chunks, vectors); err != nil {
@@ -202,16 +221,17 @@ func (s *Service) SearchDirection(ctx context.Context, q, direction string) ([]p
 		threshold = 0.35
 	}
 	rows, e := s.DB.QueryContext(ctx, `WITH candidates AS (
-SELECT c.id,d.id AS document_id,d.title,c.excerpt,`+documentDirection+` AS direction,d.version,d.updated_at,
+SELECT c.id,d.id AS document_id,d.title,c.excerpt,`+documentDirection+` AS direction,d.version,d.updated_at,d.source,
        c.embedding <=> $4::vector AS distance,
        row_number() OVER (PARTITION BY pb.document_id,
            CASE WHEN pb.document_id IS NULL THEN c.id END ORDER BY c.embedding <=> $4::vector,c.id) AS chunk_rank
 FROM knowledge_chunks c JOIN knowledge_documents d ON d.id=c.document_id
 LEFT JOIN playbook_documents pb ON pb.document_id=d.id
 WHERE `+readableDocument+` AND (pb.document_id IS NULL OR pb.active)
-AND ($6='' OR (pb.document_id IS NULL AND d.direction=$6) OR (pb.active AND $6 IN ('mentor','hr')))
+AND (CASE WHEN d.source='`+ports.SourceWikipedia+`' THEN $6 IN ('','public')
+     ELSE $6='' OR (pb.document_id IS NULL AND d.direction=$6) OR (pb.active AND $6 IN ('mentor','hr')) END)
 AND 1-(c.embedding <=> $4::vector)>=$5)
-SELECT id,document_id,title,excerpt,direction,version,updated_at FROM candidates
+SELECT id,document_id,title,excerpt,direction,version,updated_at,source FROM candidates
 WHERE chunk_rank=1 ORDER BY distance,id LIMIT 5`, p.TeamID, p.UserID, p.Role, encoded, threshold, direction)
 	if e != nil {
 		return nil, ports.ErrUnavailable
@@ -220,7 +240,7 @@ WHERE chunk_rank=1 ORDER BY distance,id LIMIT 5`, p.TeamID, p.UserID, p.Role, en
 	out := []ports.Source{}
 	for rows.Next() {
 		var x ports.Source
-		if rows.Scan(&x.ID, &x.DocumentID, &x.Title, &x.Excerpt, &x.Direction, &x.Version, &x.UpdatedAt) != nil {
+		if rows.Scan(&x.ID, &x.DocumentID, &x.Title, &x.Excerpt, &x.Direction, &x.Version, &x.UpdatedAt, &x.Kind) != nil {
 			return nil, ports.ErrUnavailable
 		}
 		out = append(out, x)
@@ -236,9 +256,9 @@ func (s *Service) Read(ctx context.Context, id string) (ports.Document, error) {
 		return ports.Document{}, e
 	}
 	var d ports.Document
-	e = s.DB.QueryRowContext(ctx, `SELECT d.id,d.title,d.content,d.updated_at,`+documentDirection+`,d.version,COALESCE(pb.original_url,'')
+	e = s.DB.QueryRowContext(ctx, `SELECT d.id,d.title,d.content,d.updated_at,`+documentDirection+`,d.version,`+originalDocumentURL+`,d.source
 FROM knowledge_documents d LEFT JOIN playbook_documents pb ON pb.document_id=d.id
-WHERE `+readableDocument+` AND d.id=$4`, p.TeamID, p.UserID, p.Role, id).Scan(&d.ID, &d.Title, &d.Content, &d.UpdatedAt, &d.Direction, &d.Version, &d.OriginalURL)
+WHERE `+readableDocument+` AND d.id=$4`, p.TeamID, p.UserID, p.Role, id).Scan(&d.ID, &d.Title, &d.Content, &d.UpdatedAt, &d.Direction, &d.Version, &d.OriginalURL, &d.Kind)
 	if errors.Is(e, sql.ErrNoRows) {
 		return d, ports.ErrNotFound
 	}

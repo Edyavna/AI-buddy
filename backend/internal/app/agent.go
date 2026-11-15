@@ -37,6 +37,7 @@ func demoDependencies(db *sql.DB, provider *integrations.Provider, ai *config.AI
 		Knowledge: k, Tasks: provider, Access: provider,
 		Checkpoints: onboarding.SQLStore{DB: db},
 		Drafts:      drafts.New(requests), Requests: requests,
+		Demo: true,
 	}
 	return deps
 }

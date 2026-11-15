@@ -1,0 +1,22 @@
+Issue #84. Base 50233b3127791c04a99794511dbce2aa15318c54 (dev).
+
+Backend (Go 1.26.5, isolated PostgreSQL with pgvector):
+  go test -race -p 2 -count=1 -timeout=5m -coverpkg=./... -coverprofile=coverage/issue84.out ./...
+  go run ../scripts/go_line_coverage.go --lines coverage/issue84.out > coverage/lines.tsv
+  node ../scripts/hr-coverage.mjs 50233b3127791c04a99794511dbce2aa15318c54 backend
+  Changed executable lines 92.86% (143/154). All instrumented lines 86.73% (7004/8076).
+
+Frontend (Node 24.17):
+  npm run typecheck
+  npm run lint
+  npm run check:api
+  npm run test:coverage -- --maxWorkers=3
+  npm run test:e2e
+  npm run build
+  node ../scripts/hr-coverage.mjs 50233b3127791c04a99794511dbce2aa15318c54 frontend
+  Changed executable lines 100.00% (3/3). All instrumented lines 95.89% (2591/2702).
+
+The agent HTTP acceptance checks used deterministic HTTP providers. Live DeepSeek
+and Jina semantic quality requires real provider keys.
+
+Import commands and example responses are in docs/backend/wikipedia.md.
