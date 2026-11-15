@@ -1,0 +1,4 @@
+frontend/src/features/chat/ChatPage.tsx	20,23,24,51,52,55,56,57,58,59,61,62,67,68,72,73,74,75,76,77,79,80,81,85,86,87,88,89,118,119,123,142,145,186,201,217,218,228	uncovered=
+frontend/src/features/chat/access.ts	5,6,7,8,12,13,14,15,16,18	uncovered=
+frontend/src/features/chat/controller.ts	24,25,26,46,47,61,93,113,139	uncovered=
+frontend changed line coverage 100.00% (57/57)

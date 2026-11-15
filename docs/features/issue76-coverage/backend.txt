@@ -1,0 +1,9 @@
+backend/internal/agent/mentor.go	16,17,19,20,21,22,24,25,26,27,29,30,32,33,35,36,38	uncovered=
+backend/internal/agent/model.go	32,35,47,55,56,58	uncovered=
+backend/internal/app/agent.go	31	uncovered=
+backend/internal/app/handler.go	50,51,65	uncovered=
+backend/internal/chat/http.go	30,31,32,33,35	uncovered=
+backend/internal/chat/service.go	58,87,88,90,104,110,127,128,251,252,253,264,283	uncovered=253
+backend/internal/chat/types.go	86	uncovered=
+backend/internal/demo/mentor_agent.go	12,13,14,16,17,19	uncovered=17
+backend changed line coverage 96.15% (50/52)
