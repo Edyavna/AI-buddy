@@ -1,0 +1,55 @@
+{
+  "input": {
+    "reviewed": true,
+    "include_step": false,
+    "attempts": "Проверил настройки вручную",
+    "fragments": [
+      {
+        "message_id": "msg_user",
+        "text": "Не удаётся настроить сервис"
+      }
+    ],
+    "documents": [],
+    "step_revision": null
+  },
+  "snapshot": {
+    "conversation_id": "conversation_1",
+    "attempts": "Проверил настройки вручную",
+    "step": null,
+    "fragments": [
+      {
+        "message_id": "msg_user",
+        "text": "Не удаётся настроить сервис",
+        "role": "user",
+        "edited": false,
+        "status": "available"
+      }
+    ],
+    "documents": [
+      {
+        "document_id": "doc1",
+        "version": 1,
+        "title": null,
+        "opened": true,
+        "status": "unavailable"
+      }
+    ],
+    "limited": false
+  },
+  "preview": {
+    "conversation_id": "conversation_1",
+    "attempts": "Проверил настройки вручную",
+    "step": null,
+    "fragments": [
+      {
+        "message_id": "msg_user",
+        "text": "Не удаётся настроить сервис",
+        "role": "user",
+        "edited": false,
+        "status": "available"
+      }
+    ],
+    "documents": [],
+    "limited": false
+  }
+}

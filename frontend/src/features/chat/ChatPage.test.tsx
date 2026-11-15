@@ -44,6 +44,25 @@ it('restores direct URL history and context', async () => {
   expect(await screen.findByText(`Шаг: ${f.plan.steps[0]?.title}`)).toBeInTheDocument();
   expect(screen.getByRole('link', { name: f.conversation.title })).toHaveAttribute('aria-current', 'page');
 });
+it('opens a cited message once after loading history and preserves its scroll position', async () => {
+  const scroll = vi.fn(function(this: HTMLElement) {
+    this.closest('[role="log"]')!.scrollTop = 37;
+  });
+  const previous = HTMLElement.prototype.scrollIntoView;
+  HTMLElement.prototype.scrollIntoView = scroll;
+  try {
+    const view = mount('/chat/conversation_demo_1#message-' + f.messages[0]!.id);
+    await waitFor(() => expect(scroll).toHaveBeenCalledTimes(1));
+    expect(scroll.mock.instances[0]).toHaveAttribute('id', 'message-' + f.messages[0]!.id);
+    expect(screen.getByRole('log').scrollTop).toBe(37);
+    await view.queryClient.invalidateQueries({ queryKey: queryKeys.messages('conversation_demo_1') });
+    expect(scroll).toHaveBeenCalledTimes(1);
+    view.unmount();
+    mount('/chat/conversation_demo_1#message-%E0%A4%A');
+    await screen.findByText(f.messages[1]!.text);
+    expect(scroll).toHaveBeenCalledTimes(1);
+  } finally { HTMLElement.prototype.scrollIntoView = previous; }
+});
 it('sends with Enter, does not send with Shift or IME, and survives internal URL replace', async () => {
   let posts = 0;
   server.use(http.get('*/api/v1/conversations/:id/messages', () => HttpResponse.json([])),
@@ -99,4 +118,26 @@ it('redirects 401 and displays missing conversation without sending', async () =
   server.use(http.get('*/api/v1/me', () => HttpResponse.json({ error: { code: 'UNAUTHENTICATED', message: 'Войдите', trace_id: 't' } }, { status: 401 })));
   renderWithQuery(<MemoryRouter initialEntries={['/chat']}><Routes><Route path="/chat" element={<ChatPage />} /><Route path="/login" element={<p>Вход</p>} /></Routes></MemoryRouter>);
   expect(await screen.findByText('Вход')).toBeInTheDocument();
+});
+
+it('archives and restores a conversation while keeping its history accessible', async () => {
+  let archived = false;
+  server.use(
+    http.get('*/api/v1/conversations', ({ request }) => {
+      const archive = new URL(request.url).searchParams.get('archived') === 'true';
+      return HttpResponse.json(archived === archive ? [{ ...f.conversation, archived }] : []);
+    }),
+    http.patch('*/api/v1/conversations/:id', async ({ request }) => {
+      archived = (await request.json() as { archived: boolean }).archived;
+      return HttpResponse.json({ ...f.conversation, archived });
+    }),
+  );
+  mount('/chat/conversation_demo_1');
+  fireEvent.click(await screen.findByRole('button', { name: /^Архивировать диалог:/ }));
+  expect(await screen.findByText('Диалогов пока нет')).toBeVisible();
+  expect(screen.getByText(f.messages[1]!.text)).toBeVisible();
+  fireEvent.click(screen.getByRole('button', { name: 'Архив' }));
+  expect(await screen.findByRole('link', { name: f.conversation.title })).toBeVisible();
+  fireEvent.click(await screen.findByRole('button', { name: /^Вернуть из архива:/ }));
+  expect(await screen.findByText('Архив пуст')).toBeVisible();
 });

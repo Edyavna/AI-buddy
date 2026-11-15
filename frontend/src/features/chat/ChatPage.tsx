@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button, InlineError, Spinner } from '@/shared/ui';
 import { ClientError, queryKeys } from '@/shared/api';
 import { abortSessionRequests } from '@/shared/api/session-signal';
-import { getConversation, getData, listConversations, listMessages } from './api';
+import { queryRequestSignal } from '@/shared/api/query-access';
+import { getConversation, getData, listConversations, listMessages, setConversationArchived } from './api';
 import { userSchema } from './schemas';
 import { usePlan } from '@/features/onboarding';
 import { ChatController } from './controller';
@@ -18,21 +19,43 @@ export function ChatPage() {
   const { conversationId } = useParams();
   const [params] = useSearchParams();
   const stepId = params.get('stepId');
+  const {hash}=useLocation();
   const navigate = useNavigate(), client = useQueryClient();
   const [controller] = useState(() => new ChatController(client, () => navigate('/login', { replace: true })));
   const state = useSyncExternalStore(controller.subscribe, controller.snapshot);
   const [text, setText] = useState('');
   const [newMessages, setNewMessages] = useState(false);
   const [documentId, setDocumentId] = useState<string | null>(null);
-  const closeDocument = useCallback(() => setDocumentId(null), []);
+  const [sourceMessageId,setSourceMessageId]=useState<string>();
+  const closeDocument = useCallback(() => {setDocumentId(null);setSourceMessageId(undefined);void client.invalidateQueries({queryKey:['question-context']});}, [client]);
+  function openSource(messageId:string,id:string){setSourceMessageId(messageId);setDocumentId(id);}
   const composer = useRef<HTMLTextAreaElement>(null);
   const focusComposer = useCallback(() => composer.current?.focus(), []);
   const activeUser = useRef<string | null>(null);
   const list = useRef<HTMLDivElement>(null), nearBottom = useRef(true);
   const messageContent = useRef<HTMLDivElement>(null);
+  const visitedSource=useRef('');
+  useEffect(()=>{
+    const key=(state.conversationId??'')+hash;
+    if(!hash.startsWith('#message-')||visitedSource.current===key)return;
+    let id:string;try{id=decodeURIComponent(hash.slice(1));}catch{return;}
+    const target=document.getElementById(id);
+    if(target){nearBottom.current=false;target.scrollIntoView?.({block:'center'});visitedSource.current=key;}
+  },[hash,state.conversationId,state.messages.length]);
   const busy = ['sending', 'streaming', 'recovering'].includes(state.phase);
   const me = useQuery({ queryKey: queryKeys.me(), queryFn: ({ signal }) => getData('/me', userSchema, signal) });
-  const conversations = useQuery({ queryKey: queryKeys.conversations(), queryFn: ({ signal }) => listConversations(signal), enabled: !!me.data });
+  const [showArchive, setShowArchive] = useState(false);
+  const conversations = useQuery({ queryKey: showArchive ? [...queryKeys.conversations(), 'archive'] : queryKeys.conversations(), queryFn: ({ signal }) => listConversations(signal, showArchive), enabled: !!me.data });
+  const archive = useMutation({
+    mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
+      const key = queryKeys.conversation(id);
+      const signal = queryRequestSignal(client, key);
+      const result = await setConversationArchived(id, archived, signal);
+      signal.throwIfAborted();
+      if (result.data) client.setQueryData(key, result.data);
+      await client.invalidateQueries({ queryKey: queryKeys.conversations() });
+    },
+  });
   const conversation = useQuery({ queryKey: queryKeys.conversation(conversationId ?? ''), queryFn: ({ signal }) => getConversation(conversationId!, signal), enabled: !!conversationId && !!me.data });
   const history = useQuery({ queryKey: queryKeys.messages(conversationId ?? ''), queryFn: ({ signal }) => listMessages(conversationId!, signal), enabled: !!conversation.data && !busy });
   const contextId = conversationId ? conversation.data?.step_id : stepId;
@@ -92,15 +115,34 @@ export function ChatPage() {
     void controller.send(text, me.data.id, contextId ?? null, id => navigate(`/chat/${encodeURIComponent(id)}`, { replace: true }));
     setText('');
   };
-  return <div className={styles.layout}>
+  return <div className={styles.layout} data-chat-layout>
     <aside className={styles.sidebar} aria-label="Диалоги">
-      <Link to="/chat">Новый диалог</Link>
+      <div className={styles.sidebarActions}>
+      <Link to="/chat" className={styles.newChat}><span aria-hidden="true">+</span> Новый диалог</Link>
+      <Button variant="secondary" aria-pressed={showArchive} onClick={() => setShowArchive(value => !value)}>{showArchive ? 'Активные диалоги' : 'Архив'}</Button>
+      </div>
+      <div className={styles.conversationList}>
       {conversations.isLoading && <Spinner />}
-      {conversations.data?.length === 0 && <p>Диалогов пока нет</p>}
-      {conversations.data?.map(item => <Link key={item.id} aria-current={item.id === conversationId ? 'page' : undefined} to={`/chat/${encodeURIComponent(item.id)}`}>{item.title}</Link>)}
+      {conversations.data?.length === 0 && <p>{showArchive ? 'Архив пуст' : 'Диалогов пока нет'}</p>}
+      {conversations.data?.map(item => {
+        const action = showArchive ? 'Вернуть из архива' : 'Архивировать диалог';
+        return <div key={item.id} className={styles.conversationRow}>
+          <Link aria-current={item.id === conversationId ? 'page' : undefined} to={`/chat/${encodeURIComponent(item.id)}`}>{item.title}</Link>
+          <button type="button" className={styles.archiveAction} aria-label={`${action}: ${item.title}`} title={action}
+            disabled={archive.isPending || (busy && item.id === conversationId)}
+            onClick={() => archive.mutate({ id: item.id, archived: !showArchive })}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M4 7h16V3H4z M6 7v13h12V7" />
+              {showArchive ? <path d="M12 16V10m-3 3 3-3 3 3" /> : <path d="M12 10v6m-3-3 3 3 3-3" />}
+            </svg>
+          </button>
+        </div>;
+      })}
+      </div>
     </aside>
     <section className={styles.chat} aria-label="Чат с помощником">
       <header><h1>Помощник стажёра</h1><p>{step ? `Шаг: ${step.title}` : 'Инструкции, доступы и первые задачи'}</p></header>
+      {archive.error && <InlineError message={archive.error.message} />}
       {error && <InlineError message={error.message} onRetry={() => { void client.invalidateQueries(); }} />}
       {contextInvalid && <InlineError message="Шаг не найден в вашем плане. Вернитесь к плану адаптации." />}
       {(me.isPending || (conversationId && history.isLoading)) && <Spinner />}
@@ -113,14 +155,14 @@ export function ChatPage() {
         {state.messages.map(message => {
           const canEscalate = canEscalateMessage(message);
           const original = canEscalate ? state.messages.find(m => m.id === message.in_reply_to_message_id && m.role === 'user') : undefined;
-          return <article key={message.id} className={message.role === 'user' ? styles.user : styles.assistant}>
+          return <article key={message.id} id={`message-${message.id}`} className={message.role === 'user' ? styles.user : styles.assistant}>
             <strong>{message.role === 'user' ? 'Вы' : 'AI-buddy'}</strong>
             {message.role === 'assistant'
               ? <MarkdownContent content={message.text || (message.status === 'generating' ? 'Готовлю ответ…' : 'Ответ без текста')} />
               : <p>{message.text}</p>}
             {message.sources.length > 0 && <ul className={styles.sources} aria-label="Источники ответа">
               {message.sources.map(source => <li key={source.id}>
-                <button type="button" className={styles.source} onClick={() => setDocumentId(source.document_id)}>
+                <button type="button" className={styles.source} onClick={() => openSource(message.id,source.document_id)}>
                   <strong>{source.title}</strong><span>{source.excerpt}</span>
                   {source.version && source.direction === 'hr' && <span>Версия {source.version}{source.updated_at && ` · ${new Date(source.updated_at).toLocaleDateString('ru-RU')}`}</span>}
                 </button>
@@ -130,9 +172,9 @@ export function ChatPage() {
               <AccessRequestPanel requestId={requestId} onDiscuss={focusComposer} />
             </div>)}
             {message.role === 'assistant' && message.in_reply_to_message_id && message.status !== 'generating' &&
-              <QuestionComposer messageId={message.id} onOpenDocument={setDocumentId} />}
+              <QuestionComposer messageId={message.id} onOpenDocument={id=>{setSourceMessageId(undefined);setDocumentId(id);}} onOpenContextDocument={id=>openSource(message.id,id)}/>}
             {canEscalate && !message.routing && me.data &&
-              <MentorQuestionPanel key={me.data.id} messageId={message.id} onOpenDocument={setDocumentId}
+              <MentorQuestionPanel key={me.data.id} messageId={message.id} onOpenDocument={id=>{setSourceMessageId(undefined);setDocumentId(id);}} existingOnly
                 canEscalate={canEscalate} isChatBusy={busy} canRepeatQuestion={!!original && contextReady && !contextInvalid && !error}
                 onRepeatQuestion={() => {
                   if (!original || busy || !contextReady || contextInvalid || error) return;
@@ -157,6 +199,6 @@ export function ChatPage() {
         <div><small>{text.length}/8000 · Shift+Enter — новая строка</small><Button type="submit" disabled={busy || !text.trim() || !contextReady || contextInvalid || !me.data || !!conversation.error}>Отправить</Button></div>
       </form>
     </section>
-    <DocumentDrawer documentId={documentId} onClose={closeDocument} />
+    <DocumentDrawer documentId={documentId} onClose={closeDocument} sourceMessageId={sourceMessageId}/>
   </div>;
 }

@@ -1,3 +1,4 @@
+import { PlanAgreements } from '@/features/onboarding-operations/MeetingsPage';
 import React from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { EmptyState, InlineError, Spinner, StatusBadge } from '@/shared/ui';
@@ -189,6 +190,7 @@ export const PlanPage: React.FC = () => {
         />
       )}
 
+      <PlanAgreements />
       <section className={styles.stepsSection} aria-label="Шаги адаптации">
         <div className={styles.sectionHeader}>
           <h2 className={styles.sectionTitle}>Шаги адаптации</h2>

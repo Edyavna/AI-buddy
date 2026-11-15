@@ -8,11 +8,13 @@ import { server } from '@/test/server';
 import { createScenario } from '@/mocks/fixtures/scenario';
 import { QuestionComposer } from './QuestionComposer';
 import { QueryClientProvider } from '@tanstack/react-query';
+import type {ContextInput,ContextSnapshot} from '@/features/question-context/api';
 
 const team = { id: 'backend', name: 'Backend' };
 const date = '2026-11-13T09:00:00Z';
 const employee = { id: 'hr1', role: 'hr', name: 'Анна HR', team };
 const item = {
+  context_snapshot:undefined as ContextSnapshot|undefined,
   id: 'q1', message_id: 'm1', team_id: team.id, direction: 'hr', original_direction: 'hr',
   student: { id: 'intern', name: 'Стажёр' }, specialist_id: null as string | null,
   step_id: null, status: 'new', revision: 1, question: 'Как оформить отпуск?', context_excerpt: 'Контекст',
@@ -25,6 +27,7 @@ const document = {
   revoked: false, status: 'draft', error: null as string | null, updated_at: date,
 };
 const missing = (status = 404) => HttpResponse.json({ error: { code: 'NOT_FOUND', message: 'Недоступно', trace_id: 'hr-test' } }, { status });
+const approvedContext=(input:ContextInput|undefined):ContextSnapshot|undefined=>input?{conversation_id:'mock-conversation',attempts:input.attempts,step:null,fragments:[],documents:[],limited:false}:undefined;
 
 beforeEach(() => queryClient.clear());
 afterEach(() => queryClient.clear());
@@ -87,22 +90,22 @@ it('keeps an HR draft without a recipient, sends after access returns, and rerou
       available_directions: allowed ? ['mentor', 'hr'] : ['mentor'],
       routing: { direction: 'hr', reason: 'Вопрос об отпуске', clarification: null, split: false },
     })),
-    http.put('*/api/v1/messages/m1/question-drafts/hr', async ({ request }) => {
+    http.put('*/api/v1/messages/m1/question-drafts/:direction', async ({ request,params }) => {
       const value = await request.json() as { question: string; context_excerpt: string };
-      drafts = [{ ...value, direction: 'hr' }];
+      drafts = [{ ...value, direction: String(params.direction) }];
       return HttpResponse.json(drafts[0]);
     }),
     http.post('*/api/v1/messages/m1/questions', async ({ request }) => {
-      const value = await request.json() as { question: string; context_excerpt: string };
-      questions = [{ ...item, ...value }];
+      const value = await request.json() as { question: string; context_excerpt: string;context_snapshot?:ContextInput };
+      questions = [{ ...item, ...value,context_snapshot:approvedContext(value.context_snapshot) }];
       return HttpResponse.json(questions[0]);
     }),
     http.get('*/api/v1/questions/q1', () => HttpResponse.json({
       question: questions[0], history: [{ revision: 1, snapshot: { direction: 'hr', resolution: 'Старый ответ' } }],
     })),
     http.post('*/api/v1/questions/q1/reroute', async ({ request }) => {
-      const value = await request.json() as { direction: string; question: string; context_excerpt: string };
-      questions = [{ ...item, ...value, revision: 2 }];
+      const value = await request.json() as { direction: string; question: string; context_excerpt: string;context_snapshot?:ContextInput };
+      questions = [{ ...item, ...value,context_snapshot:approvedContext(value.context_snapshot), revision: 2 }];
       return HttpResponse.json(questions[0]);
     }),
   );
@@ -115,6 +118,7 @@ it('keeps an HR draft without a recipient, sends after access returns, and rerou
   await waitFor(() => expect(drafts).toHaveLength(1));
   allowed = true;
   await queryClient.invalidateQueries({ queryKey: ['hr', 'message', 'm1'] });
+  fireEvent.click(screen.getByRole('checkbox',{name:'Я проверил вопрос, адресата и весь отправляемый контекст'}));
   fireEvent.click(await screen.findByRole('button', { name: 'Подтвердить отправку' }));
   expect(await screen.findByText('HR · Новое')).toBeVisible();
   fireEvent.click(screen.getByRole('button', { name: 'История' }));
@@ -123,6 +127,7 @@ it('keeps an HR draft without a recipient, sends after access returns, and rerou
   expect(screen.getByLabelText('Контекст для специалиста')).toHaveValue('');
   fireEvent.click(screen.getByRole('button', { name: 'Отмена' }));
   fireEvent.click(screen.getByRole('button', { name: 'Изменить адресата' }));
+  fireEvent.click(screen.getByRole('checkbox',{name:'Я проверил вопрос, адресата и весь отправляемый контекст'}));
   fireEvent.click(screen.getByRole('button', { name: 'Подтвердить перенаправление' }));
   expect(await screen.findByText('Наставник · Новое')).toBeVisible();
 });

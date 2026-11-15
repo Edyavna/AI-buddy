@@ -24,9 +24,10 @@ var (
 )
 
 type Draft struct {
-	Direction string `json:"direction"`
-	Question  string `json:"question"`
-	Context   string `json:"context_excerpt"`
+	Direction       string        `json:"direction"`
+	Question        string        `json:"question"`
+	Context         string        `json:"context_excerpt"`
+	ContextSnapshot *ContextInput `json:"context_snapshot,omitempty"`
 }
 
 type Operation struct {
@@ -64,7 +65,7 @@ type History struct {
 func validDraft(d Draft) bool {
 	return (d.Direction == "hr" || d.Direction == "mentor") &&
 		strings.TrimSpace(d.Question) != "" && utf8.RuneCountInString(d.Question) <= 8000 &&
-		utf8.RuneCountInString(d.Context) <= 8000 && !strings.ContainsRune(d.Question+d.Context, 0)
+		utf8.RuneCountInString(d.Context) <= 8000 && !strings.ContainsRune(d.Question+d.Context, 0) && validContext(d.ContextSnapshot)
 }
 
 func sourceMessage(ctx context.Context, tx *sql.Tx, p identity.Principal, messageID string, lock bool) (question string, step *string, routing []byte, err error) {
@@ -111,19 +112,36 @@ EXISTS(SELECT 1 FROM hr_team_assignments h JOIN users u ON u.id=h.hr_user_id AND
 		if err != nil {
 			return err
 		}
-		rows, err := tx.QueryContext(ctx, `SELECT direction,question,context_excerpt FROM question_drafts WHERE message_id=$1 ORDER BY direction`, id)
+		rows, err := tx.QueryContext(ctx, `SELECT direction,question,context_excerpt,context_snapshot FROM question_drafts WHERE message_id=$1 ORDER BY direction`, id)
 		if err != nil {
 			return err
 		}
-		defer rows.Close()
 		for rows.Next() {
 			var d Draft
-			if err := rows.Scan(&d.Direction, &d.Question, &d.Context); err != nil {
+			var snapshot []byte
+			if err := rows.Scan(&d.Direction, &d.Question, &d.Context, &snapshot); err != nil {
+				rows.Close()
 				return err
+			}
+			if len(snapshot) > 0 {
+				if err := json.Unmarshal(snapshot, &d.ContextSnapshot); err != nil {
+					rows.Close()
+					return err
+				}
 			}
 			out.Drafts = append(out.Drafts, d)
 		}
-		return rows.Err()
+		err = rows.Err()
+		rows.Close()
+		if err != nil {
+			return err
+		}
+		for i := range out.Drafts {
+			if err = sanitizeContextDraft(ctx, tx, p, id, &out.Drafts[i]); err != nil {
+				return err
+			}
+		}
+		return nil
 	})
 	if err == nil {
 		for i := range out.Items {
@@ -157,8 +175,12 @@ func queryQuestions(ctx context.Context, db questionsQueryer, where string, args
 }
 
 func saveDraft(ctx context.Context, tx *sql.Tx, id string, d Draft) error {
-	_, err := tx.ExecContext(ctx, `INSERT INTO question_drafts(message_id,direction,question,context_excerpt)
-VALUES($1,$2,$3,$4) ON CONFLICT(message_id,direction) DO UPDATE SET question=EXCLUDED.question,context_excerpt=EXCLUDED.context_excerpt`, id, d.Direction, d.Question, d.Context)
+	raw, err := json.Marshal(d.ContextSnapshot)
+	if err != nil {
+		return err
+	}
+	_, err = tx.ExecContext(ctx, `INSERT INTO question_drafts(message_id,direction,question,context_excerpt,context_snapshot)
+VALUES($1,$2,$3,$4,$5) ON CONFLICT(message_id,direction) DO UPDATE SET question=EXCLUDED.question,context_excerpt=EXCLUDED.context_excerpt,context_snapshot=EXCLUDED.context_snapshot`, id, d.Direction, d.Question, d.Context, string(raw))
 	return err
 }
 
@@ -171,7 +193,13 @@ func (s Store) SaveDraft(ctx context.Context, id string, d Draft) (Draft, error)
 		return d, ports.ErrInvalid
 	}
 	err = database.WithinTx(ctx, s.DB, func(tx *sql.Tx) error {
+		if err := hrscope.LockTeam(ctx, tx, p.TeamID); err != nil {
+			return err
+		}
 		if _, _, _, err := sourceMessage(ctx, tx, p, id, true); err != nil {
+			return err
+		}
+		if _, err := buildContext(ctx, tx, p, p, id, d.Direction, d.ContextSnapshot); err != nil {
 			return err
 		}
 		return saveDraft(ctx, tx, id, d)
@@ -238,7 +266,7 @@ func (s Store) Create(ctx context.Context, id string, in Operation) (Question, e
 	if err != nil {
 		return Question{}, err
 	}
-	if !validDraft(in.Draft) {
+	if !validDraft(in.Draft) || in.ContextSnapshot != nil && !in.ContextSnapshot.Reviewed {
 		return Question{}, ports.ErrInvalid
 	}
 	var q Question
@@ -246,6 +274,11 @@ func (s Store) Create(ctx context.Context, id string, in Operation) (Question, e
 	err = database.WithinTx(ctx, s.DB, func(tx *sql.Tx) error {
 		hash, err := operationHash(ctx, tx, p.UserID, in.ID, "create", id, in)
 		if err != nil {
+			return err
+		}
+		// Drafts and context reads acquire the team lock before message rows.
+		// Keep the same order so a concurrent save cannot deadlock with send.
+		if err := hrscope.LockTeam(ctx, tx, p.TeamID); err != nil {
 			return err
 		}
 		_, step, routing, err := sourceMessage(ctx, tx, p, id, true)
@@ -261,7 +294,7 @@ func (s Store) Create(ctx context.Context, id string, in Operation) (Question, e
 			q.AppliedRevision = &rev
 			return err
 		}
-		if err := hrscope.LockTeam(ctx, tx, p.TeamID); err != nil {
+		if _, err := buildContext(ctx, tx, p, p, id, in.Direction, in.ContextSnapshot); err != nil {
 			return err
 		}
 		mentor, err := destination(ctx, tx, p.TeamID, p.UserID, in.Direction)
@@ -272,9 +305,24 @@ func (s Store) Create(ctx context.Context, id string, in Operation) (Question, e
 		if err != nil {
 			return err
 		}
+		viewer := p
+		if mentor != nil {
+			viewer = identity.Principal{UserID: *mentor, TeamID: p.TeamID, Role: identity.Mentor}
+		}
+		approved, err := buildContext(ctx, tx, p, viewer, id, in.Direction, in.ContextSnapshot)
+		if err != nil {
+			return err
+		}
+		if in.ContextSnapshot != nil && !in.ContextSnapshot.IncludeStep {
+			step = nil
+		}
+		contextJSON, err := json.Marshal(approved)
+		if err != nil {
+			return err
+		}
 		var questionID string
-		err = tx.QueryRowContext(ctx, `INSERT INTO knowledge_gaps(message_id,student_id,team_id,step_id,direction,original_direction,mentor_id,question,context_excerpt,routing)
-VALUES($1,$2,$3,$4,$5,$5,$6,$7,$8,$9) ON CONFLICT(message_id,original_direction) DO NOTHING RETURNING id::text`, id, p.UserID, p.TeamID, step, in.Direction, mentor, in.Question, in.Context, routing).Scan(&questionID)
+		err = tx.QueryRowContext(ctx, `INSERT INTO knowledge_gaps(message_id,student_id,team_id,step_id,direction,original_direction,mentor_id,question,context_excerpt,routing,context_snapshot)
+VALUES($1,$2,$3,$4,$5,$5,$6,$7,$8,$9,$10) ON CONFLICT(message_id,original_direction) DO NOTHING RETURNING id::text`, id, p.UserID, p.TeamID, step, in.Direction, mentor, in.Question, in.Context, routing, string(contextJSON)).Scan(&questionID)
 		if errors.Is(err, sql.ErrNoRows) {
 			return ports.ErrConflict
 		}
@@ -313,7 +361,7 @@ func (s Store) Reroute(ctx context.Context, id string, in Operation) (Question, 
 	if err != nil {
 		return Question{}, err
 	}
-	if !validDraft(in.Draft) || in.Revision < 1 {
+	if !validDraft(in.Draft) || in.Revision < 1 || in.ContextSnapshot != nil && !in.ContextSnapshot.Reviewed {
 		return Question{}, ports.ErrInvalid
 	}
 	var q Question
@@ -347,15 +395,37 @@ func (s Store) Reroute(ctx context.Context, id string, in Operation) (Question, 
 		if err != nil {
 			return err
 		}
+		viewer := p
+		if mentor != nil {
+			viewer = identity.Principal{UserID: *mentor, TeamID: p.TeamID, Role: identity.Mentor}
+		}
+		approved, err := buildContext(ctx, tx, p, viewer, q.MessageID, in.Direction, in.ContextSnapshot)
+		if err != nil {
+			return err
+		}
+		step := q.StepID
+		if in.ContextSnapshot != nil {
+			step = nil
+			if approved.Step != nil {
+				step = &approved.Step.ID
+			}
+		}
+		contextJSON, err := json.Marshal(approved)
+		if err != nil {
+			return err
+		}
 		if err := snapshot(ctx, tx, q); err != nil {
 			return err
 		}
 		if _, err := tx.ExecContext(ctx, `UPDATE knowledge_gaps SET direction=$2,mentor_id=$3,hr_id=NULL,status='new',
-question=$4,context_excerpt=$5,revision=revision+1,resolution=NULL,document_ids='[]',resolved_at=NULL,updated_at=now() WHERE id=$1`, id, in.Direction, mentor, in.Question, in.Context); err != nil {
+question=$4,context_excerpt=$5,context_snapshot=$6,step_id=$7,revision=revision+1,resolution=NULL,document_ids='[]',resolved_at=NULL,updated_at=now() WHERE id=$1`, id, in.Direction, mentor, in.Question, in.Context, string(contextJSON), step); err != nil {
 			return err
 		}
 		q, err = scan(tx.QueryRowContext(ctx, "SELECT "+columns+joined+ownQuestion, id, p.UserID, p.TeamID))
 		if err != nil {
+			return err
+		}
+		if _, err = tx.ExecContext(ctx, `DELETE FROM question_drafts WHERE message_id=$1 AND direction=$2`, q.MessageID, in.Direction); err != nil {
 			return err
 		}
 		return record(ctx, tx, p.UserID, in.ID, hash, &q)
@@ -396,6 +466,7 @@ WHERE q.id::text=$1 AND q.student_id=$2 AND q.team_id=$3 ORDER BY h.revision`, i
 			return out, mapped(err)
 		}
 		delete(fields, "document_ids")
+		delete(fields, "context_snapshot")
 		entry.Snapshot, err = json.Marshal(fields)
 		if err != nil {
 			return out, mapped(err)
@@ -565,6 +636,9 @@ revision=revision+1,updated_at=now(),resolved_at=CASE WHEN $3='resolved' THEN no
 }
 
 func (s Store) filterLinks(ctx context.Context, p identity.Principal, q *Question) error {
+	if err := s.filterContext(ctx, p, q); err != nil {
+		return err
+	}
 	if s.Knowledge == nil || len(q.DocumentIDs) == 0 {
 		return nil
 	}

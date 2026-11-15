@@ -40,6 +40,7 @@ try {
     await intern.getByRole('button', { name: 'Обратиться к специалисту' }).last().click();
     await intern.getByText(/Предложенный адресат — HR/).waitFor();
     await intern.getByLabel('Контекст для специалиста').fill('Контекст, одобренный стажёром');
+    await intern.getByRole('checkbox', { name: 'Я проверил вопрос, адресата и весь отправляемый контекст' }).check();
     const confirm = intern.getByRole('button', { name: 'Подтвердить отправку' });
     await confirm.focus();
     await intern.keyboard.press('Enter');

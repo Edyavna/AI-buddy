@@ -4,6 +4,160 @@
  */
 
 export interface paths {
+    "/meetings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Встречи 1:1 и договорённости действующих участников. */
+        get: operations["listMeetings"];
+        put?: never;
+        /** @description Изменение встречи, темы или договорённости с проверкой ревизии. */
+        post: operations["changeMeeting"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/curator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Обзор системных проблем и шаблонов в назначенных командах. */
+        get: operations["getCuratorWorkspace"];
+        put?: never;
+        /** @description Сохранение проблемы или публикация шаблона с проверкой ревизии. */
+        post: operations["changeCuratorWorkspace"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages/{id}/context-documents/{document_id}/opened": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** @description Explicit drawer render acknowledgement. Rechecks version and access, and records one opening per user/message/document/version. A GET alone is not an opening. */
+        post: operations["acknowledgeContextDocumentShown"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/questions/{id}/context-documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["internReadQuestionContextDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages/{id}/question-context": {
+        parameters: {
+            query: {
+                direction: components["schemas"]["QuestionDirection"];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Bounded extractive preview from authorized messages and sources. Optional fragments require explicit selection; no attempt is inferred. */
+        get: operations["previewQuestionContext"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages/{id}/context-documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        /** @description Read a cited source with its current ACL and version. This GET does not record an opening; acknowledge the displayed version with POST to the corresponding /opened endpoint after rendering. */
+        get: operations["openCitedContextDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/questions/{id}/context-documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["mentorReadQuestionContextDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/hr/questions/{id}/context-documents/{document_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["hrReadQuestionContextDocument"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/mentor/question-groups": {
         parameters: {
             query?: never;
@@ -872,7 +1026,7 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Свои диалоги, updated_at по убыванию. В ограниченном demo без пагинации. */
+        /** @description Свои активные диалоги по умолчанию или архив по запросу. */
         get: operations["listConversations"];
         put?: never;
         /** @description Создать диалог. client_conversation_id генерируется фронтом один раз; уникален для пользователя. Повтор с теми же параметрами возвращает тот же диалог (200), первый вызов — 201. Другой step_id при том же ID — 409 IDEMPOTENCY_CONFLICT. Пропущенный step_id эквивалентен null. Ключ хранится весь срок жизни диалога. */
@@ -1361,13 +1515,255 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        patch?: never;
+        /** @description Архивирует или восстанавливает свой диалог с сохранением истории. */
+        patch: operations["setConversationArchived"];
         trace?: never;
     };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        MeetingAgreementInput: {
+            content: string;
+            owner_id: string;
+            /** Format: date-time */
+            due_at?: string | null;
+            /**
+             * Format: uuid
+             * @description ID собственного HR-обращения. Устанавливается только стажёром.
+             */
+            hr_question_id?: string | null;
+            step_id?: string | null;
+        };
+        MeetingChange: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            action: "create" | "reschedule" | "cancel" | "topic" | "complete" | "agreement-complete" | "agreement-reschedule";
+            revision?: number;
+            intern_id?: string;
+            /** Format: date-time */
+            scheduled_at?: string;
+            timezone?: string;
+            /** Format: uuid */
+            topic_id?: string;
+            content?: string;
+            private?: boolean;
+            agreements?: components["schemas"]["MeetingAgreementInput"][];
+            /** Format: date-time */
+            due_at?: string | null;
+        };
+        CuratorStep: {
+            key: string;
+            title: string;
+            description: string;
+        };
+        CuratorEvidence: {
+            /** @enum {string} */
+            kind: "access" | "blocked" | "knowledge";
+            id: string;
+        };
+        CuratorChange: {
+            /** @enum {string} */
+            action: "save-problem" | "publish-template";
+            /** Format: uuid */
+            id: string;
+            team_id: string;
+            /** @enum {string} */
+            kind?: "access" | "blocked" | "knowledge";
+            /** @enum {string} */
+            direction?: "mentor" | "hr";
+            title?: string;
+            description?: string;
+            /** @enum {string} */
+            status?: "open" | "in_progress" | "resolved";
+            owner_id?: string | null;
+            /** Format: date-time */
+            due_at?: string | null;
+            resolution?: string;
+            document_id?: string | null;
+            template_version?: number | null;
+            revision: number;
+            /** Format: uuid */
+            merge_from?: string;
+            merge_revision?: number;
+            evidence?: components["schemas"]["CuratorEvidence"][];
+            steps?: components["schemas"]["CuratorStep"][];
+            existing_plans?: boolean;
+        };
+        OperationRevision: {
+            revision: number;
+        };
+        MeetingWorkspace: {
+            /** @description Own HR questions, available only to their author. */
+            hr_questions?: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                conversation_id: string;
+                message_id: string;
+            }[];
+            participants: {
+                intern_id: string;
+                mentor_id: string;
+                team_id: string;
+            }[];
+            meetings: {
+                id: string;
+                intern_id: string;
+                mentor_id: string;
+                previous_id: string | null;
+                /** Format: date-time */
+                scheduled_at: string;
+                timezone: string;
+                /** @enum {string} */
+                status: "scheduled" | "completed" | "cancelled";
+                revision: number;
+                result: string;
+                topics: {
+                    id: string;
+                    author_id: string;
+                    content: string;
+                    private: boolean;
+                }[];
+                agenda: {
+                    kind: string;
+                    text: string;
+                    step_id: string | null;
+                    state: string;
+                    reason?: string | null;
+                }[];
+                agreements: {
+                    id: string;
+                    owner_id: string;
+                    content: string;
+                    /** Format: date-time */
+                    due_at: string | null;
+                    /** Format: uuid */
+                    hr_question_id?: string | null;
+                    step_id: string | null;
+                    /** Format: date-time */
+                    completed_at: string | null;
+                    revision: number;
+                }[];
+            }[];
+        };
+        CuratorWorkspace: {
+            teams: {
+                id: string;
+                name: string;
+            }[];
+            owners: {
+                id: string;
+                name: string;
+                role: string;
+            }[];
+            plan_count: number;
+            template: {
+                version: number;
+                steps: components["schemas"]["CuratorStep"][];
+            } | null;
+            summaries: {
+                kind: string;
+                direction: string;
+                topic: string;
+                events: number;
+                interns: number;
+                average_hours: number | null;
+                earlier_events: number;
+                later_events: number;
+                source_ids: string[];
+            }[];
+            problems: {
+                id: string;
+                kind: string;
+                direction: string;
+                team_id: string;
+                title: string;
+                description: string;
+                status: string;
+                owner_id: string | null;
+                /** Format: date-time */
+                due_at: string | null;
+                resolution: string;
+                document_id: string | null;
+                template_version: number | null;
+                merged_into: string | null;
+                revision: number;
+                /** Format: date-time */
+                updated_at: string;
+                evidence: components["schemas"]["CuratorEvidence"][];
+                history: {
+                    revision: number;
+                    actor_id: string;
+                    /** Format: date-time */
+                    changed_at: string;
+                    snapshot: {
+                        title: string;
+                        status: string;
+                    };
+                }[];
+            }[];
+        };
+        QuestionContextFragmentInput: {
+            message_id: string;
+            text: string;
+        };
+        QuestionContextDocumentInput: {
+            document_id: string;
+            version: number;
+        };
+        QuestionContextInput: {
+            reviewed: boolean;
+            include_step: boolean;
+            attempts: string;
+            fragments: components["schemas"]["QuestionContextFragmentInput"][];
+            documents: components["schemas"]["QuestionContextDocumentInput"][];
+            /** @description Plan revision shown during review; required when include_step is true, null otherwise. */
+            step_revision: number | null;
+        };
+        QuestionContextFragment: {
+            message_id: string;
+            /** @enum {string} */
+            role: "user" | "assistant";
+            text: string | null;
+            edited: boolean;
+            /** @enum {string} */
+            status: "available" | "unavailable";
+        };
+        QuestionContextDocument: {
+            document_id: string;
+            version: number;
+            title: string | null;
+            opened: boolean;
+            /** @enum {string} */
+            status: "available" | "unavailable";
+        };
+        NullableQuestionContextStep: {
+            id: string;
+            title: string | null;
+            /** @enum {string} */
+            status: "available" | "unavailable";
+            revision: number;
+        } | null;
+        QuestionContextSnapshot: {
+            conversation_id: string;
+            attempts: string;
+            step: components["schemas"]["NullableQuestionContextStep"];
+            fragments: components["schemas"]["QuestionContextFragment"][];
+            documents: components["schemas"]["QuestionContextDocument"][];
+            limited: boolean;
+        };
+        ContextDocumentBody: {
+            id: string;
+            title: string;
+            content: string;
+            /** Format: date-time */
+            updated_at: string;
+            /** @enum {string} */
+            direction: "mentor" | "hr";
+            version: number;
+        };
         GroupQuestion: {
             id: string;
             team_id: string;
@@ -1475,6 +1871,7 @@ export interface components {
             }[];
         };
         RoutedQuestion: {
+            context_snapshot?: components["schemas"]["QuestionContextSnapshot"];
             /** Format: uuid */
             id: string;
             message_id: string;
@@ -1501,11 +1898,13 @@ export interface components {
             applied_revision: number | null;
         };
         QuestionDraft: {
+            context_snapshot?: components["schemas"]["QuestionContextInput"];
             direction: components["schemas"]["QuestionDirection"];
             question: string;
             context_excerpt: string;
         };
         QuestionDraftInput: {
+            context_snapshot?: components["schemas"]["QuestionContextInput"];
             question: string;
             context_excerpt: string;
         };
@@ -1526,6 +1925,7 @@ export interface components {
             }[];
         };
         CreateRoutedQuestion: {
+            context_snapshot?: components["schemas"]["QuestionContextInput"];
             /** Format: uuid */
             operation_id: string;
             direction: components["schemas"]["QuestionDirection"];
@@ -1533,6 +1933,7 @@ export interface components {
             context_excerpt: string;
         };
         RerouteQuestion: {
+            context_snapshot?: components["schemas"]["QuestionContextInput"];
             /** Format: uuid */
             operation_id: string;
             revision: number;
@@ -1797,6 +2198,7 @@ export interface components {
             step_id: string | null;
             /** Format: date-time */
             created_at: string;
+            archived?: boolean;
             /** Format: date-time */
             updated_at: string;
             /** Format: uuid */
@@ -1856,6 +2258,7 @@ export interface components {
             updated_at: string;
         };
         KnowledgeGap: {
+            context_snapshot?: components["schemas"]["QuestionContextSnapshot"];
             /** Format: uuid */
             id: string;
             message_id: string;
@@ -2210,6 +2613,301 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listMeetings: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Успешный результат */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeetingWorkspace"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    changeMeeting: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MeetingChange"];
+            };
+        };
+        responses: {
+            /** @description Успешный результат */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationRevision"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    getCuratorWorkspace: {
+        parameters: {
+            query?: {
+                team_id?: string;
+                kind?: string;
+                direction?: string;
+                status?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Успешный результат */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CuratorWorkspace"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    changeCuratorWorkspace: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CuratorChange"];
+            };
+        };
+        responses: {
+            /** @description Успешный результат */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["OperationRevision"];
+                };
+            };
+            default: components["responses"]["Error"];
+        };
+    };
+    acknowledgeContextDocumentShown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    version: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Opening recorded */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        opened: true;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    internReadQuestionContextDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized context */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextDocumentBody"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    previewQuestionContext: {
+        parameters: {
+            query: {
+                direction: components["schemas"]["QuestionDirection"];
+            };
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized context */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuestionContextSnapshot"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    openCitedContextDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized context */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextDocumentBody"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    mentorReadQuestionContextDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized context */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextDocumentBody"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    hrReadQuestionContextDocument: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                document_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized context */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ContextDocumentBody"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
     mentorQuestionGroups: {
         parameters: {
             query?: never;
@@ -4124,7 +4822,9 @@ export interface operations {
     };
     listConversations: {
         parameters: {
-            query?: never;
+            query?: {
+                archived?: boolean;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -4282,6 +4982,11 @@ export interface operations {
                         content: string;
                         /** Format: date-time */
                         updated_at: string;
+                        /**
+                         * Format: uri
+                         * @description Для AvitoTech Playbook ссылка на GitHub с коммитом импортированного текста.
+                         */
+                        original_url?: string;
                     };
                 };
             };
@@ -5189,6 +5894,35 @@ export interface operations {
             429: components["responses"]["Error"];
             500: components["responses"]["Error"];
             503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    setConversationArchived: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                conversation_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    archived: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Обновлённый диалог */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Conversation"];
+                };
+            };
             default: components["responses"]["Error"];
         };
     };

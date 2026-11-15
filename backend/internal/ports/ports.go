@@ -25,18 +25,30 @@ type Source struct {
 	Direction                      string
 	Version                        int64
 	UpdatedAt                      time.Time
+	OriginalURL                    string `json:"-"`
 }
 type Document struct {
 	ID, Title, Content, Direction string
 	Version                       int64
 	UpdatedAt                     time.Time
+	OriginalURL                   string `json:"original_url,omitempty"`
 }
 type Task struct {
 	ID, Title, Description, URL string
 	Resource                    Resource
 }
 type ChatMessage struct{ Role, Text string }
+
+// SpecialistQuestion describes an already submitted question in this conversation.
+type SpecialistQuestion struct {
+	Question  string `json:"question"`
+	Direction string `json:"direction"`
+	Status    string `json:"status"`
+	Assigned  bool   `json:"assigned"`
+}
+
 type AgentInput struct {
+	SpecialistQuestions []SpecialistQuestion
 	// Requests are server-loaded snapshots, not model-supplied state.
 	Requests                                 []RequestState
 	ConversationID, AssistantMessageID, Text string

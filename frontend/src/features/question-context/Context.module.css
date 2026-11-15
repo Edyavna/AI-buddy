@@ -1,0 +1,82 @@
+.fields,
+.snapshot {
+  display: grid;
+  gap: var(--space-4);
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+.fields {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-surface);
+}
+.fields fieldset {
+  display: grid;
+  gap: var(--space-3);
+  min-width: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+.fields label {
+  display: grid;
+  gap: var(--space-2);
+  min-width: 0;
+  min-height: 44px;
+}
+.fields label > span,
+.review > span {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px;
+}
+.fields input[type="checkbox"],
+.review input {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  accent-color: var(--color-action);
+}
+.fields label textarea {
+  font: inherit;
+  box-sizing: border-box;
+  min-height: 100px;
+  max-width: 100%;
+  width: 100%;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  resize: vertical;
+}
+.fields button {
+  max-width: 100%;
+  white-space: normal;
+  height: auto;
+  min-height: 44px;
+  padding-block: var(--space-3);
+  line-height: 1.4;
+}
+.fields p,
+.snapshot p {
+  line-height: 1.6;
+  white-space: pre-wrap;
+  margin: 0;
+}
+.fields h3,
+.snapshot h3,
+.snapshot h4 {
+  margin: 0;
+}
+.snapshot {
+  padding: var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+.review {
+  min-height: 44px;
+}

@@ -34,6 +34,8 @@ func Seed(ctx context.Context, db *sql.DB, enabled bool) error {
     ('intern_demo_no_hr','team_demo_no_hr','Стажёр без HR','intern',true) ON CONFLICT DO NOTHING`,
 			`INSERT INTO hr_team_assignments(hr_user_id,team_id) VALUES
     ('hr_demo_1','team_demo_backend'),('hr_demo_1','team_demo_frontend'),('hr_demo_2','team_demo_backend') ON CONFLICT DO NOTHING`,
+			`INSERT INTO curator_team_assignments(curator_id,team_id) VALUES
+    ('mentor_demo_1','team_demo_backend') ON CONFLICT DO NOTHING`,
 			`INSERT INTO mentor_assignments(intern_id,mentor_id,team_id) VALUES
     ('intern_demo_1','mentor_demo_1','team_demo_backend'),
     ('intern_demo_2','mentor_demo_2','team_demo_backend') ON CONFLICT DO NOTHING`,
