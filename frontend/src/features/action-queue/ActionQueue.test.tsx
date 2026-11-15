@@ -7,7 +7,7 @@ import { server } from '@/test/server';
 import { abortSessionRequests } from '@/shared/api/session-signal';
 import { ActionQueuePage } from './ActionQueuePage';
 import { CheckpointInvitation } from './CheckpointInvitation';
-import { completeInvitation, queueKey, type Invitation, type QueueItem } from './api';
+import { completeInvitation, invitationKey, queueKey, type Invitation, type QueueItem } from './api';
 
 const api = '*/api/v1';
 const invitationPath = `${api}/onboarding/steps/team-step/invitation`;
@@ -160,4 +160,83 @@ it('keeps the request on an HTTP conflict and refuses to infer a completed write
   await screen.findByRole('alert');
   expect(await screen.findByRole('button', { name: 'Отменить запрос' })).toBeInTheDocument();
   await expect(completeInvitation('one', id, '', new AbortController().signal)).rejects.toThrow('Действие не подтверждено');
+});
+
+it.each([401, 403, 404])('clears invitation text after mutation denial %s, including a subsequent 503', async status => {
+  let denied = false;
+  server.use(
+    http.get(invitationPath, () => denied ? json({}, 503) : json({ invitation: completed })),
+    http.put(invitationPath, () => { denied = true; return json({}, status); }),
+  );
+  const { queryClient } = renderWithQuery(<CheckpointInvitation step="team-step" />);
+  await screen.findByText(/Наставник отметил, что пригласил вас вручную/);
+  fireEvent.click(screen.getByRole('button', { name: 'Запросить ещё одно приглашение' }));
+  await screen.findByRole('alert');
+  await waitFor(() => expect(screen.queryByText(/Добавил в канал/)).not.toBeInTheDocument());
+  expect(queryClient.getQueryData(invitationKey('team-step'))).toBeNull();
+  await act(() => queryClient.refetchQueries({ queryKey: invitationKey('team-step') }));
+  expect(screen.queryByText(/Добавил в канал/)).not.toBeInTheDocument();
+  expect(queryClient.getQueryData(invitationKey('team-step'))).toBeNull();
+});
+
+it('revokes all filtered queue copies when a read denies access', async () => {
+  let denied = false;
+  server.use(http.get(`${api}/action-queue`, () => denied ? json({}, 403) : json(queue([invite]))));
+  const { queryClient } = renderQueue();
+  await screen.findByRole('heading', { name: intern.name });
+  const previous = [...queueKey, 'mentor', 'one', 'invitation', 0];
+  act(() => queryClient.setQueryData(previous, queue([invite])));
+  denied = true;
+  await act(() => queryClient.refetchQueries({ queryKey: queueKey, type: 'active' }));
+  await waitFor(() => expect(screen.queryByRole('heading', { name: intern.name })).not.toBeInTheDocument());
+  expect(queryClient.getQueryData(previous)).toBeNull();
+});
+
+it('does not report success from a completion that arrives after another filter lost access', async () => {
+  let release!: () => void;
+  let denied = false;
+  server.use(
+    http.get(`${api}/action-queue`, () => denied ? json({}, 403) : json(queue([invite]))),
+    http.put(mentorPath, async () => {
+      await new Promise<void>(resolve => { release = resolve; });
+      return json(completed);
+    }),
+  );
+  const { queryClient } = renderQueue();
+  fireEvent.click(await screen.findByRole('button', { name: 'Отметить ручное приглашение' }));
+  await waitFor(() => expect(release).toBeDefined());
+  denied = true;
+  fireEvent.change(screen.getByLabelText('Тип действия'), { target: { value: 'question' } });
+  await screen.findByRole('alert');
+  await act(async () => { release(); });
+  await waitFor(() => expect(queryClient.isFetching()).toBe(0));
+  expect(screen.queryByText('Ручное приглашение отмечено.')).not.toBeInTheDocument();
+});
+
+it('cancels another invitation read and keeps its late 200 hidden after denial and 503', async () => {
+  let status = 200;
+  let wait = false;
+  let release!: () => void;
+  server.use(
+    http.get(invitationPath, () => json(status === 200 ? { invitation: completed } : {}, status)),
+    http.get(`${api}/onboarding/steps/other-step/invitation`, async () => {
+      if (wait) await new Promise<void>(resolve => { release = resolve; });
+      return json({ invitation: completed });
+    }),
+  );
+  const { queryClient } = renderWithQuery(<>
+    <CheckpointInvitation step="team-step" /><CheckpointInvitation step="other-step" />
+  </>);
+  await waitFor(() => expect(screen.getAllByText(/Добавил в канал/)).toHaveLength(2));
+  wait = true;
+  const oldRead = queryClient.refetchQueries({ queryKey: invitationKey('other-step'), exact: true });
+  await waitFor(() => expect(release).toBeDefined());
+  status = 403;
+  await act(() => queryClient.refetchQueries({ queryKey: invitationKey('team-step'), exact: true }));
+  await act(async () => { release(); await oldRead; });
+  await waitFor(() => expect(screen.queryByText(/Добавил в канал/)).not.toBeInTheDocument());
+  expect(queryClient.getQueryData(invitationKey('other-step'))).toBeNull();
+  status = 503;
+  await act(() => queryClient.refetchQueries({ queryKey: invitationKey('team-step'), exact: true }));
+  expect(screen.queryByText(/Добавил в канал/)).not.toBeInTheDocument();
 });

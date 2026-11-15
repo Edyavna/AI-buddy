@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
-import { accessDenied, dateLabel, QueryFeedback, useAction, useMentorQuery } from '@/features/mentor/common';
+import { accessDenied, dateLabel, QueryFeedback, useAction } from '@/features/mentor/common';
 import { queryRequestSignal } from '@/shared/api/query-access';
 import { Button, EmptyState, InlineError } from '@/shared/ui';
 import { completeInvitation, kinds, loadQueue, pageSize, queueKey, type Kind, type QueueItem } from './api';
 import styles from './ActionQueue.module.css';
+import { actionQueueSignal, clearActionQueueAccess, useActionQueueQuery } from './access';
 
 const labels = { invitation: 'Приглашения', confirmation: 'Подтверждения', question: 'Вопросы' };
 const reasons = {
@@ -61,7 +62,7 @@ export function ActionQueuePage({ role }: { role: 'mentor' | 'hr' }) {
   const [offset, setOffset] = useState(0);
   const [status, setStatus] = useState('');
   const key = [...queueKey, role, intern, kind, offset];
-  const query = useMentorQuery(key, signal => loadQueue(intern, kind, offset, signal), 0);
+  const query = useActionQueueQuery(key, signal => loadQueue(intern, kind, offset, signal), 0);
   const page = query.isError ? undefined : query.data;
   const total = page?.total;
 
@@ -74,14 +75,15 @@ export function ActionQueuePage({ role }: { role: 'mentor' | 'hr' }) {
   function complete(item: QueueItem, note: string) {
     setStatus('');
     void action.run(async owner => {
-      const signal = queryRequestSignal(client, key, owner);
+      const signal = actionQueueSignal(client, queryRequestSignal(client, key, owner));
       try {
         await completeInvitation(item.intern.id, item.id, note, signal);
         signal.throwIfAborted();
         setStatus('Ручное приглашение отмечено.');
         title.current?.focus();
       } catch (error) {
-        if (!signal.aborted && accessDenied(error)) await client.resetQueries({ queryKey: queueKey });
+        if (signal.aborted) return;
+        if (accessDenied(error)) clearActionQueueAccess(client);
         throw error;
       } finally {
         if (!signal.aborted) await client.invalidateQueries({ queryKey: queueKey });

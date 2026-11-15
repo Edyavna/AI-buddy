@@ -1,17 +1,18 @@
 import { useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { QueryFeedback, useAction, useMentorQuery } from '@/features/mentor/common';
+import { accessDenied, QueryFeedback, useAction } from '@/features/mentor/common';
 import { queryRequestSignal } from '@/shared/api/query-access';
 import { Button, InlineError } from '@/shared/ui';
 import { invitationKey, loadInvitation, setInvitation } from './api';
 import styles from './ActionQueue.module.css';
+import { actionQueueSignal, clearActionQueueAccess, useActionQueueQuery } from './access';
 
 export function CheckpointInvitation({ step }: { step: string }) {
   const client = useQueryClient();
   const action = useAction();
   const requestID = useRef<string>(null);
   const key = invitationKey(step);
-  const query = useMentorQuery(key, async signal => ({ invitation: await loadInvitation(step, signal) }));
+  const query = useActionQueueQuery(key, async signal => ({ invitation: await loadInvitation(step, signal) }));
   const current = query.data?.invitation;
   const pending = current?.state === 'pending';
   const completed = current?.state === 'completed';
@@ -19,13 +20,17 @@ export function CheckpointInvitation({ step }: { step: string }) {
   function change() {
     const id = pending ? current.id : (requestID.current ??= crypto.randomUUID());
     void action.run(async owner => {
-      const signal = queryRequestSignal(client, key, owner);
+      const signal = actionQueueSignal(client, queryRequestSignal(client, key, owner));
       try {
         const value = await setInvitation(step, id, pending ? 'cancel' : 'request', signal);
         await client.cancelQueries({ queryKey: key, exact: true });
         signal.throwIfAborted();
         client.setQueryData(key, { invitation: value });
         requestID.current = null;
+      } catch (error) {
+        if (signal.aborted) return;
+        if (accessDenied(error)) clearActionQueueAccess(client);
+        throw error;
       } finally {
         if (!signal.aborted) {
           const refreshed = await query.refetch();
