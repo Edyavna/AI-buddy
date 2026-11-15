@@ -100,7 +100,7 @@ func TestHRPlaybookAnswer(t *testing.T) {
 			}
 			var out ports.AgentResult
 			var text string
-			if err := a.hrAnswer(t.Context(), tc.question, func(_ context.Context, e ports.AgentEvent) error {
+			if err := a.hrAnswer(t.Context(), tc.question, "", func(_ context.Context, e ports.AgentEvent) error {
 				text += e.Text
 				return nil
 			}, &out); err != nil {

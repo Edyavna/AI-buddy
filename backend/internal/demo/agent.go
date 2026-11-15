@@ -2,6 +2,7 @@ package demo
 
 import (
 	"context"
+	"strings"
 	"time"
 
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/identity"
@@ -26,6 +27,15 @@ func (a Agent) Run(ctx context.Context, in ports.AgentInput, emit ports.Emit) (p
 	}
 	if err := emit(ctx, ports.AgentEvent{Kind: "tool.finished", Tool: &ports.ToolEvent{CallID: "demo-context", Status: "succeeded"}}); err != nil {
 		return result, err
+	}
+	if strings.Contains(in.PersonalProfile, "Использую PowerShell") {
+		if err := emit(ctx, ports.AgentEvent{Kind: "answer.delta", Text: "С учётом подтверждённого PowerShell текущую папку можно проверить командой `Get-Location`. "}); err != nil {
+			return result, err
+		}
+	} else if strings.Contains(in.PersonalProfile, "Использую Bash") {
+		if err := emit(ctx, ports.AgentEvent{Kind: "answer.delta", Text: "С учётом подтверждённого Bash текущую папку можно проверить командой `pwd`. "}); err != nil {
+			return result, err
+		}
 	}
 	for _, chunk := range []string{"Это тестовый ответ. ", "Вопрос сохранён ", "в истории диалога. ", "Для выбранного шага ", "можно уточнить инструкции ", "и необходимые доступы. ", "Настоящий агент ", "будет подключён отдельно."} {
 		timer := time.NewTimer(a.Delay)

@@ -4,6 +4,79 @@
  */
 
 export interface paths {
+    "/memory": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Owner-only confirmed preferences, pending proposals and freshly loaded application context. Profile is bounded data, never authority. */
+        get: operations["readPersonalMemory"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/messages/{id}/memory-proposals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["readMessageMemoryProposals"];
+        put?: never;
+        /** @description Bounded optional model selection from the authenticated intern own user message. Creates proposals only, never confirmed memory. Failure does not affect the ordinary chat. Ready/skipped extractions are replayed; failed selection can be explicitly retried. */
+        post: operations["suggestPersonalMemory"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/memory/proposals/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get?: never;
+        /** @description Explicitly accept or dismiss a proposal. Acceptance compares both expected entry identity and revision; replay never recreates a deleted entry. */
+        put: operations["decidePersonalMemory"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/memory/entries/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        get: operations["readPersonalMemoryEntry"];
+        put: operations["editPersonalMemoryEntry"];
+        post?: never;
+        delete: operations["deletePersonalMemoryEntry"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/action-queue": {
         parameters: {
             query?: never;
@@ -1610,6 +1683,119 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        MemoryOption: {
+            /** @enum {string} */
+            category: "work_environment" | "learning" | "instruction_format";
+            /** @enum {string} */
+            key: "os" | "shell" | "technology" | "format";
+            value: string;
+            text: string;
+        };
+        MemoryEntry: {
+            id: string;
+            /** @enum {string} */
+            category: "work_environment" | "learning" | "instruction_format";
+            /** @enum {string} */
+            key: "os" | "shell" | "technology" | "format";
+            value: string;
+            text: string;
+            source_message_id: string;
+            conversation_id: string;
+            revision: number;
+            edited: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        NullableMemoryEntry: {
+            id: string;
+            /** @enum {string} */
+            category: "work_environment" | "learning" | "instruction_format";
+            /** @enum {string} */
+            key: "os" | "shell" | "technology" | "format";
+            value: string;
+            text: string;
+            source_message_id: string;
+            conversation_id: string;
+            revision: number;
+            edited: boolean;
+            /** Format: date-time */
+            created_at: string;
+            /** Format: date-time */
+            updated_at: string;
+        } | null;
+        MemoryProposal: {
+            id: string;
+            /** @enum {string} */
+            category: "work_environment" | "learning" | "instruction_format";
+            /** @enum {string} */
+            key: "os" | "shell" | "technology" | "format";
+            value: string;
+            text: string;
+            source_message_id: string;
+            conversation_id: string;
+            /** @enum {string} */
+            state: "pending" | "accepted" | "dismissed";
+            /** Format: date-time */
+            created_at: string;
+            entry_id: string | null;
+            replaces: components["schemas"]["NullableMemoryEntry"];
+        };
+        MemoryProposals: {
+            /** @enum {string} */
+            state: "not_requested" | "ready" | "failed" | "skipped";
+            items: components["schemas"]["MemoryProposal"][];
+        };
+        MemoryDecision: {
+            /** @enum {string} */
+            decision: "accept" | "dismiss";
+            expected_entry_id: string | null;
+            expected_revision: number;
+        };
+        MemoryDecisionResult: {
+            proposal: components["schemas"]["MemoryProposal"];
+            entry: components["schemas"]["NullableMemoryEntry"];
+        };
+        EditMemoryEntry: {
+            value: string;
+            revision: number;
+        };
+        DeleteMemoryEntry: {
+            revision: number;
+        };
+        MemoryLiveContext: {
+            team: {
+                id: string;
+                name: string;
+            };
+            /** @enum {string} */
+            role: "intern";
+            mentor: {
+                id: string;
+                name: string;
+            } | null;
+            progress_percent: number | null;
+            requests: {
+                status: string;
+                count: number;
+            }[];
+            recent_requests: {
+                id: string;
+                resource_name: string;
+                /** @enum {string} */
+                permission: "read" | "write";
+                /** @enum {string} */
+                status: "draft" | "submitting" | "pending" | "granted" | "rejected" | "failed";
+            }[];
+        };
+        MemoryWorkspace: {
+            entries: components["schemas"]["MemoryEntry"][];
+            pending: components["schemas"]["MemoryProposal"][];
+            options: components["schemas"]["MemoryOption"][];
+            context: components["schemas"]["MemoryLiveContext"];
+            profile_markdown: string;
+        };
         /** @enum {string} */
         ActionQueueKind: "invitation" | "confirmation" | "question";
         ActionQueuePerson: {
@@ -2800,6 +2986,233 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    readPersonalMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized personal memory */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryWorkspace"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    readMessageMemoryProposals: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized personal memory */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryProposals"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    suggestPersonalMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Authorized personal memory */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryProposals"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    decidePersonalMemory: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MemoryDecision"];
+            };
+        };
+        responses: {
+            /** @description Authorized personal memory */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryDecisionResult"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    readPersonalMemoryEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Authorized personal memory */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryEntry"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    editPersonalMemoryEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EditMemoryEntry"];
+            };
+        };
+        responses: {
+            /** @description Authorized personal memory */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MemoryEntry"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    deletePersonalMemoryEntry: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DeleteMemoryEntry"];
+            };
+        };
+        responses: {
+            /** @description Authorized personal memory */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @enum {boolean} */
+                        deleted: true;
+                    };
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
     listActionQueue: {
         parameters: {
             query?: {

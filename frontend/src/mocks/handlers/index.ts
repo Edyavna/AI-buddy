@@ -5,8 +5,9 @@ import { createFe2Handlers } from './fe2';
 import { createMentorQuestionHandlers } from './mentor-questions';
 import { createReviewPreparationHandlers } from './review-preparation';
 import { createQuestionContextHandlers } from './question-context';
+import { personalMemoryHandlers } from './personal-memory';
 
 // FE2 supplies its session/plan/request handlers through one public seam.
 export function createHandlers(fe2Handlers: RequestHandler[] = createFe2Handlers()) {
-  return [...fe2Handlers, ...createChatHandlers(), ...createDocumentHandlers(), ...createMentorQuestionHandlers(), ...createReviewPreparationHandlers(),...createQuestionContextHandlers()];
+  return [...fe2Handlers, ...createChatHandlers(), ...createDocumentHandlers(), ...createMentorQuestionHandlers(), ...createReviewPreparationHandlers(),...createQuestionContextHandlers(),...personalMemoryHandlers];
 }

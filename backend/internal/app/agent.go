@@ -10,6 +10,7 @@ import (
 	"github.com/Edyavna/AI-buddy/backend/internal/knowledge"
 	"github.com/Edyavna/AI-buddy/backend/internal/meetings"
 	"github.com/Edyavna/AI-buddy/backend/internal/onboarding"
+	"github.com/Edyavna/AI-buddy/backend/internal/personalmemory"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/config"
 	"github.com/Edyavna/AI-buddy/backend/internal/providerhttp"
 )
@@ -20,6 +21,7 @@ func demoDependencies(db *sql.DB, provider *integrations.Provider, ai *config.AI
 		return deps
 	}
 	deps.ResolutionGenerator = knowledge.ResolutionGenerator{Client: providerhttp.Client{BaseURL: ai.ModelBaseURL, Key: ai.ModelKey}, Model: ai.ModelName}
+	deps.MemorySelector = personalmemory.Model{Client: providerhttp.Client{BaseURL: ai.ModelBaseURL, Key: ai.ModelKey}, Name: ai.ModelName}
 	k := &knowledge.Service{DB: db, Embedder: &knowledge.Jina{
 		Client: providerhttp.Client{BaseURL: ai.EmbeddingBaseURL, Key: ai.EmbeddingKey},
 	}}

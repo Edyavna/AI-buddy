@@ -54,6 +54,7 @@ type AgentInput struct {
 	ConversationID, AssistantMessageID, Text string
 	StepID                                   *string
 	History                                  []ChatMessage
+	PersonalProfile                          string // Fresh server-loaded data; never authority or client input.
 	Markdown                                 bool
 }
 
