@@ -20,13 +20,13 @@ type queryer interface {
 	QueryRowContext(context.Context, string, ...any) *sql.Row
 }
 
-const conversationColumns = `id,title,step_id,created_at,updated_at,client_conversation_id::text`
+const conversationColumns = `id,title,step_id,created_at,updated_at,client_conversation_id::text,archived`
 
 type scanner interface{ Scan(...any) error }
 
 func scanConversation(row scanner) (Conversation, error) {
 	var c Conversation
-	err := row.Scan(&c.ID, &c.Title, &c.StepID, &c.CreatedAt, &c.UpdatedAt, &c.ClientID)
+	err := row.Scan(&c.ID, &c.Title, &c.StepID, &c.CreatedAt, &c.UpdatedAt, &c.ClientID, &c.Archived)
 	c.CreatedAt = c.CreatedAt.UTC()
 	c.UpdatedAt = c.UpdatedAt.UTC()
 	return c, err
@@ -56,8 +56,12 @@ func (s SQLStore) Get(ctx context.Context, p identity.Principal, id string) (Con
 	c, err := owned(ctx, s.DB, p, id, false)
 	return c, sqlError(err)
 }
-func (s SQLStore) List(ctx context.Context, p identity.Principal) ([]Conversation, error) {
-	rows, err := s.DB.QueryContext(ctx, `SELECT `+conversationColumns+` FROM conversations WHERE user_id=$1 AND team_id=$2 ORDER BY updated_at DESC,id`, p.UserID, p.TeamID)
+func (s SQLStore) SetArchived(ctx context.Context, p identity.Principal, id string, archived bool) (Conversation, error) {
+	c, err := scanConversation(s.DB.QueryRowContext(ctx, `UPDATE conversations SET archived=$4 WHERE id=$1 AND user_id=$2 AND team_id=$3 RETURNING `+conversationColumns, id, p.UserID, p.TeamID, archived))
+	return c, sqlError(err)
+}
+func (s SQLStore) List(ctx context.Context, p identity.Principal, archived bool) ([]Conversation, error) {
+	rows, err := s.DB.QueryContext(ctx, `SELECT `+conversationColumns+` FROM conversations WHERE user_id=$1 AND team_id=$2 AND archived=$3 ORDER BY updated_at DESC,id`, p.UserID, p.TeamID, archived)
 	if err != nil {
 		return nil, sqlError(err)
 	}
@@ -264,7 +268,9 @@ func (s SQLStore) Finish(ctx context.Context, p identity.Principal, conversation
 			if _, err := tx.ExecContext(ctx, `UPDATE chat_messages SET text=$1,status=$2,sources=$3,error=$4,outcome=$5,routing=$7 WHERE id=$6`, m.Text, m.Status, string(sources), failure, outcome, m.ID, routing); err != nil {
 				return err
 			}
-			if _, err := tx.ExecContext(ctx, `UPDATE conversations SET updated_at=clock_timestamp() WHERE id=$1`, conversationID); err != nil {
+			if _, err := tx.ExecContext(ctx, `UPDATE conversations SET updated_at=clock_timestamp(),
+ title=CASE WHEN step_id IS NULL AND title='Новый диалог' AND next_sequence=3 AND $2<>'' THEN $2 ELSE title END
+ WHERE id=$1`, conversationID, m.ConversationTitle); err != nil {
 				return err
 			}
 		}
@@ -316,4 +322,28 @@ func LinkRequestTx(ctx context.Context, tx *sql.Tx, p identity.Principal, assist
 func (s SQLStore) Recover(ctx context.Context) error {
 	_, err := s.DB.ExecContext(ctx, `UPDATE chat_messages SET status='interrupted',error=jsonb_build_object('error',jsonb_build_object('code','GENERATION_INTERRUPTED','message','Генерация прервана перезапуском сервера','trace_id',trace_id)) WHERE status='generating'`)
 	return sqlError(err)
+}
+
+func (s SQLStore) SpecialistQuestions(ctx context.Context, conversation, student, team string) ([]ports.SpecialistQuestion, error) {
+	rows, err := s.DB.QueryContext(ctx, `SELECT left(q.question, 300), q.direction, q.status,
+ CASE WHEN q.direction='hr' THEN q.hr_id IS NOT NULL ELSE EXISTS (
+  SELECT 1 FROM mentor_assignments a WHERE a.intern_id=q.student_id AND a.team_id=q.team_id
+ ) END
+ FROM knowledge_gaps q JOIN chat_messages m ON m.id=q.message_id
+ JOIN conversations c ON c.id=m.conversation_id
+ WHERE c.id=$1 AND c.user_id=$2 AND c.team_id=$3 AND q.student_id=$2 AND q.team_id=$3
+ ORDER BY q.created_at DESC,q.id LIMIT 5`, conversation, student, team)
+	if err != nil {
+		return nil, sqlError(err)
+	}
+	defer rows.Close()
+	var out []ports.SpecialistQuestion
+	for rows.Next() {
+		var item ports.SpecialistQuestion
+		if err := rows.Scan(&item.Question, &item.Direction, &item.Status, &item.Assigned); err != nil {
+			return nil, sqlError(err)
+		}
+		out = append(out, item)
+	}
+	return out, sqlError(rows.Err())
 }

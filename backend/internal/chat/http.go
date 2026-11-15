@@ -22,6 +22,7 @@ type Handler struct {
 func (h Handler) Register(mux *http.ServeMux, session auth.Handler) {
 	for pattern, handler := range map[string]http.HandlerFunc{
 		"GET /api/v1/conversations": h.list, "POST /api/v1/conversations": h.create,
+		"PATCH /api/v1/conversations/{conversation_id}":         h.archive,
 		"GET /api/v1/conversations/{conversation_id}":           h.get,
 		"GET /api/v1/conversations/{conversation_id}/messages":  h.messages,
 		"POST /api/v1/conversations/{conversation_id}/messages": h.send,
@@ -50,12 +51,36 @@ func writeError(w http.ResponseWriter, r *http.Request, err error) {
 	httpapi.WriteServiceError(w, r, err)
 }
 func (h Handler) list(w http.ResponseWriter, r *http.Request) {
-	result, err := h.Service.List(r.Context())
+	filter := r.URL.Query().Get("archived")
+	if filter != "" && filter != "true" && filter != "false" {
+		writeError(w, r, ports.ErrInvalid)
+		return
+	}
+	result, err := h.Service.List(r.Context(), filter == "true")
 	if err != nil {
 		writeError(w, r, err)
 		return
 	}
 	httpapi.WriteJSON(w, 200, result)
+}
+func (h Handler) archive(w http.ResponseWriter, r *http.Request) {
+	var body struct {
+		Archived *bool `json:"archived"`
+	}
+	if err := httpapi.DecodeJSON(w, r, &body); err != nil {
+		httpapi.WriteError(w, r, err)
+		return
+	}
+	if body.Archived == nil {
+		writeError(w, r, ports.ErrInvalid)
+		return
+	}
+	c, err := h.Service.SetArchived(r.Context(), r.PathValue("conversation_id"), *body.Archived)
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	httpapi.WriteJSON(w, 200, c)
 }
 func (h Handler) create(w http.ResponseWriter, r *http.Request) {
 	var body struct {
