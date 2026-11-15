@@ -7,7 +7,7 @@ import styles from './AppShell.module.css';
 
 const navigationByRole = {
  intern: [{ to: '/onboarding', text: 'Мой план' }, { to: '/chat', text: 'Чат' }, { to: '/review-preparation', text: 'Ревью' }, { to: '/meetings', text: 'Встречи 1:1' }],
- mentor: [{ to: '/mentor/action-queue', text: 'Мои действия' }, { to: '/mentor/questions', text: 'Вопросы' }, { to: '/mentor/documents', text: 'Знания' }, { to: '/mentor/interns', text: 'Стажёры' }, { to: '/mentor/review-preparations', text: 'Ревью' }, { to: '/mentor/meetings', text: 'Встречи 1:1' }, { to: '/curator', text: 'Обзор адаптации' }],
+ mentor: [{ to: '/mentor/chat', text: 'Чат' }, { to: '/mentor/action-queue', text: 'Мои действия' }, { to: '/mentor/questions', text: 'Вопросы' }, { to: '/mentor/documents', text: 'Знания' }, { to: '/mentor/interns', text: 'Стажёры' }, { to: '/mentor/review-preparations', text: 'Ревью' }, { to: '/mentor/meetings', text: 'Встречи 1:1' }, { to: '/curator', text: 'Обзор адаптации' }],
  hr: [{ to: '/hr/action-queue', text: 'Мои действия' }, { to: '/hr/questions', text: 'Обращения' }, { to: '/hr/documents', text: 'Инструкции' }],
 };
 
@@ -33,7 +33,7 @@ export const AppShell: React.FC = () => {
       <a className={styles.skipLink} href="#main-content">
         К содержимому
       </a>
-      <header className={clsx(styles.header, user?.role !== 'intern' && styles.mentorHeader)}>
+      <header className={clsx(styles.header, user?.role !== 'intern' && styles.mentorHeader, user?.role === 'mentor' && styles.mentorNavigation)}>
         <div className={styles.headerInner}>
           <div className={styles.brandSection}>
             <Link to={home} className={styles.logoLink} aria-label={user?.role === 'hr' ? 'AI-buddy — На главную (кадровые обращения)' : user?.role === 'mentor' ? 'AI-buddy — На главную (вопросы наставнику)' : 'AI-buddy — На главную (план адаптации)'}>

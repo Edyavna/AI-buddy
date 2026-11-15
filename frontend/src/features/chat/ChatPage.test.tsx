@@ -81,6 +81,46 @@ it('sends with Enter, does not send with Shift or IME, and survives internal URL
   expect(await screen.findByText(f.messages[1]!.text)).toBeInTheDocument(); expect(posts).toBe(1);
 });
 
+it.each([
+  ['intern', 403], ['mentor', 403], ['intern', 404], ['mentor', 404],
+] as const)('sends the first question after retrying a denied chat list: %s / %s', async (role, status) => {
+  let allowed = false;
+  const create = vi.fn(() => HttpResponse.json({ ...f.conversation, step_id: null }));
+  const history = vi.fn(() => HttpResponse.json([]));
+  const send = vi.fn(async ({ request }: { request: Request }) => {
+    expect(await request.json()).toMatchObject({ text: 'Первый вопрос после повтора' });
+    return new HttpResponse(
+      eventText('message.started', { user_message_id: 'msg_u1', message_id: 'msg_a1' }) +
+      eventText('message.completed', { message: f.messages[1] }),
+      { headers: { 'Content-Type': 'text/event-stream' } },
+    );
+  });
+  server.use(
+    http.get('*/api/v1/me', () => HttpResponse.json({ ...f.user, role })),
+    http.get('*/api/v1/conversations', () => allowed ? HttpResponse.json([]) : new HttpResponse(null, { status })),
+    http.post('*/api/v1/conversations', create),
+    http.get('*/api/v1/conversations/:id/messages', history),
+    http.post('*/api/v1/conversations/:id/messages', send),
+  );
+  const path = role === 'mentor' ? '/mentor/chat' : '/chat';
+  renderWithQuery(<MemoryRouter initialEntries={[path]}><Routes>
+    <Route path={`${path}/:conversationId?`} element={<ChatPage mentor={role === 'mentor'} />} />
+  </Routes></MemoryRouter>);
+  await screen.findByRole('button', { name: 'Повторить' });
+  expect(create).not.toHaveBeenCalled();
+  expect(history).not.toHaveBeenCalled();
+  allowed = true;
+  fireEvent.click(screen.getByRole('button', { name: 'Повторить' }));
+  await screen.findByText('Диалогов пока нет');
+  expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  expect(history).not.toHaveBeenCalled();
+  fireEvent.change(screen.getByRole('textbox', { name: 'Ваш вопрос' }), { target: { value: 'Первый вопрос после повтора' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
+  await screen.findByText(f.messages[1]!.text);
+  expect(create).toHaveBeenCalledTimes(1);
+  expect(send).toHaveBeenCalledTimes(1);
+});
+
 it.each([['hr', 'hr'], ['mentor', 'mentor'], ['unknown', 'mentor']])('preserves a valid help recipient through conversation creation: %s', async (direction, expected) => {
   server.use(
     http.get('*/api/v1/conversations/:id/messages', () => HttpResponse.json([])),

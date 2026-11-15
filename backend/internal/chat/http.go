@@ -27,7 +27,13 @@ func (h Handler) Register(mux *http.ServeMux, session auth.Handler) {
 		"GET /api/v1/conversations/{conversation_id}/messages":  h.messages,
 		"POST /api/v1/conversations/{conversation_id}/messages": h.send,
 	} {
-		mux.Handle(pattern, session.Require(handler, true))
+		mux.Handle(pattern, session.Require(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if _, err := principal(r.Context()); err != nil {
+				writeError(w, r, err)
+				return
+			}
+			handler(w, r)
+		}), false))
 	}
 }
 func writeError(w http.ResponseWriter, r *http.Request, err error) {

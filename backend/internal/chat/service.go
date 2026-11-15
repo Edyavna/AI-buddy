@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/httpapi"
+	"github.com/Edyavna/AI-buddy/backend/internal/platform/identity"
 	"github.com/Edyavna/AI-buddy/backend/internal/ports"
 )
 
@@ -54,7 +55,7 @@ func (s Service) Create(ctx context.Context, id string, step *string) (Conversat
 	if err != nil {
 		return Conversation{}, false, err
 	}
-	if !validUUID(id) || (step != nil && *step == "") {
+	if !validUUID(id) || (step != nil && (*step == "" || p.Role == identity.Mentor)) {
 		return Conversation{}, false, ports.ErrInvalid
 	}
 	return s.Store.Create(ctx, p, strings.ToLower(id), step)
@@ -82,6 +83,13 @@ func (s Service) request(ctx context.Context, id string) (ports.RequestState, er
 	}
 	return r, nil
 }
+func (s Service) runner(role identity.Role) ports.Agent {
+	if role == identity.Mentor {
+		return s.MentorAgent
+	}
+	return s.Agent
+}
+
 func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepared, error) {
 	p, err := principal(ctx)
 	if err != nil {
@@ -93,13 +101,13 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 	if !validUUID(clientID) || !validText(text) {
 		return Prepared{}, ports.ErrInvalid
 	}
-	if s.Agent == nil {
+	if s.runner(p.Role) == nil {
 		return Prepared{}, ports.ErrUnavailable
 	}
 	var questions []ports.SpecialistQuestion
 	if store, ok := s.Store.(interface {
 		SpecialistQuestions(context.Context, string, string, string) ([]ports.SpecialistQuestion, error)
-	}); ok {
+	}); ok && p.Role == identity.Intern {
 		lookup, cancel := context.WithTimeout(ctx, 5*time.Second)
 		questions, err = store.SpecialistQuestions(lookup, id, p.UserID, p.TeamID)
 		cancel()
@@ -116,6 +124,9 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 	}
 	s.checkSources(work, r.Previous)
 	in := ports.AgentInput{SpecialistQuestions: questions, ConversationID: id, AssistantMessageID: r.Assistant.ID, StepID: r.Conversation.StepID, Text: text, History: history(r.Previous, text), Requests: []ports.RequestState{}}
+	if p.Role == identity.Mentor {
+		return Prepared{Reservation: r, Input: in, StartedAt: started}, nil
+	}
 	ids := map[string]bool{}
 	for _, m := range r.Previous {
 		for _, id := range m.RequestIDs {
@@ -237,6 +248,10 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 	if err != nil {
 		return err
 	}
+	runner := s.runner(owner.Role)
+	if runner == nil {
+		return ports.ErrUnavailable
+	}
 	o := options.defaults()
 	timeout := o.GenerationTimeout
 	if !p.StartedAt.IsZero() {
@@ -246,7 +261,7 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 	defer cancel()
 	var titleResults chan string
 	if len(p.Previous) == 0 && p.Conversation.StepID == nil {
-		if titler, ok := s.Agent.(interface {
+		if titler, ok := runner.(interface {
 			ConversationTitle(context.Context, string) string
 		}); ok {
 			titleResults = make(chan string, 1)
@@ -265,7 +280,7 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 				done <- runResult{err: errors.New("agent panic")}
 			}
 		}()
-		result, err := s.Agent.Run(runCtx, p.Input, func(eventCtx context.Context, event ports.AgentEvent) error {
+		result, err := runner.Run(runCtx, p.Input, func(eventCtx context.Context, event ports.AgentEvent) error {
 			// A sequential caller may reuse its pointed-to event after emit returns.
 			// The queue must own a snapshot, not references the agent can mutate next.
 			if event.Tool != nil {

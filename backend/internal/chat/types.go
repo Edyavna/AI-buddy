@@ -71,10 +71,11 @@ type Store interface {
 	Finish(context.Context, identity.Principal, string, Message) (Message, error)
 }
 type Service struct {
-	Knowledge ports.Knowledge
-	Store     Store
-	Agent     ports.Agent
-	Requests  ports.RequestReader
+	Knowledge   ports.Knowledge
+	Store       Store
+	Agent       ports.Agent
+	MentorAgent ports.Agent
+	Requests    ports.RequestReader
 }
 
 func principal(ctx context.Context) (identity.Principal, error) {
@@ -82,7 +83,7 @@ func principal(ctx context.Context) (identity.Principal, error) {
 	if err != nil {
 		return p, err
 	}
-	if p.Role != identity.Intern {
+	if p.Role != identity.Intern && p.Role != identity.Mentor {
 		return p, ports.ErrForbidden
 	}
 	return p, nil

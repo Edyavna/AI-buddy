@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 
 const port = Number(process.env.HR_FIXTURE_PORT ?? 55662);
 const vector = Array(1024).fill(0);
+const mentorFailures = new Set();
 vector[0] = 1;
 
 createServer(async (request, response) => {
@@ -23,6 +24,15 @@ createServer(async (request, response) => {
     // #57 exercises genuine read tools without changing other fixture scenarios.
     const userIndex = input.messages.findLastIndex(message => message.role === 'user');
     const currentQuestion = input.messages[userIndex]?.content ?? '';
+    if (input.messages[0].content.startsWith('Ты помощник наставника.')) {
+      if (input.tools?.length) throw new Error('Mentor chat must not receive intern tools');
+      if (currentQuestion.includes('N76 fail') && !mentorFailures.has(currentQuestion)) {
+        mentorFailures.add(currentQuestion); response.statusCode = 503; response.end('{}'); return;
+      }
+      const history = input.messages.filter(message => message.role === 'user').map(message => message.content).join(' | ');
+      response.end(JSON.stringify({ choices: [{ finish_reason: 'stop', message: { role: 'assistant', content: JSON.stringify({ answer: `Ответ наставнику: ${history}` }) } }] }));
+      return;
+    }
     if (input.tools?.length && /N57/.test(currentQuestion)) {
       const turn = input.messages.slice(userIndex + 1);
       const replies = turn.filter(message => message.role === 'tool');

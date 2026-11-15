@@ -63,6 +63,7 @@ export const routes: RouteObject[] = [
         { path: 'question-groups/:id', element: <QuestionGroupPage direction="mentor" /> },
         { path: 'question-groups/:id/instruction', element: <ResolutionDraftPage direction="mentor" group /> },
         { path: 'documents', element: <MentorDocumentsPage /> },
+        { path: 'chat/:conversationId?', element: <ChatPage mentor /> },
         { path: 'interns', element: <MentorInternsPage /> },
         { path: 'interns/:id', element: <MentorInternPlanPage /> },
         { path: 'meetings', element: <MeetingsPage /> },

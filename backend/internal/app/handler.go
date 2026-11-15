@@ -28,6 +28,7 @@ import (
 type Dependencies struct {
 	Access              ports.AccessChecker
 	Agent               ports.Agent
+	MentorAgent         ports.Agent
 	Requests            ports.RequestReader
 	Knowledge           ports.Knowledge
 	Questions           ports.OpenQuestionCounter
@@ -46,6 +47,9 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 		if deps.Agent == nil && cfg.DemoMode {
 			deps.Agent = demo.Agent{Delay: cfg.DemoChatDelay}
 		}
+		if deps.MentorAgent == nil && cfg.DemoMode {
+			deps.MentorAgent = demo.MentorAgent{}
+		}
 		requestStore := accessrequests.Store{DB: db}
 		requests := accessrequests.Handler{Store: requestStore, Checker: deps.Access}
 		if deps.Requests == nil {
@@ -58,7 +62,7 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 		plans := onboarding.Handler{Service: onboarding.Service{Store: onboarding.SQLStore{DB: db}, Access: deps.Access}}
 		mentors := mentor.Store{DB: db}
 		checkpoints := onboarding.CheckpointHandler{Service: onboarding.Checkpoints{DB: db, Access: deps.Access, Assignments: mentors}}
-		conversations := chat.Handler{Service: chat.Service{Store: chat.SQLStore{DB: db}, Agent: deps.Agent, Requests: deps.Requests, Knowledge: deps.Knowledge}, Logger: logger}
+		conversations := chat.Handler{Service: chat.Service{Store: chat.SQLStore{DB: db}, Agent: deps.Agent, MentorAgent: deps.MentorAgent, Requests: deps.Requests, Knowledge: deps.Knowledge}, Logger: logger}
 		uploads := knowledge.Uploads{DB: db}
 		if deps.QuestionDocuments == nil {
 			deps.QuestionDocuments = uploads
