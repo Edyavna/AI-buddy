@@ -7,8 +7,8 @@ import styles from './AppShell.module.css';
 
 const navigationByRole = {
  intern: [{ to: '/onboarding', text: 'Мой план' }, { to: '/chat', text: 'Чат' }, { to: '/review-preparation', text: 'Ревью' }, { to: '/meetings', text: 'Встречи 1:1' }],
- mentor: [{ to: '/mentor/questions', text: 'Вопросы' }, { to: '/mentor/documents', text: 'Знания' }, { to: '/mentor/interns', text: 'Стажёры' }, { to: '/mentor/review-preparations', text: 'Ревью' }, { to: '/mentor/meetings', text: 'Встречи 1:1' }, { to: '/curator', text: 'Обзор адаптации' }],
- hr: [{ to: '/hr/questions', text: 'Обращения' }, { to: '/hr/documents', text: 'Инструкции' }],
+ mentor: [{ to: '/mentor/action-queue', text: 'Мои действия' }, { to: '/mentor/questions', text: 'Вопросы' }, { to: '/mentor/documents', text: 'Знания' }, { to: '/mentor/interns', text: 'Стажёры' }, { to: '/mentor/review-preparations', text: 'Ревью' }, { to: '/mentor/meetings', text: 'Встречи 1:1' }, { to: '/curator', text: 'Обзор адаптации' }],
+ hr: [{ to: '/hr/action-queue', text: 'Мои действия' }, { to: '/hr/questions', text: 'Обращения' }, { to: '/hr/documents', text: 'Инструкции' }],
 };
 
 export const AppShell: React.FC = () => {

@@ -1,0 +1,82 @@
+.page {
+  display: grid;
+  gap: var(--space-6);
+  max-width: 960px;
+  margin-inline: auto;
+  overflow-wrap: anywhere;
+}
+
+.page h1 {
+  margin: 0;
+  font-size: clamp(26px, 4vw, 36px);
+  letter-spacing: -.03em;
+}
+
+.filters, .counts, .pagination {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.filters label, .invitation, .invitation label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: var(--space-2);
+  min-width: 0;
+}
+
+.filters label {
+  flex: 0 1 250px;
+}
+
+.filters select, .invitation textarea {
+  width: 100%;
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border-hover);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-primary);
+  font: inherit;
+}
+
+.invitation textarea { resize: vertical; }
+.invitation button { white-space: normal; }
+.counts, .card p { margin: 0; }
+.counts { color: var(--color-text-secondary); }
+.counts strong { color: var(--color-text-primary); font-variant-numeric: tabular-nums; }
+.list { list-style: none; padding: 0; margin: 0; border-top: 1px solid var(--color-border); }
+
+.card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 260px);
+  align-items: start;
+  gap: var(--space-4);
+  padding-block: var(--space-5);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.card > div { display: grid; gap: var(--space-2); }
+.card h2 { margin: 0; font-size: var(--font-size-lg); }
+.category { color: var(--avito-blue-text); font-weight: 600; }
+.date { color: var(--color-text-secondary); font-size: var(--font-size-sm); }
+.card a { color: var(--color-text-primary); text-decoration: underline; width: fit-content; }
+.action { justify-self: end; }
+.pagination { justify-content: space-between; }
+
+.checkpoint {
+  display: grid;
+  justify-items: start;
+  gap: var(--space-2);
+  padding: var(--space-4);
+  background: var(--color-surface-sunken);
+  border-radius: var(--radius-sm);
+}
+
+.checkpoint h4, .checkpoint p { margin: 0; }
+
+@media (max-width: 640px) {
+  .card { grid-template-columns: minmax(0, 1fr); }
+  .action { justify-self: start; }
+}

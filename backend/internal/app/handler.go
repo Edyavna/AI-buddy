@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"github.com/Edyavna/AI-buddy/backend/internal/accessrequests"
+	"github.com/Edyavna/AI-buddy/backend/internal/actionqueue"
 	"github.com/Edyavna/AI-buddy/backend/internal/auth"
 	"github.com/Edyavna/AI-buddy/backend/internal/chat"
 	"github.com/Edyavna/AI-buddy/backend/internal/curator"
@@ -76,6 +77,7 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 			plans.Register(mux, session)
 			mentor.Handler{Store: mentors, Questions: deps.Questions, Access: deps.Access}.Register(mux, session)
 			checkpoints.Register(mux, session)
+			actionqueue.Handler{Store: actionqueue.Store{DB: db, Checkpoints: checkpoints.Service}}.Register(mux, session)
 			knowledgegaps.Handler{Store: questions}.Register(mux, session)
 			reviewprep.Handler{Store: reviews}.Register(mux, session)
 			meetings.Store{DB: db}.Register(mux, session)

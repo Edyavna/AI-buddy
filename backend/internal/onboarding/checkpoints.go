@@ -94,6 +94,9 @@ func (s Checkpoints) Set(ctx context.Context, role identity.Role, internID, step
 				}
 			}
 
+			if err := writeConfirmation(ctx, tx, step.ID, actor, change.Confirmed); err != nil {
+				return err
+			}
 			if step.Status != "blocked" {
 				status := "in_progress"
 				if change.Confirmed && (step.CompletionPolicy != "both" || len(step.Confirmations) == 1) {
@@ -102,9 +105,6 @@ func (s Checkpoints) Set(ctx context.Context, role identity.Role, internID, step
 				if err := saveStepStatus(ctx, tx, step.ID, status); err != nil {
 					return err
 				}
-			}
-			if err := writeConfirmation(ctx, tx, step.ID, actor, change.Confirmed); err != nil {
-				return err
 			}
 			if err := advanceRevision(ctx, tx, &snapshot); err != nil {
 				return err
@@ -152,10 +152,15 @@ func (s Checkpoints) View(ctx context.Context, snapshot Snapshot, owner, actor i
 func (s Checkpoints) view(ctx context.Context, snapshot Snapshot, owner, actor identity.Principal, grants map[ports.AccessCheck]bool) Plan {
 	if s.Access != nil {
 		ownerContext := identity.WithPrincipal(ctx, owner)
+		completed := snapshot.completedSteps()
 		for _, step := range snapshot.Steps {
-			// Recommendations also need the grants of blocked, already confirmed,
-			// and other-role steps, exactly as the ordinary plan read does.
 			if step.Requirement == nil {
+				continue
+			}
+			// Intern recommendations consider the entire plan. Mentor views
+			// only need grants for steps the mentor can still confirm.
+			if actor.Role != identity.Intern &&
+				(!step.requires(actor.Role) || step.confirmedBy(actor.Role) != "" || !step.canConfirm(completed)) {
 				continue
 			}
 			if _, checked := grants[*step.Requirement]; !checked {

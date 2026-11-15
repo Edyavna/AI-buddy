@@ -10,10 +10,12 @@ import type { Plan, Step } from '../../features/onboarding/schemas';
 import { accessRequestSchema } from '../../features/access-requests/schemas';
 import type { AccessRequest } from '../../features/access-requests/schemas';
 import type { User } from '../../shared/api';
+import type { Invitation } from '../../features/action-queue/api';
 
 const createDemoSessionSchema = z.object({ account_id: z.string() }).strict();
 const updateStepSchema = z.object({ status: z.enum(['not_started', 'in_progress', 'completed']) }).strict();
 const confirmRequestSchema = z.object({ draft_version: z.number().int().min(1) }).strict();
+const invitationChange = z.object({ id: z.uuid(), action: z.enum(['request', 'cancel']) });
 
 const jsonError = (status: number, code: string, message: string) =>
   HttpResponse.json({ error: { code, message, trace_id: 'trace_mock' } }, { status });
@@ -63,6 +65,11 @@ export function createFe2Handlers(options: { plan?: Plan } = {}) {
   let currentUser: User | null = intern;
   let plan: Plan = withServerProgress(planSchema.parse(options.plan ?? createFullCheckpointPlan()));
   let request: AccessRequest = accessRequestSchema.parse(fixture.draft);
+  let invitation: Invitation | null = null;
+
+  function invitationAllowed(step: string | readonly string[] | undefined) {
+    return plan.steps.some(item => item.id === step && item.template_key === 'team-setup');
+  }
 
   return [
     http.get('*/api/v1/demo/accounts', () => HttpResponse.json(accounts)),
@@ -93,6 +100,34 @@ export function createFe2Handlers(options: { plan?: Plan } = {}) {
 
     http.get('*/api/v1/onboarding/plan', () => currentUser ? HttpResponse.json(plan) : unauthorized()),
     http.get('*/api/v1/onboarding/recommendation', () => currentUser ? HttpResponse.json(plan.recommendation) : unauthorized()),
+
+    http.get('*/api/v1/onboarding/steps/:id/invitation', ({ params }) => {
+      if (!currentUser) return unauthorized();
+      if (currentUser.role !== 'intern' || !invitationAllowed(params.id)) return notFound();
+      return HttpResponse.json({ invitation });
+    }),
+    http.put('*/api/v1/onboarding/steps/:id/invitation', async ({ params, request: incoming }) => {
+      if (!currentUser) return unauthorized();
+      if (currentUser.role !== 'intern' || !invitationAllowed(params.id)) return notFound();
+      const parsed = invitationChange.safeParse(await incoming.json().catch(() => null));
+      if (!parsed.success) return jsonError(422, 'VALIDATION_ERROR', 'Некорректный запрос');
+      const { id, action } = parsed.data;
+      if (action === 'request' && invitation?.state !== 'pending') {
+        invitation = { id, state: 'pending', requested_at: new Date().toISOString(), closed_at: null, note: null };
+      }
+      if (!invitation || invitation.id !== id) {
+        return jsonError(409, 'INVITATION_STATE_CHANGED', 'Запрос изменился');
+      }
+      if (action === 'cancel' && invitation.state === 'pending') {
+        invitation = { ...invitation, state: 'canceled', closed_at: new Date().toISOString() };
+      }
+      return HttpResponse.json({ invitation });
+    }),
+    http.get('*/api/v1/action-queue', () => {
+      if (!currentUser) return unauthorized();
+      if (currentUser.role === 'intern') return jsonError(403, 'ROLE_FORBIDDEN', 'Очередь доступна специалистам');
+      return HttpResponse.json({ items: [], interns: [], counts: { invitation: 0, confirmation: 0, question: 0 }, total: 0 });
+    }),
 
     http.patch('*/api/v1/onboarding/steps/:stepId', async ({ params, request: incoming }) => {
       if (!currentUser) return unauthorized();

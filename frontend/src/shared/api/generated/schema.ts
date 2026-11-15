@@ -4,6 +4,59 @@
  */
 
 export interface paths {
+    "/action-queue": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Ожидающие действия текущего наставника или HR. Сортировка по времени ожидания, типу и ID. */
+        get: operations["listActionQueue"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/onboarding/steps/{step_id}/invitation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Последний запрос на ручное приглашение из чекпоинта «Организационные моменты» собственного плана. */
+        get: operations["getCheckpointInvitation"];
+        /** @description Создать запрос с клиентским UUID или отменить открытый запрос с этим UUID. */
+        put: operations["setCheckpointInvitation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/mentor/interns/{intern_id}/invitations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** @description Запрос назначенного стажёра. Используется для сверки результата после потери ответа. */
+        get: operations["getAssignedInternInvitation"];
+        /** @description Наставник фиксирует, что приглашение уже выполнено вручную. Повтор сохраняет первоначальную отметку. */
+        put: operations["completeAssignedInternInvitation"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/meetings": {
         parameters: {
             query?: never;
@@ -1523,6 +1576,61 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        /** @enum {string} */
+        ActionQueueKind: "invitation" | "confirmation" | "question";
+        ActionQueuePerson: {
+            id: string;
+            name: string;
+        };
+        ActionQueueItem: {
+            kind: components["schemas"]["ActionQueueKind"];
+            id: string;
+            intern: components["schemas"]["ActionQueuePerson"];
+            step_id: string | null;
+            step_title: string | null;
+            question_preview: string | null;
+            /** @enum {string} */
+            action: "record_invitation" | "review_checkpoint" | "claim_question" | "answer_question";
+            /** Format: date-time */
+            since: string;
+            /** Format: date-time */
+            updated_at: string;
+        };
+        ActionQueuePage: {
+            items: components["schemas"]["ActionQueueItem"][];
+            interns: components["schemas"]["ActionQueuePerson"][];
+            /** @description Счётчики по типам с учётом фильтра по стажёру, до фильтра по типу и пагинации. */
+            counts: {
+                invitation: number;
+                confirmation: number;
+                question: number;
+            };
+            /** @description Размер выборки после обоих фильтров. */
+            total: number;
+        };
+        CheckpointInvitation: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            state: "pending" | "canceled" | "completed";
+            /** Format: date-time */
+            requested_at: string;
+            /** Format: date-time */
+            closed_at: string | null;
+            note: string | null;
+        };
+        CheckpointInvitationState: {
+            invitation: components["schemas"]["CheckpointInvitation"] | null;
+        };
+        SetCheckpointInvitation: {
+            /** Format: uuid */
+            id: string;
+            /** @enum {string} */
+            action: "request" | "cancel";
+        };
+        CompleteCheckpointInvitation: {
+            note?: string;
+        };
         MeetingAgreementInput: {
             content: string;
             owner_id: string;
@@ -2618,6 +2726,162 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
+    listActionQueue: {
+        parameters: {
+            query?: {
+                intern_id?: string;
+                kind?: components["schemas"]["ActionQueueKind"];
+                offset?: number;
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Действия, доступные стажёры и счётчики */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ActionQueuePage"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getCheckpointInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                step_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Текущий статус ручного приглашения */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckpointInvitationState"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    setCheckpointInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                step_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SetCheckpointInvitation"];
+            };
+        };
+        responses: {
+            /** @description Сохранённый запрос */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckpointInvitationState"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            415: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    getAssignedInternInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                intern_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Сохранённый запрос */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckpointInvitation"];
+                };
+            };
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
+    completeAssignedInternInvitation: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                intern_id: string;
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CompleteCheckpointInvitation"];
+            };
+        };
+        responses: {
+            /** @description Отметка о ручном приглашении */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckpointInvitation"];
+                };
+            };
+            400: components["responses"]["Error"];
+            401: components["responses"]["Error"];
+            403: components["responses"]["Error"];
+            404: components["responses"]["Error"];
+            409: components["responses"]["Error"];
+            415: components["responses"]["Error"];
+            422: components["responses"]["Error"];
+            503: components["responses"]["Error"];
+            default: components["responses"]["Error"];
+        };
+    };
     listMeetings: {
         parameters: {
             query?: never;
