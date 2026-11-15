@@ -21,6 +21,7 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
   const { conversationId } = useParams();
   const [params] = useSearchParams();
   const newMarkdown = mentor && !conversationId && params.get('mode') === 'markdown';
+  const previousNewMarkdown = useRef(newMarkdown);
   const stepId = mentor ? null : params.get('stepId');
   const requestedDirection = mentor ? null : params.get('direction');
   const preferredDirection = requestedDirection === 'mentor' || requestedDirection === 'hr' ? requestedDirection : undefined;
@@ -109,10 +110,11 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
   }, [conversationId, conversations.isSuccess, conversations.data, conversations.dataUpdatedAt, controller]);
   useEffect(() => {
     // Internal replace after creation keeps the same controller and active request.
-    if (controller.state.conversationId !== (conversationId ?? null)) {
+    if (controller.state.conversationId !== (conversationId ?? null) || (!conversationId && previousNewMarkdown.current !== newMarkdown)) {
       controller.reset(conversationId ?? null); setText(''); setDocumentId(null); nearBottom.current = true;
     }
-  }, [conversationId, controller]);
+    previousNewMarkdown.current = newMarkdown;
+  }, [conversationId, controller, newMarkdown]);
   useEffect(() => {
     if (!conversationId && me.data) {
       const restored = controller.restore(me.data.id, newMarkdown);

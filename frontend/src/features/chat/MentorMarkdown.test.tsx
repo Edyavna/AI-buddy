@@ -1,11 +1,12 @@
-import { expect, it } from 'vitest';
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { expect, it, vi } from 'vitest';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { Link, MemoryRouter, Route, Routes } from 'react-router-dom';
 import { http, HttpResponse } from 'msw';
 import { createScenario } from '@/mocks/fixtures/scenario';
 import { renderWithQuery } from '@/test/render';
 import { server } from '@/test/server';
 import { ChatPage } from './ChatPage';
+import { eventText } from '@/test/chat-stream';
 
 it('restores a mentor draft and downloads the text of each completed version', async () => {
   const fixture = createScenario();
@@ -55,4 +56,46 @@ it('clears unsent text when switching between new chats without a saved draft', 
   fireEvent.click(screen.getByRole('link', { name: 'Новый диалог' }));
   await screen.findByRole('heading', { name: 'Помощник наставника' });
   await waitFor(() => expect(input).toHaveValue(''));
+});
+
+it('cancels an old creation when switching into Markdown mode and sends only the new draft', async () => {
+  const fixture = createScenario();
+  const drafts: unknown[] = [];
+  let release!: () => void;
+  const send = vi.fn(() => new HttpResponse(
+    eventText('message.started', { user_message_id: 'msg_u1', message_id: 'msg_a1' }) +
+    eventText('message.completed', { message: { ...fixture.messages[1], text: '# Новая инструкция', outcome: 'answered' } }),
+    { headers: { 'Content-Type': 'text/event-stream' } },
+  ));
+  server.use(
+    http.get('*/api/v1/me', () => HttpResponse.json({ ...fixture.user, role: 'mentor' })),
+    http.post('*/api/v1/conversations', async ({ request }) => {
+      drafts.push(await request.json());
+      if (drafts.length === 1) await new Promise<void>(resolve => { release = resolve; });
+      return HttpResponse.json({ ...fixture.conversation, step_id: null, markdown: drafts.length > 1 });
+    }),
+    http.get('*/api/v1/conversations/:id', () => HttpResponse.json({ ...fixture.conversation, step_id: null, markdown: true })),
+    http.get('*/api/v1/conversations/:id/messages', () => HttpResponse.json([])),
+    http.post('*/api/v1/conversations/:id/messages', send),
+  );
+  renderWithQuery(<MemoryRouter initialEntries={['/mentor/chat']}>
+    <Link to="/mentor/chat?mode=markdown">Открыть Markdown</Link>
+    <Routes><Route path="/mentor/chat/:conversationId?" element={<ChatPage mentor />} /></Routes>
+  </MemoryRouter>);
+  await screen.findByRole('link', { name: fixture.conversation.title });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Ваш вопрос' }), { target: { value: 'Старый обычный вопрос' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
+  await waitFor(() => expect(release).toBeDefined());
+  fireEvent.click(screen.getByRole('link', { name: 'Открыть Markdown' }));
+  await screen.findByRole('heading', { name: 'Подготовка Markdown-инструкции' });
+  fireEvent.change(screen.getByRole('textbox', { name: 'Ваш вопрос' }), { target: { value: 'Создай инструкцию' } });
+  expect(screen.getByRole('button', { name: 'Отправить' })).toBeEnabled();
+  await act(async () => { release(); });
+  expect(send).not.toHaveBeenCalled();
+  fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
+  await screen.findByRole('link', { name: 'Скачать .md' });
+  expect(drafts).toHaveLength(2);
+  expect(drafts[0]).not.toHaveProperty('markdown');
+  expect(drafts[1]).toMatchObject({ markdown: true });
+  expect(send).toHaveBeenCalledTimes(1);
 });
