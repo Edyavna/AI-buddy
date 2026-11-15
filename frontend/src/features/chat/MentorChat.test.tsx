@@ -11,7 +11,7 @@ import { queryKeys } from '@/shared/api';
 
 const fixture = createScenario();
 
-it.each([false, true])('keeps intern memory out of mentor chat, Markdown=%s', async markdown => {
+it.each([[false, true], [true, true], [false, false]])('keeps intern memory out of mentor chat, Markdown=%s, mentor UI=%s', async (markdown, mentorUI) => {
   const memory = vi.fn(() => HttpResponse.json({ state: 'ready', items: [] }));
   server.use(
     http.get('*/api/v1/conversations/:id', () => HttpResponse.json({ ...fixture.conversation, step_id: null, markdown })),
@@ -19,17 +19,17 @@ it.each([false, true])('keeps intern memory out of mentor chat, Markdown=%s', as
     http.get('*/api/v1/messages/:id/memory-proposals', memory),
     http.post('*/api/v1/messages/:id/memory-proposals', memory),
   );
-  mount(`/mentor/chat/${fixture.conversation.id}`);
+  mount(`${mentorUI ? '/mentor/chat' : '/chat'}/${fixture.conversation.id}`, mentorUI);
   await screen.findByText(fixture.messages[1]!.text);
   expect(screen.queryByRole('link', { name: 'Моя память' })).not.toBeInTheDocument();
   expect(screen.queryByRole('region', { name: 'Предложения персональной памяти' })).not.toBeInTheDocument();
   expect(memory).not.toHaveBeenCalled();
 });
-function mount(path: string) {
+function mount(path: string, mentorUI = true) {
   server.use(http.get('*/api/v1/me', () => HttpResponse.json({ ...fixture.user, role: 'mentor' })));
   return renderWithQuery(
     <MemoryRouter initialEntries={[path]}>
-      <Routes><Route path="/mentor/chat/:conversationId?" element={<ChatPage mentor />} /></Routes>
+      <Routes><Route path={`${mentorUI ? '/mentor/chat' : '/chat'}/:conversationId?`} element={<ChatPage mentor={mentorUI} />} /></Routes>
     </MemoryRouter>,
   );
 }

@@ -183,7 +183,7 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
       </div>
     </aside>
     <section className={styles.chat} aria-label="Чат с помощником">
-      <header><h1>{markdown ? 'Подготовка Markdown-инструкции' : mentor ? 'Помощник наставника' : 'Помощник стажёра'}</h1><p>{mentor ? 'Вопросы к ИИ' : step ? `Шаг: ${step.title}` : 'Инструкции, доступы и первые задачи'}</p>{!mentor && <Link to="/memory">Моя память</Link>}</header>
+      <header><h1>{markdown ? 'Подготовка Markdown-инструкции' : mentor ? 'Помощник наставника' : 'Помощник стажёра'}</h1><p>{mentor ? 'Вопросы к ИИ' : step ? `Шаг: ${step.title}` : 'Инструкции, доступы и первые задачи'}</p>{!mentor && me.data?.role === 'intern' && <Link to="/memory">Моя память</Link>}</header>
       {archive.error && <InlineError message={archive.error.message} />}
       {error && <InlineError message={error.message} onRetry={() => { void client.invalidateQueries(); }} />}
       {contextInvalid && <InlineError message="Шаг не найден в вашем плане. Вернитесь к плану адаптации." />}
@@ -234,7 +234,7 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
             )}
           </article>;
         })}
-        {!mentor&&memorySource&&me.data&&!busy&&!error&&<MemorySuggestions key={`${me.data.id}:${memorySource}`} messageId={memorySource}/>}
+        {!mentor&&memorySource&&me.data?.role==='intern'&&!busy&&!error&&<MemorySuggestions key={`${me.data.id}:${memorySource}`} messageId={memorySource}/>}
         </div>
       </div>
       {newMessages && <Button variant="secondary" onClick={() => { nearBottom.current = true; setNewMessages(false); if (list.current) list.current.scrollTop = list.current.scrollHeight; }}>Новые сообщения</Button>}
