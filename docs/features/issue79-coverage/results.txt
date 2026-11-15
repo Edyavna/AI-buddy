@@ -1,13 +1,13 @@
-Issue #79, feature/intern-personal-memory, base dev 6947a2b
+Issue #79 / PR #82 review, feature/intern-personal-memory, base dev fe66ca1
 Local acceptance: 2026-11-15. All checks below passed.
 
 Frontend:
   npm run typecheck
   npm run lint
-  npm run test:coverage: 49 files, 427 tests
-    lines: 95.46% (2339/2450)
-    statements: 92.86% (2826/3043)
-  node ../scripts/hr-coverage.mjs 6947a2b frontend
+  npm run test:coverage -- --maxWorkers=2: 53 files, 486 tests
+    lines: 95.88% (2589/2700)
+    statements: 93.32% (3117/3340)
+  node ../scripts/hr-coverage.mjs origin/dev frontend
     changed executable lines: 96.43% (135/140), strictly >90%
   npm run test:e2e: 1 passed
   npm run build
@@ -15,16 +15,17 @@ Frontend:
   Existing build warning: JavaScript bundle >500 kB. No gates disabled.
 
 Backend (Go 1.26.5 Linux, PostgreSQL 17, pgvector 0.8.7):
-  go test -race -p 1 -count=1 -timeout=2m -coverpkg=./... -coverprofile=coverage.out ./...
+  go test -race -p 1 -count=1 -timeout=5m -coverpkg=./... -coverprofile=coverage.out ./...
   go vet ./...
   go build ./...
   Git installed in test container for existing Playbook tests.
+  Docker Desktop local package limit is 5m; CI retains original 2m and no thresholds changed.
   TEST_DATABASE_URL references isolated synthetic databases, not application data.
   go run ../scripts/go_line_coverage.go coverage.out
-    all instrumented source lines: 85.88% (6314/7352), existing >=80% gate preserved
+    all instrumented source lines: 86.56% (6868/7934), existing >=80% gate preserved
   go run ../scripts/go_line_coverage.go --lines coverage.out > coverage/lines.tsv
-  node ../scripts/hr-coverage.mjs 6947a2b backend
-    changed executable lines: 93.25% (470/504), strictly >90%
+  node ../scripts/hr-coverage.mjs origin/dev backend
+    changed executable lines: 93.32% (475/509), strictly >90%
 
 Measured file/line lists: frontend-lines.txt and backend-lines.txt.
 CI uses github.event.pull_request.base.sha. The existing coverage tool excludes
@@ -33,7 +34,7 @@ generated/test/mock/vendor files; runtime feature code is measured without exclu
 Contracts:
   python -m pip install -r contracts/requirements-check.txt
   python scripts/check_contracts.py
-    PASS: OpenAPI 0.2.0; 110 operations; fixtures, SSE schemas, negative cases, references
+    PASS: OpenAPI 0.2.0; 117 operations; fixtures, SSE schemas, negative cases, references
 
 Real-Go browser acceptance:
   node scripts/personal-memory-browser.mjs
@@ -42,14 +43,35 @@ Real-Go browser acceptance:
     physical deletion and owner-only deletion receipt, no resurrection,
     other user list/direct API/model context isolation, keyboard and source links.
     Failed selector and unsafe source do not create a memory entry or break chat.
+    Configured title generation survives the memory wrapper. The composer, submit
+      button and scrollable history remain visible with proposals at all three widths.
   Change mentor_demo_1 -> mentor_demo_2 for the synthetic intern in the test database.
   Restart API and repeat demo seed without resetting data.
   node scripts/personal-memory-browser.mjs --verify
     PASS: confirmed preference survives; next model reply names the new mentor;
     the peer still has no access and no private preference in its model context.
+  node scripts/mentor-chat-browser.mjs
+  node scripts/mentor-markdown-browser.mjs
+  node scripts/mentor-chat-browser.mjs --verify
+  node scripts/mentor-markdown-browser.mjs --verify
+    PASS: ordinary mentor and intern chat, full Markdown versions and UTF-8 downloads,
+      model retry, keyboard archive/restore, explicit upload and ownership after restart.
   Local: Chrome via Playwright core 1.60.0, isolated Go API + Vite + PostgreSQL.
   CI: Ubuntu 24.04, Playwright core 1.60.0, production Nginx SPA via Compose,
     same browser script, mentor reassignment, API restart/reseed and artifact upload.
+    All three browser scripts run in the PR #82 job against production SPA.
+    Local Go API restarted; local fixture provider remained running. CI restarts both.
+
+Review regressions:
+  Title wrapper and mentor-only Markdown source tests first failed before fixes.
+    Source ACL is enforced for list, direct reads, selection, confirmation, edits,
+    deletion and model profile. Ordinary archived sources remain readable.
+  Three frontend tests verify no intern-memory UI/API calls in mentor or Markdown chat,
+    including a mentor opening the general /chat URL. The direct-URL case failed first.
+  Browser composer visibility assertion first failed, then passed after moving memory
+    suggestions into the scrollable message history. No hidden input or lost history.
+  PostgreSQL migration test applies 000028 over released 000027, repeats Apply/Verify,
+    preserves archive/Markdown flags and creates no memory entry without confirmation.
 
 AI boundary and limits:
   External provider is scripts/hr-provider-fixture.mjs for reproducible acceptance.

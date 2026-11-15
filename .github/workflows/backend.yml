@@ -311,6 +311,8 @@ jobs:
       - run: docker compose up --build --wait --wait-timeout 180 frontend hr-fixture
       - run: docker compose --profile demo run --rm seed
       - run: node scripts/personal-memory-browser.mjs
+      - run: node scripts/mentor-chat-browser.mjs
+      - run: node scripts/mentor-markdown-browser.mjs
       - name: Change the current mentor in the synthetic test database
         run: docker compose exec -T db psql -U buddy -d buddy -v ON_ERROR_STOP=1 -c "UPDATE mentor_assignments SET mentor_id='mentor_demo_2' WHERE intern_id='intern_demo_1'"
       - name: Preserve memory and use the current mentor after restart and seed
@@ -319,11 +321,16 @@ jobs:
           docker compose up -d --wait api hr-fixture
           docker compose --profile demo run --rm seed
           node scripts/personal-memory-browser.mjs --verify
+          node scripts/mentor-chat-browser.mjs --verify
+          node scripts/mentor-markdown-browser.mjs --verify
       - if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v4
         with:
           name: personal-memory-browser
-          path: tmp/personal-memory-browser/
+          path: |
+            tmp/personal-memory-browser/
+            tmp/mentor-chat-browser/
+            tmp/mentor-markdown-browser/
       - if: failure()
         run: docker compose logs
       - if: always()

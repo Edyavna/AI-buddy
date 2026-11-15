@@ -1,9 +1,29 @@
 # Персональная память стажёра — #79
 
-База поставки — `dev 6947a2b`, ветка `feature/intern-personal-memory`.
+База после ревью PR #82 — `dev fe66ca1`, ветка `feature/intern-personal-memory`.
 Используются существующие cookie-сессии, Origin, роли, команды, назначения, план, заявки и чат.
-Миграция `000023_personal_memory.sql` добавляет предложения, результаты отбора, подтверждённые
+Миграция `000028_personal_memory.sql` добавляет предложения, результаты отбора, подтверждённые
 записи и квитанции удаления. Существующие диалоги и данные плана не переписываются.
+
+## Объединение с dev и исправления ревью
+
+Сохранены контекст отправленных обращений, рекомендации, архив, обычный чат наставника,
+Markdown-режим и восстановление доступа из dev. Профиль оборачивает только исполнителя
+стажёра; интерфейс наставника не запрашивает и не отображает память стажёра.
+Видимость проверяет фактическую роль intern, включая прямой переход наставника на /chat.
+Миграция 000028 идёт после выпущенной 000027. PostgreSQL-тест проверяет обновление поверх
+dev и повторные Apply/Verify с сохранением архивного Markdown-диалога.
+
+Регрессионные тесты сначала воспроизвели и затем подтвердили исправление двух ошибок:
+обёртка сохраняет ConversationTitle подключённого агента, а память не использует источники
+из недоступных стажёру Markdown-диалогов наставника. Ограничение действует для отбора,
+подтверждения, списка, прямого чтения, редактирования, удаления и контекста модели.
+Архив обычного диалога остаётся доступным источником.
+
+Предложения помещены в прокручиваемую историю: длинные карточки не сжимают её до нуля
+и не выталкивают поле ввода. Браузерная проверка видимости поля/кнопки сначала падала,
+затем прошла на 360/768/1440. В CI вместе с памятью выполняются сценарии чата наставника
+и генерации Markdown; все три проверяются также после restart/reseed.
 
 ## Пользовательский путь
 
@@ -157,10 +177,10 @@ Backend: `go test -race -p 1 -count=1 -timeout=2m -coverpkg=./... -coverprofile=
 ```bash
 cd frontend
 npm run test:coverage
-node ../scripts/hr-coverage.mjs 6947a2b frontend
+node ../scripts/hr-coverage.mjs origin/dev frontend
 cd ../backend
 go run ../scripts/go_line_coverage.go --lines coverage.out > coverage/lines.tsv
-node ../scripts/hr-coverage.mjs 6947a2b backend
+node ../scripts/hr-coverage.mjs origin/dev backend
 go run ../scripts/go_line_coverage.go coverage.out
 ```
 
@@ -170,7 +190,9 @@ go run ../scripts/go_line_coverage.go coverage.out
 Перечни файлов/строк: [frontend](issue79-coverage/frontend-lines.txt),
 [backend](issue79-coverage/backend-lines.txt). Команды и результаты: [отчёт](issue79-coverage/results.txt).
 
-Примеры UI: [память 360](../frontend/screenshots/issue79-memory-360.png),
+Примеры UI первоначальной поставки: [память 360](../frontend/screenshots/issue79-memory-360.png),
 [редактирование 768](../frontend/screenshots/issue79-edit-768.png),
 [предложения 1440](../frontend/screenshots/issue79-proposals-1440.png),
 [новый диалог 1440](../frontend/screenshots/issue79-powershell-answer-1440.png).
+Актуальные скриншоты объединённой версии, включая расположение предложений в истории,
+публикуются в CI-артефакте `personal-memory-browser`.
