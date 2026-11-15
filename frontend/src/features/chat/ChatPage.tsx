@@ -11,6 +11,7 @@ import { usePlan } from '@/features/onboarding';
 import { ChatController } from './controller';
 import { QuestionComposer } from '@/features/hr';
 import { canEscalateMessage, MentorQuestionPanel } from '@/features/mentor-questions';
+import { MeetingSuggestion } from '@/features/onboarding-operations';
 import { AccessRequestPanel } from '@/features/access-requests';
 import { DocumentDrawer, MarkdownContent } from '@/features/documents';
 import styles from './ChatPage.module.css';
@@ -208,6 +209,9 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
                 </button>
               </li>)}
             </ul>}
+            {!mentor && !conversation.data?.archived && me.data?.role === 'intern' && !busy &&
+              message.role === 'assistant' && message.status !== 'generating' && state.messages.at(-1)?.id === message.id &&
+              <MeetingSuggestion messageID={message.id} owner={me.data.id} />}
             {markdown && message.role === 'assistant' && message.status === 'completed' && message.outcome === 'answered' &&
               <a download="instruction.md" href={`data:text/markdown;charset=utf-8,${encodeURIComponent(message.text)}`}>Скачать .md</a>}
             {!mentor && [...new Set(message.request_ids)].map(requestId => <div className={styles.request} key={requestId}>

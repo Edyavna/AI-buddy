@@ -8,6 +8,7 @@ import (
 	"github.com/Edyavna/AI-buddy/backend/internal/drafts"
 	"github.com/Edyavna/AI-buddy/backend/internal/integrations"
 	"github.com/Edyavna/AI-buddy/backend/internal/knowledge"
+	"github.com/Edyavna/AI-buddy/backend/internal/meetings"
 	"github.com/Edyavna/AI-buddy/backend/internal/onboarding"
 	"github.com/Edyavna/AI-buddy/backend/internal/platform/config"
 	"github.com/Edyavna/AI-buddy/backend/internal/providerhttp"
@@ -28,6 +29,7 @@ func demoDependencies(db *sql.DB, provider *integrations.Provider, ai *config.AI
 		Client: providerhttp.Client{BaseURL: ai.ModelBaseURL, Key: ai.ModelKey},
 		Model:  ai.ModelName,
 	}
+	deps.MeetingProposer = meetings.ModelProposer(model.CompleteWithoutTools)
 	deps.MentorAgent = agent.Mentor{Complete: model.CompleteWithoutTools}
 	deps.Agent = &agent.Agent{Model: model, Classifier: model,
 		Knowledge: k, Tasks: provider, Access: provider,

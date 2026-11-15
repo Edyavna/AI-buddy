@@ -26,6 +26,7 @@ import (
 )
 
 type Dependencies struct {
+	MeetingProposer     meetings.Proposer
 	Access              ports.AccessChecker
 	Agent               ports.Agent
 	MentorAgent         ports.Agent
@@ -75,6 +76,9 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 		if cfg.GitHubToken != "" || cfg.GitHubAPIURL != "" {
 			reviews.Provider = reviewprep.GitHubClient{Token: cfg.GitHubToken, BaseURL: cfg.GitHubAPIURL}
 		}
+		if deps.MeetingProposer == nil && cfg.DemoMode {
+			deps.MeetingProposer = meetings.DemoProposer
+		}
 		opts.Register = func(mux *http.ServeMux) {
 			session.Register(mux)
 			hrscope.Store{DB: db}.Register(mux, session)
@@ -84,7 +88,7 @@ func NewHandler(cfg config.Config, db *sql.DB, logger *slog.Logger, ready func(c
 			actionqueue.Handler{Store: actionqueue.Store{DB: db, Checkpoints: checkpoints.Service}}.Register(mux, session)
 			knowledgegaps.Handler{Store: questions}.Register(mux, session)
 			reviewprep.Handler{Store: reviews}.Register(mux, session)
-			meetings.Store{DB: db}.Register(mux, session)
+			meetings.Store{DB: db, Proposer: deps.MeetingProposer, Origins: cfg.AllowedOrigins}.Register(mux, session)
 			curator.Store{DB: db}.Register(mux, session)
 			uploads.Register(mux, session)
 			uploads.RegisterResolutions(mux, session, deps.ResolutionGenerator)
