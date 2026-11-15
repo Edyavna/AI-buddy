@@ -22,10 +22,10 @@ Backend (Go 1.26.5 Linux, PostgreSQL 17, pgvector 0.8.7):
   Docker Desktop local package limit is 5m; CI retains original 2m and no thresholds changed.
   TEST_DATABASE_URL references isolated synthetic databases, not application data.
   go run ../scripts/go_line_coverage.go coverage.out
-    all instrumented source lines: 86.56% (6868/7934), existing >=80% gate preserved
+    all instrumented source lines: 86.59% (6881/7947), existing >=80% gate preserved
   go run ../scripts/go_line_coverage.go --lines coverage.out > coverage/lines.tsv
   node ../scripts/hr-coverage.mjs origin/dev backend
-    changed executable lines: 93.32% (475/509), strictly >90%
+    changed executable lines: 93.49% (488/522), strictly >90%
 
 Measured file/line lists: frontend-lines.txt and backend-lines.txt.
 CI uses github.event.pull_request.base.sha. The existing coverage tool excludes
@@ -63,6 +63,16 @@ Real-Go browser acceptance:
     Local Go API restarted; local fixture provider remained running. CI restarts both.
 
 Review regressions:
+  Selector input minimization follow-up:
+    TestModelSelectionOnlySendsCatalogFragments and
+    TestPostgresSelectionMinimizesSourceAndSkipsUnmatchedMessages first reproduced
+    unrelated source text reaching selection. They now pass: only the exact catalog
+    phrase reaches the selector/HTTP provider, original history is unchanged, empty
+    matches skip selection, and no entry is saved without confirmation.
+    The full Go/race suite, vet/build/format and 360/768/1440 browser flow were rerun,
+    including restart/reseed with the changed mentor. Frontend runtime is unchanged.
+    The deterministic provider failure uses the allowed Docker phrase rather than a
+    raw browser marker, which is no longer part of the selection payload.
   Title wrapper and mentor-only Markdown source tests first failed before fixes.
     Source ACL is enforced for list, direct reads, selection, confirmation, edits,
     deletion and model profile. Ordinary archived sources remain readable.

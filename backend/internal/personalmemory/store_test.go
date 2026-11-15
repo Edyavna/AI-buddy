@@ -32,6 +32,37 @@ func memoryFixture(t *testing.T) (Store, context.Context) {
 	return Store{DB: db, Selector: Model{Demo: true}}, identity.WithPrincipal(t.Context(), identity.Principal{UserID: "intern_demo_1", TeamID: "team_demo_backend", Role: identity.Intern})
 }
 
+func TestPostgresSelectionMinimizesSourceAndSkipsUnmatchedMessages(t *testing.T) {
+	s, ctx := memoryFixture(t)
+	const original = "rTqLmNpVxYzAwBcDeFhJk. Использую PowerShell. Приватный фрагмент рядом."
+	mustSQL(t, s, `UPDATE chat_messages SET text=$1 WHERE id='memory-user'`, original)
+	calls := 0
+	s.Selector = selectFunc(func(_ context.Context, input string) ([]Candidate, error) {
+		calls++
+		if input != "Использую PowerShell" {
+			t.Error("selector received unrelated source text", input)
+		}
+		return []Candidate{{"work_environment", "shell", "powershell", "Использую PowerShell"}}, nil
+	})
+	v, err := s.Suggest(ctx, "memory-user")
+	if err != nil || v.State != "ready" || len(v.Items) != 1 {
+		t.Fatal(v, err)
+	}
+	var saved string
+	if err := s.DB.QueryRow(`SELECT text FROM chat_messages WHERE id='memory-user'`).Scan(&saved); err != nil || saved != original {
+		t.Fatal("source was rewritten", saved, err)
+	}
+	w, err := s.Workspace(ctx)
+	if err != nil || len(w.Entries) != 0 {
+		t.Fatal("selection confirmed memory automatically", w, err)
+	}
+	mustSQL(t, s, `DELETE FROM memory_proposals; DELETE FROM memory_extractions; UPDATE chat_messages SET text='rTqLmNpVxYzAwBcDeFhJk' WHERE id='memory-user'`)
+	v, err = s.Suggest(ctx, "memory-user")
+	if err != nil || v.State != "skipped" || len(v.Items) != 0 || calls != 1 {
+		t.Fatal("unmatched source reached selector", v, calls, err)
+	}
+}
+
 func TestPostgresMemoryCannotUseMentorOnlyMarkdownSources(t *testing.T) {
 	s, ctx := memoryFixture(t)
 	p := mustSuggest(t, s, ctx, "memory-user", "shell")

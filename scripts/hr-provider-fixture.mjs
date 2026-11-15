@@ -76,7 +76,8 @@ createServer(async (request, response) => {
         result={title:'Личный диалог'};
       } else if(input.messages[0].content.startsWith('Предложи факты для персональной памяти')) {
         const payload=JSON.parse(last);
-        if(payload.text.includes('N79 fail')) {response.statusCode=503;response.end('{}');return;}
+        // Selection receives only catalog phrases, including no browser markers.
+        if(/изучаю Docker/i.test(payload.text)) {response.statusCode=503;response.end('{}');return;}
         const facts=[];
         for(const option of payload.catalog) {
           const match=payload.text.match(new RegExp(option.text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'));

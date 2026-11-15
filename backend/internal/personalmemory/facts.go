@@ -25,7 +25,22 @@ type factOption struct {
 }
 
 func option(category, key, value, text, expression string) factOption {
-	return factOption{Option{category, key, value, text}, regexp.MustCompile(`(?i)(?:^|[.!?;\n,]\s*|\sи\s)(?:я\s+)?` + expression + `(?:$|[\s.,!;?])`)}
+	return factOption{Option{category, key, value, text}, regexp.MustCompile(`(?i)(?:^|[.!?;\n,]\s*|\sи\s)(?:я\s+)?(` + expression + `)(?:$|[\s.,!;?])`)}
+}
+
+// Only the catalog phrase itself crosses the selection boundary, without the
+// source's surrounding prose, separators or arbitrary adjacent values.
+func selectionText(text string) string {
+	fragments := []string{}
+	for _, item := range catalog {
+		if loc := item.expression.FindStringSubmatchIndex(text); loc != nil {
+			fragments = append(fragments, text[loc[2]:loc[3]])
+			if len(fragments) == 4 {
+				break
+			}
+		}
+	}
+	return strings.Join(fragments, "\n")
 }
 
 var catalog = []factOption{

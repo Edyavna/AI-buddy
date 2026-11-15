@@ -234,13 +234,17 @@ func (s Store) Suggest(ctx context.Context, id string) (Proposals, error) {
 	}
 	state := "skipped"
 	facts := []Candidate{}
+	input := ""
 	if safeSource(original.Text) {
+		input = selectionText(original.Text)
+	}
+	if input != "" {
 		state = "ready"
 		if s.Selector == nil {
 			state = "failed"
 		} else {
 			work, cancel := context.WithTimeout(ctx, 4*time.Second)
-			facts, err = s.Selector.Select(work, original.Text)
+			facts, err = s.Selector.Select(work, input)
 			cancel()
 			if err != nil || facts == nil || len(facts) > 4 {
 				state = "failed"
