@@ -414,3 +414,15 @@ func TestPostgresMemoryDependencyFailuresNeverReturnOldProfile(t *testing.T) {
 		t.Fatal("error mapping")
 	}
 }
+
+func TestWindowsStatementWithTrailingNewlines(t *testing.T) {
+	for _, source := range []string{
+		"у меня на компьютере система windows, это норм?\n\n",
+		"Я работаю на виндоус.",
+	} {
+		if !safeSource(source) || selectionText(source) == "" ||
+			!validCandidate(Candidate{Category: "work_environment", Key: "os", Value: "windows", Quote: strings.TrimSpace(source)}, source) {
+			t.Errorf("missed Windows statement: %q", source)
+		}
+	}
+}

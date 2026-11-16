@@ -46,7 +46,8 @@ func TestOutcomeFixtures(t *testing.T) {
 		{"Где инструкция при сбое эмбеддингов?", []string{search}, outcomeKnowledge{searchErr: ports.ErrUnavailable}, gap, ""},
 		{"Где инструкция при сбое чтения?", []string{search, read}, outcomeKnowledge{hits: hits, readErr: ports.ErrUnavailable}, gap, ""},
 		{"Где инструкция при сбое модели?", []string{search}, outcomeKnowledge{}, "", ""},
-		{"Где инструкция без обращения к поиску?", nil, outcomeKnowledge{}, gap, ""},
+		{"Где инструкция без обращения к поиску?", nil, outcomeKnowledge{}, gap, gap},
+		{"Где инструкция при сбое резервного поиска?", nil, outcomeKnowledge{searchErr: ports.ErrUnavailable}, gap, ""},
 		{"Что сказано в непрочитанном результате?", []string{search}, outcomeKnowledge{hits: hits}, gap, ""},
 		{"Что вернёт агент при неизвестном outcome?", nil, outcomeKnowledge{}, ports.OutcomeUnknown, ""},
 	} {
@@ -81,5 +82,24 @@ func TestOutcomeFixtures(t *testing.T) {
 				t.Fatalf("outcome=%q answer=%q err=%v", out.Outcome, answer, err)
 			}
 		})
+	}
+}
+
+func TestSearchBeforePrematureClarification(t *testing.T) {
+	a, in := fixture()
+	in.Text = "How does our incident handoff work?"
+	a.Knowledge = outcomeKnowledge{hits: []ports.Source{{DocumentID: "setup"}}}
+	a.Model = &Script{Replies: []Message{
+		{Content: `{"answer":"Please clarify.","outcome":"needs_clarification"}`},
+		call("read_document", `{"document_id":"setup"}`),
+		{Content: `{"answer":"Found the instruction.","outcome":"answered"}`},
+	}}
+	var answer string
+	out, err := a.Run(testkit.Context(t.Context()), in, func(_ context.Context, event ports.AgentEvent) error {
+		answer += event.Text
+		return nil
+	})
+	if err != nil || answer != "Found the instruction." || out.Outcome != ports.OutcomeAnswered || len(out.Sources) != 1 || out.Sources[0].DocumentID != "setup" {
+		t.Fatalf("result=%+v answer=%q err=%v", out, answer, err)
 	}
 }

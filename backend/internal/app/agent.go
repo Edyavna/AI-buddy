@@ -36,6 +36,7 @@ func demoDependencies(db *sql.DB, provider *integrations.Provider, ai *config.AI
 	deps.Agent = &agent.Agent{Model: model, Classifier: model,
 		Knowledge: k, Tasks: provider, Access: provider,
 		Checkpoints: onboarding.SQLStore{DB: db},
+		Plans:       onboarding.Service{Store: onboarding.SQLStore{DB: db}, Access: provider},
 		Drafts:      drafts.New(requests), Requests: requests,
 		Demo: true,
 	}

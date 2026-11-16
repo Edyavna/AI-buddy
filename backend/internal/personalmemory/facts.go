@@ -44,7 +44,7 @@ func selectionText(text string) string {
 }
 
 var catalog = []factOption{
-	option("work_environment", "os", "windows", "Работаю на Windows", `(?:работаю|сижу)\s+(?:на|в)\s+windows`),
+	option("work_environment", "os", "windows", "Работаю на Windows", `(?:(?:работаю|сижу)\s+(?:на|в)|у\s+меня\s+(?:на\s+(?:компьютере|ноутбуке)\s+)?(?:система\s+|стоит\s+|установлена\s+)?)\s*(?:windows|виндоус|виндовс)`),
 	option("work_environment", "os", "linux", "Работаю на Linux", `работаю\s+(?:на|в)\s+linux`),
 	option("work_environment", "os", "macos", "Работаю на macOS", `работаю\s+(?:на|в)\s+(?:macos|маке)`),
 	option("work_environment", "shell", "powershell", "Использую PowerShell", `(?:использую|работаю\s+в)\s+powershell`),
@@ -68,7 +68,7 @@ func init() {
 var unsafeSource = regexp.MustCompile(`(?i)(парол|password|passwd|токен|token|secret|api[_ -]?key|bearer|ssh-|BEGIN .*KEY|паспорт|снилс|инн\b|зарплат|оклад|болезн|диагноз|беремен|отпуск|кадров|документ|инструкци[яию].*(?:цитат|закрыт)|цитат|согласно|коллег|не\s+(?:использую|работаю|изучаю|предпочитаю)|не\s+я|игнорир|ignore|system|assistant|[\x00-\x1f<>` + "`" + `]|https?://|\S+@\S+|[0-9]{6})`)
 
 func safeSource(text string) bool {
-	return utf8.RuneCountInString(text) <= 1000 && !unsafeSource.MatchString(text)
+	return utf8.RuneCountInString(text) <= 1000 && !unsafeSource.MatchString(strings.TrimSpace(text))
 }
 func findOption(key, value string) (Option, bool) {
 	for _, item := range catalog {

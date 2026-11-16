@@ -145,6 +145,7 @@ func TestRepeatAndNoKnowledge(t *testing.T) {
 	if !errors.Is(e, ports.ErrInvalid) {
 		t.Fatal(e)
 	}
+	a.Knowledge = outcomeKnowledge{}
 	a.Model = &Script{Replies: []Message{{Content: `{"answer":"Уточните, пожалуйста, вопрос.","outcome":"needs_clarification"}`}}}
 	out, e := a.Run(testkit.Context(context.Background()), in, func(context.Context, ports.AgentEvent) error { return nil })
 	if e != nil || len(out.Sources) != 0 {
