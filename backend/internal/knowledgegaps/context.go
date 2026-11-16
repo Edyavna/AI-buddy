@@ -92,6 +92,9 @@ func fragmentSource(ctx context.Context, tx *sql.Tx, root contextRoot, student, 
 	if err != nil {
 		return "", "", err
 	}
+	if role == "user" && privateFragment(text) {
+		return "", "", ErrContextChanged
+	}
 	if role == "assistant" {
 		var sources []struct {
 			ID      string `json:"document_id"`
@@ -111,6 +114,13 @@ func fragmentSource(ctx context.Context, tx *sql.Tx, root contextRoot, student, 
 		}
 	}
 	return role, text, nil
+}
+
+func privateFragment(text string) bool {
+	text = strings.ToLower(text)
+	return strings.Contains(text, "личная заметка") ||
+		strings.Contains(text, "в обращение не включай") ||
+		strings.Contains(text, "не включай в обращение")
 }
 
 func contextStep(ctx context.Context, tx *sql.Tx, p identity.Principal, id *string) (*ContextStep, error) {

@@ -428,7 +428,7 @@ func TestWindowsStatementWithTrailingNewlines(t *testing.T) {
 }
 
 func TestMemoryOptOut(t *testing.T) {
-	for _, text := range []string{"Я использую Bash. Не сохраняй это в память.", "Я использую Bash. Не надо запоминать.", "Я использую Bash. Don't store this."} {
+	for _, text := range []string{"Я использую Bash. Не сохраняй это в память.", "Я использую Bash. Не надо запоминать.", "Я использую Bash. Don't store this.", "Я использую Bash. Сохрани это только до закрытия вкладки, без карточек.", "Я предпочитаю краткие инструкции. Я передумал: длинные инструкции тоже подходят, не делай вывод о моих предпочтениях."} {
 		if safeSource(text) {
 			t.Errorf("opt-out accepted: %q", text)
 		}

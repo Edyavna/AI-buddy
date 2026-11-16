@@ -114,7 +114,7 @@ func TestPartialAndEmit(t *testing.T) {
 	}
 }
 func TestInvalidCalls(t *testing.T) {
-	for _, m := range []Message{call("submit", `{}`), call("get_my_tasks", `{"user_id":"other"}`), call("prepare_access_request", `{"resource_id":"other","permission":"read","reason":"x"}`), call("get_my_tasks", `null`)} {
+	for _, m := range []Message{call("submit", `{}`), call("get_my_tasks", `{"user_id":"other"}`), call("get_my_tasks", `null`)} {
 		a, in := fixture()
 		a.Model = &Script{Replies: []Message{m}}
 		_, e := a.Run(testkit.Context(context.Background()), in, func(context.Context, ports.AgentEvent) error { return nil })
@@ -150,5 +150,17 @@ func TestRepeatAndNoKnowledge(t *testing.T) {
 	out, e := a.Run(testkit.Context(context.Background()), in, func(context.Context, ports.AgentEvent) error { return nil })
 	if e != nil || len(out.Sources) != 0 {
 		t.Fatal(out, e)
+	}
+}
+
+func TestUnsupportedDraftReturnsReadableToolResult(t *testing.T) {
+	a, in := fixture()
+	a.Model = &Script{Replies: []Message{
+		call("prepare_access_request", `{"resource_id":"other","permission":"read","reason":"x"}`),
+		{Content: `{"answer":"Resource unsupported.","outcome":"answered"}`},
+	}}
+	out, err := a.Run(testkit.Context(t.Context()), in, func(context.Context, ports.AgentEvent) error { return nil })
+	if err != nil || out.Outcome != ports.OutcomeAnswered || len(out.RequestIDs) != 0 {
+		t.Fatal(out, err)
 	}
 }

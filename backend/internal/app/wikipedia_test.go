@@ -70,7 +70,7 @@ func TestPostgresIssue84RoleAndWikipediaChat(t *testing.T) {
 				default:
 					reply = `{"direction":"continue","reason":"Контекст","clarification":null,"split":false}`
 				}
-			case strings.Contains(prompt, "редакции статьи из Википедии"):
+			case strings.Contains(prompt, "зафиксированной редакции Википедии"):
 				if !strings.Contains(input, "Йонас") || !strings.Contains(input, "2007") || len(in.Tools) != 0 {
 					t.Error("expected article passage and no tools")
 				}

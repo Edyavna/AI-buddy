@@ -436,3 +436,25 @@ func TestMentorMarkdownHistoryAndRetry(t *testing.T) {
 		t.Fatal(history)
 	}
 }
+
+func TestFollowUpCarriesRevocableHistorySources(t *testing.T) {
+	first, second := "first", "second"
+	history := []Message{
+		{ID: first, Role: "user", Text: "Read the document"},
+		{Role: "assistant", Status: "completed", InReplyTo: &first, Text: "private phrase",
+			Sources: []Source{{ID: "doc:read", DocumentID: "doc", Version: 3, Excerpt: "private phrase"}}},
+	}
+	carried := historySources(history, "Repeat the phrase")
+	if len(carried) != 1 || carried[0].DocumentID != "doc" || carried[0].Version != 3 || carried[0].Excerpt != "" {
+		t.Fatalf("unexpected history sources: %+v", carried)
+	}
+	history = append(history, Message{ID: second, Role: "user", Text: "Repeat the phrase"},
+		Message{Role: "assistant", Status: "completed", InReplyTo: &second, Text: "private phrase", Sources: carried})
+	s := Service{Knowledge: testkit.Knowledge{}}
+	s.checkSources(testkit.Context(t.Context()), history)
+	for _, i := range []int{1, 3} {
+		if history[i].Text != unavailableSourceAnswer || len(history[i].Sources) != 0 {
+			t.Fatalf("answer %d still exposes a revoked source: %+v", i, history[i])
+		}
+	}
+}

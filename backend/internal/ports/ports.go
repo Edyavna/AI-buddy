@@ -49,14 +49,18 @@ type ChatMessage struct{ Role, Text string }
 
 // SpecialistQuestion describes an already submitted question in this conversation.
 type SpecialistQuestion struct {
-	Question  string `json:"question"`
-	Direction string `json:"direction"`
-	Status    string `json:"status"`
-	Assigned  bool   `json:"assigned"`
+	Question   string `json:"question"`
+	Direction  string `json:"direction"`
+	Status     string `json:"status"`
+	Assigned   bool   `json:"assigned"`
+	Resolution string `json:"resolution,omitempty"`
 }
 
 type AgentInput struct {
-	SpecialistQuestions []SpecialistQuestion
+	PreviousSourceUnavailable bool
+	RetryDraftID              string
+	SpecialistQuestions       []SpecialistQuestion
+	RecentSpecialistQuestions []SpecialistQuestion
 	// Requests are server-loaded snapshots, not model-supplied state.
 	Requests                                 []RequestState
 	ConversationID, AssistantMessageID, Text string

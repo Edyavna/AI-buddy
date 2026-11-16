@@ -99,7 +99,7 @@ func validText(text string) bool {
 
 // History includes only complete pairs; the current question is passed in Text.
 // Keep newest whole pairs, reserving both a message and code points for Text.
-func history(previous []Message, text string) []ports.ChatMessage {
+func historyPairs(previous []Message, text string) [][2]Message {
 	pairs := make([][2]Message, 0)
 	for i := 1; i < len(previous); i++ {
 		u, a := previous[i-1], previous[i]
@@ -119,11 +119,38 @@ func history(previous []Message, text string) []ports.ChatMessage {
 		count += 2
 		start = i
 	}
-	out := make([]ports.ChatMessage, 0, count)
-	for _, pair := range pairs[start:] {
+	return pairs[start:]
+}
+
+func history(previous []Message, text string) []ports.ChatMessage {
+	pairs := historyPairs(previous, text)
+	out := make([]ports.ChatMessage, 0, 2*len(pairs))
+	for _, pair := range pairs {
 		for _, m := range pair {
 			out = append(out, ports.ChatMessage{Role: m.Role, Text: m.Text})
 		}
 	}
 	return out
+}
+
+// Retain the document versions that the model could see via previous answers.
+// A follow-up may quote or paraphrase those answers without calling a tool again.
+func historySources(previous []Message, text string) []Source {
+	var out []Source
+	for _, pair := range historyPairs(previous, text) {
+		for _, source := range pair[1].Sources {
+			source.Excerpt = ""
+			out = appendSource(out, source)
+		}
+	}
+	return out
+}
+
+func appendSource(sources []Source, next Source) []Source {
+	for _, source := range sources {
+		if source.DocumentID == next.DocumentID && source.Version == next.Version {
+			return sources
+		}
+	}
+	return append(sources, next)
 }

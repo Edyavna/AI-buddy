@@ -328,14 +328,23 @@ func (s SQLStore) Recover(ctx context.Context) error {
 }
 
 func (s SQLStore) SpecialistQuestions(ctx context.Context, conversation, student, team string) ([]ports.SpecialistQuestion, error) {
+	return s.specialistQuestions(ctx, conversation, student, team, 5)
+}
+
+func (s SQLStore) RecentSpecialistQuestions(ctx context.Context, student, team string) ([]ports.SpecialistQuestion, error) {
+	return s.specialistQuestions(ctx, "", student, team, 20)
+}
+
+func (s SQLStore) specialistQuestions(ctx context.Context, conversation, student, team string, limit int) ([]ports.SpecialistQuestion, error) {
 	rows, err := s.DB.QueryContext(ctx, `SELECT left(q.question, 300), q.direction, q.status,
+ left(COALESCE(q.resolution, ''), 2000),
  CASE WHEN q.direction='hr' THEN q.hr_id IS NOT NULL ELSE EXISTS (
   SELECT 1 FROM mentor_assignments a WHERE a.intern_id=q.student_id AND a.team_id=q.team_id
  ) END
  FROM knowledge_gaps q JOIN chat_messages m ON m.id=q.message_id
  JOIN conversations c ON c.id=m.conversation_id
- WHERE c.id=$1 AND c.user_id=$2 AND c.team_id=$3 AND q.student_id=$2 AND q.team_id=$3
- ORDER BY q.created_at DESC,q.id LIMIT 5`, conversation, student, team)
+ WHERE ($1 = '' OR c.id=$1) AND c.user_id=$2 AND c.team_id=$3 AND q.student_id=$2 AND q.team_id=$3
+ ORDER BY q.created_at DESC,q.id LIMIT $4`, conversation, student, team, limit)
 	if err != nil {
 		return nil, sqlError(err)
 	}
@@ -343,7 +352,7 @@ func (s SQLStore) SpecialistQuestions(ctx context.Context, conversation, student
 	var out []ports.SpecialistQuestion
 	for rows.Next() {
 		var item ports.SpecialistQuestion
-		if err := rows.Scan(&item.Question, &item.Direction, &item.Status, &item.Assigned); err != nil {
+		if err := rows.Scan(&item.Question, &item.Direction, &item.Status, &item.Resolution, &item.Assigned); err != nil {
 			return nil, sqlError(err)
 		}
 		out = append(out, item)

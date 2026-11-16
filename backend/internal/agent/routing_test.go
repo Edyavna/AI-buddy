@@ -131,7 +131,7 @@ func TestRoutingAndGroundedAnswer(t *testing.T) {
 		{"unknown source", `{"direction":"hr","reason":"Отпуск"}`, `{"answer":"Совет","document_id":"foreign"}`, nil, nil, false, "лучше уточнить", ports.OutcomeKnowledgeGap},
 		{"stale source", `{"direction":"hr","reason":"Отпуск"}`, `{"answer":"Совет","document_id":"hr-doc"}`, nil, nil, true, "лучше уточнить", ports.OutcomeKnowledgeGap},
 		{"bad answer", `{"direction":"hr","reason":"Отпуск"}`, `bad JSON`, nil, nil, false, "", ports.Outcome("")},
-		{"mixed", `{"direction":"needs_clarification","reason":"Две темы","clarification":"Разделим вопрос?","split":true}`, `{}`, nil, nil, false, "Разделим вопрос?", ports.OutcomeNeedsClarification},
+		{"mixed", `{"direction":"needs_clarification","reason":"Две темы","clarification":"Разделим вопрос?","split":true}`, `{"answer":"Разберём обе темы.","outcome":"answered"}`, nil, nil, false, "Разберём обе темы.", ports.OutcomeAnswered},
 		{"invalid", `{"direction":"hr","reason":"Отпуск","team_id":"other"}`, `{"answer":"Продолжаю диалог.","outcome":"answered"}`, nil, nil, false, "Продолжаю диалог.", ports.OutcomeAnswered},
 		{"provider error", "", `{"answer":"Продолжаю диалог.","outcome":"answered"}`, nil, nil, false, "Продолжаю диалог.", ports.OutcomeAnswered},
 	} {
