@@ -30,9 +30,10 @@ export interface paths {
             };
             cookie?: never;
         };
+        /** @description A follow-up such as «запомни это» can return proposals sourced from the preceding user turn in the same conversation. */
         get: operations["readMessageMemoryProposals"];
         put?: never;
-        /** @description Bounded optional model selection from the authenticated intern own user message. Creates proposals only, never confirmed memory. Failure does not affect the ordinary chat. Ready/skipped extractions are replayed; failed selection can be explicitly retried. */
+        /** @description Bounded optional model selection from the authenticated intern own user message. Creates proposals only, never confirmed memory. A bare request to remember uses the preceding user turn in the same dialogue. Failure does not affect the ordinary chat. Ready/skipped extractions are replayed; failed selection can be explicitly retried. */
         post: operations["suggestPersonalMemory"];
         delete?: never;
         options?: never;
@@ -1741,6 +1742,8 @@ export interface components {
             created_at: string;
             entry_id: string | null;
             replaces: components["schemas"]["NullableMemoryEntry"];
+            /** @description The source suggests the fact may apply to the user without stating it explicitly. */
+            uncertain?: boolean;
         };
         MemoryProposals: {
             /** @enum {string} */

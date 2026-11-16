@@ -28,6 +28,7 @@ export const proposalSchema = z.object({
   created_at: z.iso.datetime(),
   entry_id: z.string().nullable(),
   replaces: entrySchema.nullable(),
+  uncertain: z.boolean().exactOptional(),
 }) satisfies z.ZodType<Schemas["MemoryProposal"]>;
 export const proposalsSchema = z.object({
   state: z.enum(["not_requested", "ready", "failed", "skipped"]),

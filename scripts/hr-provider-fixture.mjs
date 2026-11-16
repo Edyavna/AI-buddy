@@ -76,12 +76,14 @@ createServer(async (request, response) => {
         result={title:'Личный диалог'};
       } else if(input.messages[0].content.startsWith('Предложи факты для персональной памяти')) {
         const payload=JSON.parse(last);
-        // Selection receives only catalog phrases, including no browser markers.
+        // The full source includes the browser marker and any surrounding context.
         if(/изучаю Docker/i.test(payload.text)) {response.statusCode=503;response.end('{}');return;}
         const facts=[];
+        const ambiguous=payload.text.match(/у коллеги Windows, мне тоже удобно/i);
+        if(ambiguous)facts.push({category:'work_environment',key:'os',value:'windows',source_quote:ambiguous[0],uncertain:true});
         for(const option of payload.catalog) {
           const match=payload.text.match(new RegExp(option.text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'i'));
-          if(match&&facts.length<4)facts.push({category:option.category,key:option.key,value:option.value,source_quote:match[0]});
+          if(match&&facts.length<4)facts.push({category:option.category,key:option.key,value:option.value,source_quote:match[0],uncertain:false});
         }
         result={facts};
       } else if (input.messages[0].content.startsWith('Подготовь обезличенную')) {

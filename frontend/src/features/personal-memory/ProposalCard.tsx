@@ -20,6 +20,7 @@ export function ProposalCard({
     <article className={styles.card} aria-label={proposal.text}>
       <small>{categoryLabel[proposal.category]}</small>
       <h3>{proposal.text}</h3>
+      {proposal.uncertain && <p>Возможно, это ваше предпочтение</p>}
       <a
         href={`/chat/${encodeURIComponent(proposal.conversation_id)}#message-${encodeURIComponent(proposal.source_message_id)}`}
         target="_blank"
