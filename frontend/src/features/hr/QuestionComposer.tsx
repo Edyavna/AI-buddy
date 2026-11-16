@@ -20,11 +20,13 @@ const directions: Direction[] = ["mentor", "hr"];
 
 export function QuestionComposer({
   messageId,
+  neutral = false,
   onOpenDocument,
   onOpenContextDocument = onOpenDocument,
   preferredDirection,
 }: {
   messageId: string;
+  neutral?: boolean;
   onOpenDocument: (id: string) => void;
   onOpenContextDocument?: (id: string) => void;
   preferredDirection?: Direction | undefined;
@@ -38,7 +40,7 @@ export function QuestionComposer({
         onClick={() => setOpen(!open)}
         aria-expanded={open}
       >
-        {open ? "Свернуть обращения" : "Обратиться к специалисту"}
+        {open ? "Свернуть обращения" : neutral ? "Обращения" : "Обратиться к специалисту"}
       </Button>
       {open && (
         <MessageQuestions

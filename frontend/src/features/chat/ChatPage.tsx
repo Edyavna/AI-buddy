@@ -220,7 +220,7 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
               <AccessRequestPanel requestId={requestId} onDiscuss={focusComposer} />
             </div>)}
             {!mentor && message.role === 'assistant' && message.in_reply_to_message_id && message.status !== 'generating' &&
-              <QuestionComposer messageId={message.id} preferredDirection={preferredDirection} onOpenDocument={id=>{setSourceMessageId(undefined);setDocumentId(id);}} onOpenContextDocument={id=>openSource(message.id,id)}/>}
+              <QuestionComposer neutral={message.outcome === 'answered' || message.outcome === 'needs_clarification' || message.status !== 'completed'} messageId={message.id} preferredDirection={preferredDirection} onOpenDocument={id=>{setSourceMessageId(undefined);setDocumentId(id);}} onOpenContextDocument={id=>openSource(message.id,id)}/>}
             {canEscalate && !message.routing && me.data &&
               <MentorQuestionPanel key={me.data.id} messageId={message.id} onOpenDocument={id=>{setSourceMessageId(undefined);setDocumentId(id);}} existingOnly
                 canEscalate={canEscalate} isChatBusy={busy} canRepeatQuestion={!!original && contextReady && !contextInvalid && !error}

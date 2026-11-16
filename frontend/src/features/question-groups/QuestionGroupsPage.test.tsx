@@ -839,3 +839,15 @@ it.each(["mentor", "hr"] as const)(
     );
   },
 );
+
+it("review: rereading must not overwrite a remote resolution with untouched stale form data", async () => {
+  const { state } = start(true);
+  await screen.findByRole("heading", { name: "Состав и общее решение" });
+  state.group = makeGroup({ revision: 2, title: "Новое название из другой вкладки", resolution: "Исправленное решение из другой вкладки" });
+  fireEvent.click(screen.getByRole("button", { name: "Перечитать версию" }));
+  await screen.findByText(/версия состава 2/);
+  fireEvent.click(screen.getByRole("button", { name: "Сохранить состав" }));
+  await waitFor(() => expect(state.group?.revision).toBe(3));
+  expect(state.group?.resolution).toBe("Исправленное решение из другой вкладки");
+  expect(state.group?.title).toBe("Новое название из другой вкладки");
+});

@@ -126,7 +126,7 @@ it.each([['hr', 'hr'], ['mentor', 'mentor'], ['unknown', 'mentor']])('preserves 
     http.get('*/api/v1/conversations/:id/messages', () => HttpResponse.json([])),
     http.post('*/api/v1/conversations/:id/messages', () => new HttpResponse(
       eventText('message.started', { user_message_id: 'msg_u1', message_id: 'msg_a1' }) +
-      eventText('message.completed', { message: f.messages[1] }),
+      eventText('message.completed', { message: { ...f.messages[1], outcome: 'answered' } }),
       { headers: { 'Content-Type': 'text/event-stream' } },
     )),
     http.get('*/api/v1/messages/:id/questions', () => HttpResponse.json({
@@ -137,7 +137,7 @@ it.each([['hr', 'hr'], ['mentor', 'mentor'], ['unknown', 'mentor']])('preserves 
   mount(`/chat?stepId=step_local_setup&direction=${direction}`);
   await waitFor(() => expect(screen.getByLabelText('Ваш вопрос')).toHaveValue(`Помоги выполнить шаг: ${f.plan.steps[0]?.title}`));
   fireEvent.click(screen.getByRole('button', { name: 'Отправить' }));
-  fireEvent.click(await screen.findByRole('button', { name: 'Обратиться к специалисту' }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Обращения' }));
   expect(await screen.findByRole('combobox', { name: /Адресат/ })).toHaveValue(expected);
 });
 it('offers escalation only for a completed knowledge gap and repeats with a fresh message ID', async () => {
