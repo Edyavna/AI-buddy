@@ -12,6 +12,15 @@ const browser=await chromium.launch({headless:true,...(process.env.MEMORY_BROWSE
 const run=Date.now().toString(36),report=[];
 async function login(page,name){await page.goto(origin+'/login');await page.getByRole('radio',{name:new RegExp(name)}).click();await page.getByRole('button',{name:/Войти как/}).click();await page.waitForURL(url=>!url.pathname.endsWith('/login'));}
 async function json(page,path){const response=await page.request.get(origin+'/api/v1'+path);assert.equal(response.status(),200,path+': '+await response.text());return response.json();}
+async function waitForJSON(page,path,ready){
+  const deadline=Date.now()+15000;
+  while(Date.now()<deadline){
+    const payload=await json(page,path);
+    if(ready(payload))return payload;
+    await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  throw new Error(`Timed out waiting for ${path}`);
+}
 async function capture(page,name){
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true);
   await page.evaluate(()=>{window.scrollTo(0,0);document.activeElement?.blur();});
@@ -32,13 +41,7 @@ async function ask(page,text){
   await page.goto(origin+'/chat');await send(page,text);
   await page.waitForURL(url=>/^\/chat\/[^/]+$/.test(url.pathname));
   const url=page.url(),id=new URL(url).pathname.split('/').at(-1);
-  await page.waitForFunction(async id=>{
-    const response=await fetch(`/api/v1/conversations/${id}/messages`);
-    const messages=response.ok?await response.json():[];
-    return messages.at(-1)?.role==='assistant'&&messages.at(-1)?.status==='completed';
-  },id,{polling:100});
-  const messages=await json(page,`/conversations/${id}/messages`);
-  assert.equal(messages.at(-1).status,'completed');
+  const messages=await waitForJSON(page,`/conversations/${id}/messages`,messages=>messages.at(-1)?.status==='completed'&&messages.at(-1)?.role==='assistant');
   assert.equal((await json(page,`/conversations/${id}`)).title,'Личный диалог','Memory must preserve the configured title generator');
   return {url,message:messages.find(m=>m.role==='user')};
 }
@@ -87,7 +90,7 @@ try{
     await ask(peer,`Как проверить текущую папку? N79 ${run} ${width}`);await peer.getByText('Уточните рабочую оболочку; предпочтения пока не сохранены.',{exact:true}).waitFor();
     if(width===360){
       const failed=await ask(intern,`Я изучаю Docker. N79 fail ${run}`);await intern.getByText('Не удалось подобрать факты. Память не изменена; можно продолжать разговор.',{exact:true}).waitFor();assert.equal((await json(intern,'/messages/'+failed.message.id+'/memory-proposals')).state,'failed');
-      const sensitive=await ask(intern,`Мой токен test_placeholder_only. Я изучаю Docker. N79 ${run}`);await intern.waitForFunction(async path=>(await(await fetch('/api/v1'+path)).json()).state==='skipped','/messages/'+sensitive.message.id+'/memory-proposals');assert.equal((await json(intern,'/messages/'+sensitive.message.id+'/memory-proposals')).state,'skipped');assert.equal((await json(intern,'/memory')).entries.length,1);
+      const sensitive=await ask(intern,`Мой токен test_placeholder_only. Я изучаю Docker. N79 ${run}`);await waitForJSON(intern,`/messages/${sensitive.message.id}/memory-proposals`,result=>result.state==='skipped');assert.equal((await json(intern,'/memory')).entries.length,1);
     }
     if(width===1440){
       const ambiguous=await ask(intern,`У коллеги Windows, мне тоже удобно. N79 ${run}`);
@@ -100,8 +103,7 @@ try{
       const messages=await json(intern,`/conversations/${conversationId}/messages`);
       const followUp=messages.find(m=>m.role==='user'&&m.text==='Запомни это');
       const path=`/messages/${followUp.id}/memory-proposals`;
-      await intern.waitForFunction(async path=>(await(await fetch('/api/v1'+path)).json()).state==='ready',path,{polling:100});
-      const [after]=(await json(intern,path)).items;
+      const [after]=(await waitForJSON(intern,path,result=>result.state==='ready')).items;
       assert.equal(after.id,before.id);
       assert.equal(after.source_message_id,ambiguous.message.id);
       assert.equal(await card.getByRole('link',{name:'Исходная реплика'}).getAttribute('href'),`/chat/${conversationId}#message-${ambiguous.message.id}`);
