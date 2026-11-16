@@ -212,6 +212,10 @@ func (a Agent) Run(ctx context.Context, in ports.AgentInput, emit ports.Emit) (p
 	if err != nil {
 		profile = ""
 	}
+	if safeSource(in.Text) && rememberPrevious.MatchString(in.Text) {
+		err := emit(ctx, ports.AgentEvent{Kind: "answer.delta", Text: "Если в предыдущей реплике есть подходящее предпочтение, оно появится в карточке. Нажмите «Запомнить», чтобы добавить его в память."})
+		return ports.AgentResult{Outcome: ports.OutcomeAnswered}, err
+	}
 	in.PersonalProfile = profile
 	return a.Next.Run(ctx, in, emit)
 }

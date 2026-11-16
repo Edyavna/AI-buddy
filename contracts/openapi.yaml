@@ -65,6 +65,7 @@ paths:
       tags:
         - Personal memory
       operationId: readMessageMemoryProposals
+      description: A follow-up such as «запомни это» can return proposals sourced from the preceding user turn in the same conversation.
       responses:
         '200':
           description: Authorized personal memory
@@ -125,7 +126,8 @@ paths:
               properties: {}
       description: >-
         Bounded optional model selection from the authenticated intern own user message. Creates proposals only,
-        never confirmed memory. Failure does not affect the ordinary chat. Ready/skipped extractions are
+        never confirmed memory. A bare request to remember uses the preceding user turn in the same dialogue.
+        Failure does not affect the ordinary chat. Ready/skipped extractions are
         replayed; failed selection can be explicitly retried.
   /memory/proposals/{id}:
     parameters:
@@ -4515,6 +4517,9 @@ components:
           nullable: true
         replaces:
           $ref: '#/components/schemas/NullableMemoryEntry'
+        uncertain:
+          type: boolean
+          description: The source suggests the fact may apply to the user without stating it explicitly.
     MemoryProposals:
       type: object
       additionalProperties: false

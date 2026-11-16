@@ -32,17 +32,17 @@ func memoryFixture(t *testing.T) (Store, context.Context) {
 	return Store{DB: db, Selector: Model{Demo: true}}, identity.WithPrincipal(t.Context(), identity.Principal{UserID: "intern_demo_1", TeamID: "team_demo_backend", Role: identity.Intern})
 }
 
-func TestPostgresSelectionMinimizesSourceAndSkipsUnmatchedMessages(t *testing.T) {
+func TestPostgresSelectionSendsWholeSourceAndSkipsUnmatchedMessages(t *testing.T) {
 	s, ctx := memoryFixture(t)
 	const original = "rTqLmNpVxYzAwBcDeFhJk. Использую PowerShell. Приватный фрагмент рядом."
 	mustSQL(t, s, `UPDATE chat_messages SET text=$1 WHERE id='memory-user'`, original)
 	calls := 0
 	s.Selector = selectFunc(func(_ context.Context, input string) ([]Candidate, error) {
 		calls++
-		if input != "Использую PowerShell" {
-			t.Error("selector received unrelated source text", input)
+		if input != original {
+			t.Error("selector did not receive the whole turn", input)
 		}
-		return []Candidate{{"work_environment", "shell", "powershell", "Использую PowerShell"}}, nil
+		return []Candidate{{Category: "work_environment", Key: "shell", Value: "powershell", Quote: "Использую PowerShell"}}, nil
 	})
 	v, err := s.Suggest(ctx, "memory-user")
 	if err != nil || v.State != "ready" || len(v.Items) != 1 {
@@ -60,6 +60,44 @@ func TestPostgresSelectionMinimizesSourceAndSkipsUnmatchedMessages(t *testing.T)
 	v, err = s.Suggest(ctx, "memory-user")
 	if err != nil || v.State != "skipped" || len(v.Items) != 0 || calls != 1 {
 		t.Fatal("unmatched source reached selector", v, calls, err)
+	}
+}
+
+func TestPostgresRememberFollowUpUsesPreviousUserTurn(t *testing.T) {
+	s, ctx := memoryFixture(t)
+	mustSQL(t, s, `UPDATE chat_messages SET text='У коллеги Windows, мне тоже удобно' WHERE id='memory-user';
+		INSERT INTO chat_messages(id,conversation_id,sequence,role,status,in_reply_to_message_id,text,trace_id)
+		VALUES('memory-answer','memory-conversation',2,'assistant','completed','memory-user','Уточните предпочтение','memory');
+		INSERT INTO chat_messages(id,conversation_id,sequence,client_message_id,role,status,text,trace_id)
+		VALUES ('memory-follow-up','memory-conversation',3,gen_random_uuid(),'user','completed','Запомни это.','memory'),
+		('memory-opt-out','memory-conversation',5,gen_random_uuid(),'user','completed','Я использую Bash. Не сохраняй.','memory'),
+		('memory-after-opt-out','memory-conversation',7,gen_random_uuid(),'user','completed','Запомни это','memory');
+		INSERT INTO memory_extractions(message_id,user_id,team_id,state) VALUES('memory-user','intern_demo_1','team_demo_backend','skipped')`)
+	p := mustSuggest(t, s, ctx, "memory-follow-up", "os")
+	if p.SourceMessageID != "memory-user" || p.ConversationID != "memory-conversation" || !p.Uncertain || p.State != "pending" {
+		t.Fatal(p)
+	}
+	s.Selector = selectFunc(func(context.Context, string) ([]Candidate, error) {
+		t.Fatal("selector called again or on an opted-out turn")
+		return nil, nil
+	})
+	for _, id := range []string{"memory-follow-up", "memory-user"} {
+		if got := mustSuggest(t, s, ctx, id, "os"); got.ID != p.ID || !got.Uncertain {
+			t.Fatal(got)
+		}
+	}
+	if out, err := s.Suggest(ctx, "memory-after-opt-out"); err != nil || out.State != "skipped" || len(out.Items) != 0 {
+		t.Fatal(out, err)
+	}
+	workspace, err := s.Workspace(ctx)
+	if err != nil || len(workspace.Entries) != 0 || len(workspace.Pending) != 1 {
+		t.Fatal(workspace, err)
+	}
+	if e := accept(t, s, ctx, p); e.SourceMessageID != "memory-user" || e.Value != "windows" {
+		t.Fatal(e)
+	}
+	if got := mustSuggest(t, s, ctx, "memory-follow-up", "os"); got.ID != p.ID || got.State != "accepted" {
+		t.Fatal(got)
 	}
 }
 
@@ -420,7 +458,7 @@ func TestWindowsStatementWithTrailingNewlines(t *testing.T) {
 		"у меня на компьютере система windows, это норм?\n\n",
 		"Я работаю на виндоус.",
 	} {
-		if !safeSource(source) || selectionText(source) == "" ||
+		if !eligibleSource(source) ||
 			!validCandidate(Candidate{Category: "work_environment", Key: "os", Value: "windows", Quote: strings.TrimSpace(source)}, source) {
 			t.Errorf("missed Windows statement: %q", source)
 		}

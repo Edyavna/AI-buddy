@@ -225,6 +225,23 @@ it("proposes source-grounded memory without saving, confirms once and restores i
   expect(state.selections).toBe(1);
   expect(state.writes).toBe(1);
 });
+it("labels uncertain proposals and links the previous turn from a follow-up", async () => {
+  const { state } = fixture();
+  state.proposals = [{ ...proposal(), uncertain: true }];
+  renderWithQuery(
+    <MemoryRouter>
+      <MemorySuggestions messageId="follow-up" />
+    </MemoryRouter>,
+  );
+  await screen.findByText("Возможно, это ваше предпочтение");
+  expect(screen.getByRole("link", { name: "Исходная реплика" })).toHaveAttribute(
+    "href",
+    "/chat/conversation#message-source",
+  );
+  expect(state.entries).toEqual([]);
+  expect(state.writes).toBe(0);
+});
+
 it("dismisses a proposal and keeps it out of the profile", async () => {
   const { state } = fixture();
   const view = mountSuggestions();

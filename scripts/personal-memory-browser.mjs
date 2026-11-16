@@ -24,10 +24,19 @@ async function capture(page,name){
   }
   await page.screenshot({path:`${directory}/${name}.png`,fullPage:true,animations:'disabled'});
 }
+async function send(page,text){
+  await page.getByRole('textbox',{name:'Ваш вопрос'}).fill(text);
+  await page.getByRole('button',{name:'Отправить',exact:true}).click();
+}
 async function ask(page,text){
-  await page.goto(origin+'/chat');await page.getByRole('textbox',{name:'Ваш вопрос'}).fill(text);await page.getByRole('button',{name:'Отправить',exact:true}).click();
-  await page.getByRole('button',{name:'Обратиться к специалисту'}).last().waitFor();
+  await page.goto(origin+'/chat');await send(page,text);
+  await page.waitForURL(url=>/^\/chat\/[^/]+$/.test(url.pathname));
   const url=page.url(),id=new URL(url).pathname.split('/').at(-1);
+  await page.waitForFunction(async id=>{
+    const response=await fetch(`/api/v1/conversations/${id}/messages`);
+    const messages=response.ok?await response.json():[];
+    return messages.at(-1)?.role==='assistant'&&messages.at(-1)?.status==='completed';
+  },id,{polling:100});
   const messages=await json(page,`/conversations/${id}/messages`);
   assert.equal(messages.at(-1).status,'completed');
   assert.equal((await json(page,`/conversations/${id}`)).title,'Личный диалог','Memory must preserve the configured title generator');
@@ -79,6 +88,26 @@ try{
     if(width===360){
       const failed=await ask(intern,`Я изучаю Docker. N79 fail ${run}`);await intern.getByText('Не удалось подобрать факты. Память не изменена; можно продолжать разговор.',{exact:true}).waitFor();assert.equal((await json(intern,'/messages/'+failed.message.id+'/memory-proposals')).state,'failed');
       const sensitive=await ask(intern,`Мой токен test_placeholder_only. Я изучаю Docker. N79 ${run}`);await intern.waitForFunction(async path=>(await(await fetch('/api/v1'+path)).json()).state==='skipped','/messages/'+sensitive.message.id+'/memory-proposals');assert.equal((await json(intern,'/messages/'+sensitive.message.id+'/memory-proposals')).state,'skipped');assert.equal((await json(intern,'/memory')).entries.length,1);
+    }
+    if(width===1440){
+      const ambiguous=await ask(intern,`У коллеги Windows, мне тоже удобно. N79 ${run}`);
+      const card=intern.getByRole('article',{name:'Работаю на Windows',exact:true});
+      await card.getByText('Возможно, это ваше предпочтение',{exact:true}).waitFor();
+      const before=(await json(intern,`/messages/${ambiguous.message.id}/memory-proposals`)).items[0];
+      await send(intern,'Запомни это');
+      await intern.getByText(/Нажмите «Запомнить», чтобы добавить его в память/).waitFor();
+      const conversationId=new URL(ambiguous.url).pathname.split('/').at(-1);
+      const messages=await json(intern,`/conversations/${conversationId}/messages`);
+      const followUp=messages.find(m=>m.role==='user'&&m.text==='Запомни это');
+      const path=`/messages/${followUp.id}/memory-proposals`;
+      await intern.waitForFunction(async path=>(await(await fetch('/api/v1'+path)).json()).state==='ready',path,{polling:100});
+      const [after]=(await json(intern,path)).items;
+      assert.equal(after.id,before.id);
+      assert.equal(after.source_message_id,ambiguous.message.id);
+      assert.equal(await card.getByRole('link',{name:'Исходная реплика'}).getAttribute('href'),`/chat/${conversationId}#message-${ambiguous.message.id}`);
+      assert.equal((await json(intern,'/memory')).entries.length,1);
+      await card.getByRole('button',{name:'Не сохранять',exact:true}).click();
+      await card.getByText('Предложение отклонено.',{exact:true}).waitFor();
     }
     await intern.goto(origin+'/memory');await intern.getByRole('heading',{name:'Использую PowerShell',exact:true}).waitFor();
     await capture(intern,`memory-${width}`);

@@ -40,6 +40,7 @@ type Proposal struct {
 	CreatedAt       time.Time `json:"created_at"`
 	EntryID         *string   `json:"entry_id"`
 	Replaces        *Entry    `json:"replaces"`
+	Uncertain       bool      `json:"uncertain,omitempty"`
 }
 type Proposals struct {
 	State string     `json:"state"`
@@ -99,12 +100,32 @@ func (s Store) transaction(ctx context.Context, work func(*sql.Tx, identity.Prin
 	}))
 }
 
-type source struct{ Conversation, Text string }
+type source struct {
+	ID, Conversation, Text string
+	Sequence               int64
+}
 
 func readSource(ctx context.Context, tx *sql.Tx, p identity.Principal, id string) (source, error) {
 	var out source
-	err := tx.QueryRowContext(ctx, `SELECT c.id,m.text FROM chat_messages m JOIN conversations c ON c.id=m.conversation_id WHERE m.id=$1 AND m.role='user' AND m.status='completed' AND c.user_id=$2 AND c.team_id=$3 AND NOT c.markdown FOR SHARE OF c,m`, id, p.UserID, p.TeamID).Scan(&out.Conversation, &out.Text)
+	err := tx.QueryRowContext(ctx, `SELECT m.id,c.id,m.text,m.sequence FROM chat_messages m JOIN conversations c ON c.id=m.conversation_id WHERE m.id=$1 AND m.role='user' AND m.status='completed' AND c.user_id=$2 AND c.team_id=$3 AND NOT c.markdown FOR SHARE OF c,m`, id, p.UserID, p.TeamID).Scan(&out.ID, &out.Conversation, &out.Text, &out.Sequence)
 	return out, err
+}
+
+func selectionSource(ctx context.Context, tx *sql.Tx, message source) (source, error) {
+	if !rememberPrevious.MatchString(message.Text) {
+		return message, nil
+	}
+	if !safeSource(message.Text) {
+		return source{}, nil
+	}
+	// The conversation was authorized and locked by readSource. Stop at the
+	// preceding user turn so a bare command cannot jump over a change of topic.
+	var previous source
+	err := tx.QueryRowContext(ctx, `SELECT id,conversation_id,text,sequence FROM chat_messages WHERE conversation_id=$1 AND sequence<$2 AND role='user' AND status='completed' ORDER BY sequence DESC LIMIT 1 FOR SHARE`, message.Conversation, message.Sequence).Scan(&previous.ID, &previous.Conversation, &previous.Text, &previous.Sequence)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = nil
+	}
+	return previous, err
 }
 
 type scanner interface{ Scan(...any) error }
@@ -153,11 +174,11 @@ func currentEntry(ctx context.Context, tx *sql.Tx, p identity.Principal, key, va
 	return &e, err
 }
 
-const proposalColumns = `e.id::text,e.category,e.fact_key,e.value,e.source_message_id,c.id,e.state,e.created_at,e.entry_id::text`
+const proposalColumns = `e.id::text,e.category,e.fact_key,e.value,e.source_message_id,c.id,e.state,e.created_at,e.entry_id::text,e.uncertain`
 
 func scanProposal(row scanner) (Proposal, error) {
 	var e Proposal
-	err := row.Scan(&e.ID, &e.Category, &e.Key, &e.Value, &e.SourceMessageID, &e.ConversationID, &e.State, &e.CreatedAt, &e.EntryID)
+	err := row.Scan(&e.ID, &e.Category, &e.Key, &e.Value, &e.SourceMessageID, &e.ConversationID, &e.State, &e.CreatedAt, &e.EntryID, &e.Uncertain)
 	if err == nil {
 		opt, ok := findOption(e.Key, e.Value)
 		if !ok || opt.Category != e.Category {
@@ -197,17 +218,42 @@ func proposals(ctx context.Context, tx *sql.Tx, p identity.Principal, message st
 	}
 	return out, nil
 }
+func readExtraction(ctx context.Context, tx *sql.Tx, p identity.Principal, id string) (state, sourceID string, err error) {
+	state, sourceID = "not_requested", id
+	err = tx.QueryRowContext(ctx, `SELECT state,COALESCE(source_message_id,message_id) FROM memory_extractions WHERE message_id=$1 AND user_id=$2 AND team_id=$3`, id, p.UserID, p.TeamID).Scan(&state, &sourceID)
+	if errors.Is(err, sql.ErrNoRows) {
+		err = nil
+	}
+	return state, sourceID, err
+}
+
+func saveExtraction(ctx context.Context, tx *sql.Tx, p identity.Principal, id, sourceID, state string) error {
+	_, err := tx.ExecContext(ctx, `INSERT INTO memory_extractions(message_id,user_id,team_id,source_message_id,state) VALUES($1,$2,$3,NULLIF($4,''),$5) ON CONFLICT(message_id) DO UPDATE SET state=EXCLUDED.state,source_message_id=EXCLUDED.source_message_id,updated_at=now()`, id, p.UserID, p.TeamID, sourceID, state)
+	return err
+}
+
 func (s Store) Proposals(ctx context.Context, id string) (Proposals, error) {
 	out := Proposals{State: "not_requested", Items: []Proposal{}}
 	err := s.transaction(ctx, func(tx *sql.Tx, p identity.Principal) error {
-		if _, e := readSource(ctx, tx, p, id); e != nil {
-			return e
-		}
-		err := tx.QueryRowContext(ctx, `SELECT state FROM memory_extractions WHERE message_id=$1 AND user_id=$2 AND team_id=$3`, id, p.UserID, p.TeamID).Scan(&out.State)
-		if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		message, err := readSource(ctx, tx, p, id)
+		if err != nil {
 			return err
 		}
-		out.Items, err = proposals(ctx, tx, p, id)
+		state, sourceID, err := readExtraction(ctx, tx, p, id)
+		if err != nil {
+			return err
+		}
+		out.State = state
+		if sourceID != id {
+			original, err := readSource(ctx, tx, p, sourceID)
+			if err != nil {
+				return err
+			}
+			if original.Conversation != message.Conversation || original.Sequence >= message.Sequence {
+				return ports.ErrNotFound
+			}
+		}
+		out.Items, err = proposals(ctx, tx, p, sourceID)
 		return err
 	})
 	return out, err
@@ -223,39 +269,32 @@ func (s Store) Suggest(ctx context.Context, id string) (Proposals, error) {
 	if previous.State == "ready" || previous.State == "skipped" {
 		return previous, nil
 	}
-	var original source
+	var message, original source
+	var originalState string
 	err = s.transaction(ctx, func(tx *sql.Tx, p identity.Principal) error {
-		var e error
-		original, e = readSource(ctx, tx, p, id)
-		return e
+		var err error
+		message, err = readSource(ctx, tx, p, id)
+		if err != nil {
+			return err
+		}
+		original, err = selectionSource(ctx, tx, message)
+		if err != nil || original.ID == "" || original.ID == id {
+			return err
+		}
+		originalState, _, err = readExtraction(ctx, tx, p, original.ID)
+		return err
 	})
 	if err != nil {
 		return previous, err
 	}
 	state := "skipped"
-	facts := []Candidate{}
-	input := ""
-	if safeSource(original.Text) {
-		input = selectionText(original.Text)
-	}
-	if input != "" {
+	var facts []Candidate
+	if eligibleSource(original.Text) {
 		state = "ready"
-		if s.Selector == nil {
-			state = "failed"
-		} else {
-			work, cancel := context.WithTimeout(ctx, 4*time.Second)
-			facts, err = s.Selector.Select(work, input)
-			cancel()
-			if err != nil || facts == nil || len(facts) > 4 {
+		if originalState != "ready" {
+			facts = s.selectFacts(ctx, original.Text)
+			if facts == nil {
 				state = "failed"
-				facts = nil
-			}
-			for _, f := range facts {
-				if !validCandidate(f, original.Text) {
-					state = "failed"
-					facts = nil
-					break
-				}
 			}
 		}
 	}
@@ -264,29 +303,64 @@ func (s Store) Suggest(ctx context.Context, id string) (Proposals, error) {
 		if e != nil {
 			return e
 		}
-		if current != original {
+		resolved, e := selectionSource(ctx, tx, current)
+		if e != nil {
+			return e
+		}
+		if current != message || resolved != original {
 			return ErrChanged
 		}
-		var existing string
-		e = tx.QueryRowContext(ctx, `SELECT state FROM memory_extractions WHERE message_id=$1 AND user_id=$2 AND team_id=$3`, id, p.UserID, p.TeamID).Scan(&existing)
-		if e != nil && !errors.Is(e, sql.ErrNoRows) {
+		existing, _, e := readExtraction(ctx, tx, p, id)
+		if e != nil {
 			return e
 		}
 		if existing == "ready" || existing == "skipped" {
 			return nil
 		}
+		if original.ID != "" && original.ID != id && state != "skipped" {
+			cached, _, e := readExtraction(ctx, tx, p, original.ID)
+			if e != nil {
+				return e
+			}
+			if cached == "ready" {
+				return saveExtraction(ctx, tx, p, id, original.ID, "ready")
+			}
+		}
+		if state != "ready" {
+			return saveExtraction(ctx, tx, p, id, "", state)
+		}
 		for _, f := range facts {
-			if _, e = tx.ExecContext(ctx, `INSERT INTO memory_proposals(user_id,team_id,source_message_id,category,fact_key,value) VALUES($1,$2,$3,$4,$5,$6) ON CONFLICT DO NOTHING`, p.UserID, p.TeamID, id, f.Category, f.Key, f.Value); e != nil {
+			if _, e = tx.ExecContext(ctx, `INSERT INTO memory_proposals(user_id,team_id,source_message_id,category,fact_key,value,uncertain) VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING`, p.UserID, p.TeamID, original.ID, f.Category, f.Key, f.Value, f.Uncertain); e != nil {
 				return e
 			}
 		}
-		_, e = tx.ExecContext(ctx, `INSERT INTO memory_extractions(message_id,user_id,team_id,state) VALUES($1,$2,$3,$4) ON CONFLICT(message_id) DO UPDATE SET state=EXCLUDED.state,updated_at=now()`, id, p.UserID, p.TeamID, state)
-		return e
+		if e = saveExtraction(ctx, tx, p, original.ID, "", "ready"); e != nil || original.ID == id {
+			return e
+		}
+		return saveExtraction(ctx, tx, p, id, original.ID, "ready")
 	})
 	if err != nil {
 		return previous, err
 	}
 	return s.Proposals(ctx, id)
+}
+
+func (s Store) selectFacts(ctx context.Context, text string) []Candidate {
+	if s.Selector == nil {
+		return nil
+	}
+	work, cancel := context.WithTimeout(ctx, 4*time.Second)
+	defer cancel()
+	facts, err := s.Selector.Select(work, text)
+	if err != nil || len(facts) > 4 {
+		return nil
+	}
+	for _, fact := range facts {
+		if !validCandidate(fact, text) {
+			return nil
+		}
+	}
+	return facts
 }
 func (s Store) GetEntry(ctx context.Context, id string) (Entry, error) {
 	var out Entry
