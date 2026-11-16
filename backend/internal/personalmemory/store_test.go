@@ -32,15 +32,15 @@ func memoryFixture(t *testing.T) (Store, context.Context) {
 	return Store{DB: db, Selector: Model{Demo: true}}, identity.WithPrincipal(t.Context(), identity.Principal{UserID: "intern_demo_1", TeamID: "team_demo_backend", Role: identity.Intern})
 }
 
-func TestPostgresSelectionSendsWholeSourceAndSkipsUnmatchedMessages(t *testing.T) {
+func TestPostgresSelectionOnlySendsCatalogFragments(t *testing.T) {
 	s, ctx := memoryFixture(t)
 	const original = "rTqLmNpVxYzAwBcDeFhJk. Использую PowerShell. Приватный фрагмент рядом."
 	mustSQL(t, s, `UPDATE chat_messages SET text=$1 WHERE id='memory-user'`, original)
 	calls := 0
 	s.Selector = selectFunc(func(_ context.Context, input string) ([]Candidate, error) {
 		calls++
-		if input != original {
-			t.Error("selector did not receive the whole turn", input)
+		if input != "Использую PowerShell" {
+			t.Error("selector received unrelated text", input)
 		}
 		return []Candidate{{Category: "work_environment", Key: "shell", Value: "powershell", Quote: "Использую PowerShell"}}, nil
 	})

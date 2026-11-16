@@ -349,9 +349,12 @@ func (s Store) selectFacts(ctx context.Context, text string) []Candidate {
 	if s.Selector == nil {
 		return nil
 	}
+	if selectionText(text) == "" {
+		return []Candidate{}
+	}
 	work, cancel := context.WithTimeout(ctx, 4*time.Second)
 	defer cancel()
-	facts, err := s.Selector.Select(work, text)
+	facts, err := s.Selector.Select(work, selectionText(text))
 	if err != nil || len(facts) > 4 {
 		return nil
 	}

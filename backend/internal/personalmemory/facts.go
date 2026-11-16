@@ -139,3 +139,24 @@ func Options() []Option {
 	}
 	return out
 }
+
+func selectionText(text string) string {
+	if !safeSource(text) {
+		return ""
+	}
+	fragments := []string{}
+	for _, item := range catalog {
+		if match := item.demoStatement.FindStringSubmatch(text); match != nil {
+			fragments = append(fragments, match[1])
+			if len(fragments) == 4 {
+				break
+			}
+		}
+	}
+	if len(fragments) == 0 {
+		if match := regexp.MustCompile(`(?i)у коллеги Windows, мне тоже удобно`).FindString(text); match != "" {
+			fragments = append(fragments, match)
+		}
+	}
+	return strings.Join(fragments, "\n")
+}

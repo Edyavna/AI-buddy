@@ -14,8 +14,8 @@ import (
 	"github.com/Edyavna/AI-buddy/backend/internal/providerhttp"
 )
 
-func TestModelSelectionSendsWholeEligibleTurn(t *testing.T) {
-	const source = "У коллеги Windows, мне тоже удобно.\nДома похожее окружение."
+func TestModelSelectionOnlySendsCatalogFragments(t *testing.T) {
+	const source = "rTqLmNpVxYzAwBcDeFhJk. Использую PowerShell. Посторонний фрагмент."
 	var calls atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		calls.Add(1)
@@ -30,14 +30,14 @@ func TestModelSelectionSendsWholeEligibleTurn(t *testing.T) {
 		var input struct {
 			Text string `json:"text"`
 		}
-		if err := json.Unmarshal([]byte(body.Messages[1].Content), &input); err != nil || input.Text != source {
+		if err := json.Unmarshal([]byte(body.Messages[1].Content), &input); err != nil || input.Text != "Использую PowerShell" {
 			t.Error("selector did not receive the whole turn", input.Text, err)
 		}
-		json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"finish_reason": "stop", "message": map[string]string{"content": `{"facts":[{"category":"work_environment","key":"os","value":"windows","source_quote":"У коллеги Windows, мне тоже удобно","uncertain":true}]}`}}}})
+		json.NewEncoder(w).Encode(map[string]any{"choices": []any{map[string]any{"finish_reason": "stop", "message": map[string]string{"content": `{"facts":[{"category":"work_environment","key":"shell","value":"powershell","source_quote":"Использую PowerShell","uncertain":false}]}`}}}})
 	}))
 	defer server.Close()
 	m := Model{Client: providerhttp.Client{BaseURL: server.URL, Key: "test"}, Name: "fixture"}
-	if facts, err := m.Select(t.Context(), source); err != nil || len(facts) != 1 || !facts[0].Uncertain || !validCandidate(facts[0], source) {
+	if facts, err := m.Select(t.Context(), source); err != nil || len(facts) != 1 || !validCandidate(facts[0], source) {
 		t.Fatal(facts, err)
 	}
 	for _, text := range []string{"Не связано с памятью", "Подсказка в gofmt", "У меня ОС Windows. Только для этого разговора.", "Windows, password: abc", "Работаю на винде. Не сохрани это."} {
