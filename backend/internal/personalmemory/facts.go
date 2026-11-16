@@ -67,8 +67,10 @@ func init() {
 // are ever persisted: neither model prose nor source/document text is a memory value.
 var unsafeSource = regexp.MustCompile(`(?i)(парол|password|passwd|токен|token|secret|api[_ -]?key|bearer|ssh-|BEGIN .*KEY|паспорт|снилс|инн\b|зарплат|оклад|болезн|диагноз|беремен|отпуск|кадров|документ|инструкци[яию].*(?:цитат|закрыт)|цитат|согласно|коллег|не\s+(?:использую|работаю|изучаю|предпочитаю)|не\s+я|игнорир|ignore|system|assistant|[\x00-\x1f<>` + "`" + `]|https?://|\S+@\S+|[0-9]{6})`)
 
+var memoryOptOut = regexp.MustCompile(`(?i)(не\s+(?:сохраняй|сохранять|запоминай|запоминать|записывай|записывать)|не\s+надо\s+(?:сохранять|запоминать|записывать)|без\s+(?:сохранения|запоминания)|do\s+not\s+(?:save|remember|store)|don.t\s+(?:save|remember|store))`)
+
 func safeSource(text string) bool {
-	return utf8.RuneCountInString(text) <= 1000 && !unsafeSource.MatchString(strings.TrimSpace(text))
+	return !memoryOptOut.MatchString(text) && utf8.RuneCountInString(text) <= 1000 && !unsafeSource.MatchString(strings.TrimSpace(text))
 }
 func findOption(key, value string) (Option, bool) {
 	for _, item := range catalog {
