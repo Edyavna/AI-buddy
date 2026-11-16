@@ -29,3 +29,6 @@ Thumbs.db
 agent/
 !backend/internal/agent/
 skills-lock.json
+
+# Local recordings and transcripts
+/video/
