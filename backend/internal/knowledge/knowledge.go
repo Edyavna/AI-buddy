@@ -229,7 +229,7 @@ FROM knowledge_chunks c JOIN knowledge_documents d ON d.id=c.document_id
 LEFT JOIN playbook_documents pb ON pb.document_id=d.id
 WHERE `+readableDocument+` AND (pb.document_id IS NULL OR pb.active)
 AND (CASE WHEN d.source='`+ports.SourceWikipedia+`' THEN $6 IN ('','public')
-     ELSE $6='' OR (pb.document_id IS NULL AND d.direction=$6) OR (pb.active AND $6 IN ('mentor','hr')) END)
+     ELSE $6='' OR (pb.document_id IS NULL AND d.direction=$6) OR (pb.active AND $6 IN ('mentor','hr','playbook')) END)
 AND 1-(c.embedding <=> $4::vector)>=$5)
 SELECT id,document_id,title,excerpt,direction,version,updated_at,source FROM candidates
 WHERE chunk_rank=1 ORDER BY distance,id LIMIT 5`, p.TeamID, p.UserID, p.Role, encoded, threshold, direction)

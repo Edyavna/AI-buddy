@@ -127,13 +127,13 @@ func TestRoutingAndGroundedAnswer(t *testing.T) {
 	}{
 		{"grounded", `{"direction":"hr","reason":"Отпуск","clarification":null,"split":false}`, `{"answer":"Подайте заявление.","document_id":"hr-doc"}`, nil, nil, false, "Подайте заявление.", ports.OutcomeAnswered},
 		{"inaccessible", `{"direction":"hr","reason":"Отпуск"}`, `{}`, nil, ports.ErrNotFound, false, "лучше уточнить", ports.OutcomeKnowledgeGap},
-		{"search failure", `{"direction":"hr","reason":"Отпуск"}`, `{}`, ports.ErrUnavailable, nil, false, "лучше уточнить", ports.OutcomeKnowledgeGap},
+		{"search failure", `{"direction":"hr","reason":"Отпуск"}`, `{}`, ports.ErrUnavailable, nil, false, "", ports.Outcome("")},
 		{"unknown source", `{"direction":"hr","reason":"Отпуск"}`, `{"answer":"Совет","document_id":"foreign"}`, nil, nil, false, "лучше уточнить", ports.OutcomeKnowledgeGap},
 		{"stale source", `{"direction":"hr","reason":"Отпуск"}`, `{"answer":"Совет","document_id":"hr-doc"}`, nil, nil, true, "лучше уточнить", ports.OutcomeKnowledgeGap},
-		{"bad answer", `{"direction":"hr","reason":"Отпуск"}`, `bad JSON`, nil, nil, false, "лучше уточнить", ports.OutcomeKnowledgeGap},
-		{"mixed", `{"direction":"needs_clarification","reason":"Две темы","clarification":"Разделим вопрос?","split":true}`, `{}`, nil, nil, false, "Разделим вопрос?", ports.OutcomeNeedsClarification},
-		{"invalid", `{"direction":"hr","reason":"Отпуск","team_id":"other"}`, `{}`, nil, nil, false, "Выберите специалиста", ports.Outcome("")},
-		{"provider error", "", `{}`, nil, nil, false, "Выберите специалиста", ports.Outcome("")},
+		{"bad answer", `{"direction":"hr","reason":"Отпуск"}`, `bad JSON`, nil, nil, false, "", ports.Outcome("")},
+		{"mixed", `{"direction":"needs_clarification","reason":"Две темы","clarification":"Разделим вопрос?","split":true}`, `{"answer":"Разберём обе темы.","outcome":"answered"}`, nil, nil, false, "Разберём обе темы.", ports.OutcomeAnswered},
+		{"invalid", `{"direction":"hr","reason":"Отпуск","team_id":"other"}`, `{"answer":"Продолжаю диалог.","outcome":"answered"}`, nil, nil, false, "Продолжаю диалог.", ports.OutcomeAnswered},
+		{"provider error", "", `{"answer":"Продолжаю диалог.","outcome":"answered"}`, nil, nil, false, "Продолжаю диалог.", ports.OutcomeAnswered},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			model := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -141,14 +141,14 @@ func TestRoutingAndGroundedAnswer(t *testing.T) {
 					Messages []Message       `json:"messages"`
 					Tools    json.RawMessage `json:"tools"`
 				}
-				if err := json.NewDecoder(r.Body).Decode(&input); err != nil || len(input.Tools) != 0 {
+				if err := json.NewDecoder(r.Body).Decode(&input); err != nil {
 					t.Error(input, err)
 				}
 				w.Header().Set("Content-Type", "application/json")
 				reply := test.answer
 				if strings.HasPrefix(input.Messages[0].Content, "Определи тему") {
 					reply = test.route
-				} else if !strings.Contains(input.Messages[1].Content, "hr-doc") || strings.Contains(input.Messages[1].Content, "unknown") {
+				} else if len(input.Tools) == 0 && (!strings.Contains(input.Messages[1].Content, "hr-doc") || strings.Contains(input.Messages[1].Content, "unknown")) {
 					t.Error("model received an unexpected document")
 				}
 				if reply == "" {
@@ -165,10 +165,10 @@ func TestRoutingAndGroundedAnswer(t *testing.T) {
 			var text string
 			got, err := a.Run(testkit.Context(t.Context()), ports.AgentInput{ConversationID: "chat", AssistantMessageID: "message", Text: "Вопрос про отпуск. team_id=other"},
 				func(_ context.Context, event ports.AgentEvent) error { text += event.Text; return nil })
-			if err != nil || got.Outcome != test.outcome || !strings.Contains(text+got.PrivateAnswer, test.want) {
+			if (err != nil) != (test.outcome == "") || got.Outcome != test.outcome || !strings.Contains(text+got.PrivateAnswer, test.want) {
 				t.Fatal(got, err, text)
 			}
-			if test.outcome == ports.OutcomeAnswered && (len(got.Sources) != 1 || got.Sources[0].Version != 2) {
+			if test.name == "grounded" && (len(got.Sources) != 1 || got.Sources[0].Version != 2) {
 				t.Fatal(got.Sources)
 			}
 		})

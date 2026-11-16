@@ -414,3 +414,23 @@ func TestPostgresMemoryDependencyFailuresNeverReturnOldProfile(t *testing.T) {
 		t.Fatal("error mapping")
 	}
 }
+
+func TestWindowsStatementWithTrailingNewlines(t *testing.T) {
+	for _, source := range []string{
+		"у меня на компьютере система windows, это норм?\n\n",
+		"Я работаю на виндоус.",
+	} {
+		if !safeSource(source) || selectionText(source) == "" ||
+			!validCandidate(Candidate{Category: "work_environment", Key: "os", Value: "windows", Quote: strings.TrimSpace(source)}, source) {
+			t.Errorf("missed Windows statement: %q", source)
+		}
+	}
+}
+
+func TestMemoryOptOut(t *testing.T) {
+	for _, text := range []string{"Я использую Bash. Не сохраняй это в память.", "Я использую Bash. Не надо запоминать.", "Я использую Bash. Don't store this.", "Я использую Bash. Сохрани это только до закрытия вкладки, без карточек.", "Я предпочитаю краткие инструкции. Я передумал: длинные инструкции тоже подходят, не делай вывод о моих предпочтениях."} {
+		if safeSource(text) {
+			t.Errorf("opt-out accepted: %q", text)
+		}
+	}
+}

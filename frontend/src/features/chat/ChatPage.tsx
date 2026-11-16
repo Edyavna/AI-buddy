@@ -206,7 +206,7 @@ export function ChatPage({ mentor = false }: { mentor?: boolean } = {}) {
             {message.sources.length > 0 && <ul className={styles.sources} aria-label="Источники ответа">
               {message.sources.map(source => <li key={source.id}>
                 <button type="button" className={styles.source} onClick={() => openSource(message.id,source.document_id)}>
-                  <strong>{source.title}</strong><span>{source.excerpt}</span>
+                  <strong>{source.title}</strong>
                   {source.version && source.direction === 'hr' && <span>Версия {source.version}{source.updated_at && ` · ${new Date(source.updated_at).toLocaleDateString('ru-RU')}`}</span>}
                 </button>
               </li>)}

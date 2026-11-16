@@ -122,6 +122,18 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 			return Prepared{}, err
 		}
 	}
+	var recentQuestions []ports.SpecialistQuestion
+	query := strings.ToLower(text)
+	if store, ok := s.Store.(interface {
+		RecentSpecialistQuestions(context.Context, string, string) ([]ports.SpecialistQuestion, error)
+	}); ok && p.Role == identity.Intern && strings.Contains(query, "обращен") {
+		lookup, cancel := context.WithTimeout(ctx, 5*time.Second)
+		recentQuestions, err = store.RecentSpecialistQuestions(lookup, p.UserID, p.TeamID)
+		cancel()
+		if err != nil {
+			return Prepared{}, err
+		}
+	}
 	started := time.Now()
 	work, stop := context.WithTimeout(ctx, 5*time.Second)
 	defer stop()
@@ -130,9 +142,17 @@ func (s Service) Prepare(ctx context.Context, id, clientID, text string) (Prepar
 		return Prepared{}, err
 	}
 	s.checkSources(work, r.Previous)
-	in := ports.AgentInput{Markdown: r.Conversation.Markdown, SpecialistQuestions: questions, ConversationID: id, AssistantMessageID: r.Assistant.ID, StepID: r.Conversation.StepID, Text: text, History: history(r.Previous, text), Requests: []ports.RequestState{}}
+	in := ports.AgentInput{PreviousSourceUnavailable: len(r.Previous) > 0 && r.Previous[len(r.Previous)-1].Text == unavailableSourceAnswer, Markdown: r.Conversation.Markdown, SpecialistQuestions: questions, RecentSpecialistQuestions: recentQuestions, ConversationID: id, AssistantMessageID: r.Assistant.ID, StepID: r.Conversation.StepID, Text: text, History: history(r.Previous, text), Requests: []ports.RequestState{}}
 	if p.Role == identity.Mentor {
 		return Prepared{Reservation: r, Input: in, StartedAt: started}, nil
+	}
+	for i := len(r.Previous) - 1; i > 0; i-- {
+		answer, user := r.Previous[i], r.Previous[i-1]
+		if answer.Status == "interrupted" && answer.InReplyTo != nil && *answer.InReplyTo == user.ID &&
+			strings.TrimSpace(user.Text) == strings.TrimSpace(text) && len(answer.RequestIDs) == 1 {
+			in.RetryDraftID = answer.RequestIDs[0]
+			break
+		}
 	}
 	ids := map[string]bool{}
 	for _, m := range r.Previous {
@@ -318,6 +338,7 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 	save, stopSave := o.Tick(o.SaveInterval)
 	defer stopSave()
 	message := p.Assistant
+	inheritedSources := historySources(p.Previous, p.Input.Text)
 	var text strings.Builder
 	tools := map[string]bool{}
 	var result ports.AgentResult
@@ -339,6 +360,9 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 				disconnected = true
 			}
 		case <-save:
+			if len(inheritedSources) > 0 {
+				continue // Save text together with its source dependencies at Finish.
+			}
 			opCtx, stop := context.WithTimeout(runCtx, o.WriteTimeout)
 			err := s.Store.SavePartial(opCtx, owner, p.Conversation.ID, message.ID, text.String())
 			stop()
@@ -452,7 +476,10 @@ func (s Service) Stream(ctx context.Context, p Prepared, sink Sink, options Stre
 		if !source.UpdatedAt.IsZero() {
 			item.UpdatedAt = &source.UpdatedAt
 		}
-		message.Sources = append(message.Sources, item)
+		message.Sources = appendSource(message.Sources, item)
+	}
+	for _, source := range inheritedSources {
+		message.Sources = appendSource(message.Sources, source)
 	}
 	for _, id := range result.RequestIDs {
 		if slices.Contains(message.RequestIDs, id) {
@@ -519,6 +546,8 @@ func shortTitle(text string) string {
 	return text
 }
 
+const unavailableSourceAnswer = "Источник этого ответа больше недоступен."
+
 func (s Service) checkSources(ctx context.Context, messages []Message) {
 	if s.Knowledge == nil {
 		return
@@ -527,14 +556,9 @@ func (s Service) checkSources(ctx context.Context, messages []Message) {
 		m := &messages[i]
 		allowed := make([]Source, 0, len(m.Sources))
 		for _, src := range m.Sources {
-			// Legacy citations predate versioned HR documents.
-			if src.Direction != "hr" {
-				allowed = append(allowed, src)
-				continue
-			}
 			doc, err := s.Knowledge.Read(ctx, src.DocumentID)
-			if err != nil || doc.Version != src.Version {
-				m.Text = "Источник этого ответа больше недоступен."
+			if err != nil || (src.Version > 0 && doc.Version != src.Version) {
+				m.Text = unavailableSourceAnswer
 				allowed = allowed[:0]
 				break
 			}

@@ -31,6 +31,7 @@ func option(category, key, value, text, expression string) factOption {
 // Only the catalog phrase itself crosses the selection boundary, without the
 // source's surrounding prose, separators or arbitrary adjacent values.
 func selectionText(text string) string {
+	text = ownFacts(text)
 	fragments := []string{}
 	for _, item := range catalog {
 		if loc := item.expression.FindStringSubmatchIndex(text); loc != nil {
@@ -44,7 +45,7 @@ func selectionText(text string) string {
 }
 
 var catalog = []factOption{
-	option("work_environment", "os", "windows", "Работаю на Windows", `(?:работаю|сижу)\s+(?:на|в)\s+windows`),
+	option("work_environment", "os", "windows", "Работаю на Windows", `(?:(?:работаю|сижу)\s+(?:на|в)|у\s+меня\s+(?:на\s+(?:компьютере|ноутбуке)\s+)?(?:система\s+|стоит\s+|установлена\s+)?)\s*(?:windows|виндоус|виндовс)`),
 	option("work_environment", "os", "linux", "Работаю на Linux", `работаю\s+(?:на|в)\s+linux`),
 	option("work_environment", "os", "macos", "Работаю на macOS", `работаю\s+(?:на|в)\s+(?:macos|маке)`),
 	option("work_environment", "shell", "powershell", "Использую PowerShell", `(?:использую|работаю\s+в)\s+powershell`),
@@ -65,10 +66,20 @@ func init() {
 
 // Reject the whole source before model selection. Only canonical catalog values
 // are ever persisted: neither model prose nor source/document text is a memory value.
-var unsafeSource = regexp.MustCompile(`(?i)(парол|password|passwd|токен|token|secret|api[_ -]?key|bearer|ssh-|BEGIN .*KEY|паспорт|снилс|инн\b|зарплат|оклад|болезн|диагноз|беремен|отпуск|кадров|документ|инструкци[яию].*(?:цитат|закрыт)|цитат|согласно|коллег|не\s+(?:использую|работаю|изучаю|предпочитаю)|не\s+я|игнорир|ignore|system|assistant|[\x00-\x1f<>` + "`" + `]|https?://|\S+@\S+|[0-9]{6})`)
+var unsafeSource = regexp.MustCompile(`(?i)(парол|password|passwd|токен|token|secret|api[_ -]?key|bearer|ssh-|BEGIN .*KEY|паспорт|снилс|инн\b|зарплат|оклад|болезн|диагноз|беремен|отпуск|кадров|документ|инструкци[яию].*(?:цитат|закрыт)|цитат|согласно|не\s+(?:использую|работаю|изучаю|предпочитаю)|не\s+я|игнорир|ignore|system|assistant|[\x00-\x1f<>` + "`" + `]|https?://|\S+@\S+|[0-9]{6})`)
+
+var memoryOptOut = regexp.MustCompile(`(?i)(не\s+(?:сохраняй|сохранять|запоминай|запоминать|записывай|записывать)|не\s+надо\s+(?:сохранять|запоминать|записывать)|до\s+закрытия\s+(?:вкладки|чата|диалога)|без\s+карточек|не\s+делай\s+вывод[а-я]*\s+о\s+моих\s+предпочтениях|передумал[аи]?|без\s+(?:сохранения|запоминания)|только\s+(?:для\s+этого\s+разговора|в\s+(?:этом\s+диалоге|этой\s+беседе))|в\s+других\s+(?:чатах|диалогах)\s+не\s+учитывай|(?:забудь|не\s+вспоминай)|останется\s+между\s+нами|do\s+not\s+(?:save|remember|store)|don.t\s+(?:save|remember|store))`)
+
+var colleagueClause = regexp.MustCompile(`(?i),\s*а\s+(?:мой\s+)?коллега\s+[^.!?;
+]*`)
+var colleagueMention = regexp.MustCompile(`(?i)коллег`)
+
+func ownFacts(text string) string {
+	return colleagueClause.ReplaceAllString(text, "")
+}
 
 func safeSource(text string) bool {
-	return utf8.RuneCountInString(text) <= 1000 && !unsafeSource.MatchString(text)
+	return !memoryOptOut.MatchString(text) && utf8.RuneCountInString(text) <= 1000 && !colleagueMention.MatchString(ownFacts(text)) && !unsafeSource.MatchString(strings.TrimSpace(text))
 }
 func findOption(key, value string) (Option, bool) {
 	for _, item := range catalog {
@@ -79,12 +90,12 @@ func findOption(key, value string) (Option, bool) {
 	return Option{}, false
 }
 func validCandidate(c Candidate, source string) bool {
-	if !safeSource(source) || c.Quote == "" || utf8.RuneCountInString(c.Quote) > 200 || !strings.Contains(source, c.Quote) {
+	if !safeSource(source) || c.Quote == "" || utf8.RuneCountInString(c.Quote) > 200 || !strings.Contains(ownFacts(source), c.Quote) {
 		return false
 	}
 	for _, item := range catalog {
 		if item.Key == c.Key && item.Value == c.Value && item.Category == c.Category {
-			return item.expression.MatchString(c.Quote) && item.expression.MatchString(source)
+			return item.expression.MatchString(c.Quote) && item.expression.MatchString(ownFacts(source))
 		}
 	}
 	return false
@@ -95,7 +106,7 @@ func storedFactAllowed(category, key, value, source string) bool {
 	}
 	for _, item := range catalog {
 		if item.Category == category && item.Key == key && item.Value == value {
-			return item.expression.MatchString(source)
+			return item.expression.MatchString(ownFacts(source))
 		}
 	}
 	return false
